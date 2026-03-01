@@ -1,0 +1,100 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { FormEvent, useState } from 'react';
+
+export function UploadForm() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const video = formData.get('video') as File;
+    const thumbnail = formData.get('thumbnail') as File;
+
+    if (!video || !video.type.startsWith('video/')) {
+      setError('Please upload a valid video file.');
+      return;
+    }
+
+    if (!thumbnail || !thumbnail.type.startsWith('image/')) {
+      setError('Please upload a valid image thumbnail.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/videos/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      const data = await res.json();
+      router.push(`/watch/${data.id}`);
+      router.refresh();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="mx-auto w-full max-w-3xl space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900"
+    >
+      <h1 className="text-2xl font-bold">Upload video</h1>
+
+      <input
+        name="title"
+        placeholder="Title"
+        required
+        maxLength={120}
+        className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
+      />
+      <textarea
+        name="description"
+        placeholder="Description"
+        rows={5}
+        className="w-full rounded-xl border border-zinc-300 bg-white p-3 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
+      />
+      <input
+        name="tags"
+        placeholder="Tags (comma-separated)"
+        className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
+      />
+
+      <div className="space-y-2 text-sm">
+        <label className="block font-medium">Video file</label>
+        <input name="video" type="file" accept="video/*" required className="block w-full" />
+      </div>
+
+      <div className="space-y-2 text-sm">
+        <label className="block font-medium">Thumbnail image</label>
+        <input name="thumbnail" type="file" accept="image/*" required className="block w-full" />
+      </div>
+
+      {error && <p className="text-sm text-red-500">{error}</p>}
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-70 dark:bg-white dark:text-zinc-900"
+      >
+        {loading ? 'Uploading...' : 'Publish video'}
+      </button>
+    </form>
+  );
+}

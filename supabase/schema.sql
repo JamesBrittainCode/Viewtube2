@@ -1,0 +1,395 @@
+-- ViewTube production schema
+create extension if not exists pgcrypto;
+create extension if not exists pg_trgm;
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  username text not null unique check (char_length(username) >= 3),
+  avatar_url text,
+  banner_url text,
+  bio text,
+  subscribers_count bigint not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.videos (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  title text not null,
+  description text not null default '',
+  thumbnail_url text,
+  video_url text not null,
+  tags text[] not null default '{}',
+  views bigint not null default 0,
+  created_at timestamptz not null default now(),
+  search_vector tsvector generated always as (
+    setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
+    setweight(to_tsvector('english', array_to_string(tags, ' ')), 'C')
+  ) stored
+);
+
+create table if not exists public.comments (
+  id uuid primary key default gen_random_uuid(),
+  video_id uuid not null references public.videos(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  parent_id uuid references public.comments(id) on delete cascade,
+  content text not null check (char_length(trim(content)) > 0),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.likes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  video_id uuid not null references public.videos(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (user_id, video_id)
+);
+
+create table if not exists public.subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  subscriber_id uuid not null references public.profiles(id) on delete cascade,
+  creator_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (subscriber_id, creator_id),
+  check (subscriber_id <> creator_id)
+);
+
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  actor_id uuid references public.profiles(id) on delete set null,
+  type text not null,
+  message text not null,
+  is_read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_profiles_username on public.profiles using btree(username);
+create index if not exists idx_videos_user_id on public.videos using btree(user_id);
+create index if not exists idx_videos_created_at on public.videos using btree(created_at desc);
+create index if not exists idx_videos_views on public.videos using btree(views desc);
+create index if not exists idx_videos_tags on public.videos using gin(tags);
+create index if not exists idx_videos_search_vector on public.videos using gin(search_vector);
+create index if not exists idx_comments_video_id on public.comments using btree(video_id);
+create index if not exists idx_comments_parent_id on public.comments using btree(parent_id);
+create index if not exists idx_likes_video_id on public.likes using btree(video_id);
+create index if not exists idx_likes_user_id on public.likes using btree(user_id);
+create index if not exists idx_subscriptions_subscriber_id on public.subscriptions using btree(subscriber_id);
+create index if not exists idx_subscriptions_creator_id on public.subscriptions using btree(creator_id);
+create index if not exists idx_notifications_user_id on public.notifications using btree(user_id);
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, username)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data ->> 'username', split_part(new.email, '@', 1) || '_' || substr(new.id::text, 1, 6))
+  )
+  on conflict (id) do nothing;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_user();
+
+create or replace function public.update_subscriber_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    update public.profiles
+    set subscribers_count = subscribers_count + 1
+    where id = new.creator_id;
+    return new;
+  elsif tg_op = 'DELETE' then
+    update public.profiles
+    set subscribers_count = greatest(0, subscribers_count - 1)
+    where id = old.creator_id;
+    return old;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists subscriptions_subscriber_count_trigger on public.subscriptions;
+create trigger subscriptions_subscriber_count_trigger
+after insert or delete on public.subscriptions
+for each row execute function public.update_subscriber_count();
+
+create or replace function public.increment_video_views(video_id uuid)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.videos
+  set views = views + 1
+  where id = video_id;
+$$;
+
+create or replace function public.search_videos(search_query text)
+returns table (
+  id uuid,
+  user_id uuid,
+  title text,
+  description text,
+  thumbnail_url text,
+  video_url text,
+  tags text[],
+  views bigint,
+  created_at timestamptz,
+  profiles jsonb
+)
+language sql
+stable
+set search_path = public
+as $$
+  select
+    v.id,
+    v.user_id,
+    v.title,
+    v.description,
+    v.thumbnail_url,
+    v.video_url,
+    v.tags,
+    v.views,
+    v.created_at,
+    jsonb_build_object(
+      'username', p.username,
+      'avatar_url', p.avatar_url
+    ) as profiles
+  from public.videos v
+  join public.profiles p on p.id = v.user_id
+  where v.search_vector @@ websearch_to_tsquery('english', search_query)
+     or v.title ilike ('%' || search_query || '%')
+     or v.description ilike ('%' || search_query || '%')
+  order by ts_rank(v.search_vector, websearch_to_tsquery('english', search_query)) desc, v.created_at desc;
+$$;
+
+alter table public.profiles enable row level security;
+alter table public.videos enable row level security;
+alter table public.comments enable row level security;
+alter table public.likes enable row level security;
+alter table public.subscriptions enable row level security;
+alter table public.notifications enable row level security;
+
+-- profiles
+create policy "Profiles are viewable by everyone"
+on public.profiles for select
+to anon, authenticated
+using (true);
+
+create policy "Users can update their own profile"
+on public.profiles for update
+to authenticated
+using ((select auth.uid()) = id)
+with check ((select auth.uid()) = id);
+
+-- videos
+create policy "Videos are viewable by everyone"
+on public.videos for select
+to anon, authenticated
+using (true);
+
+create policy "Authenticated users can create videos"
+on public.videos for insert
+to authenticated
+with check ((select auth.uid()) = user_id);
+
+create policy "Users can update own videos"
+on public.videos for update
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
+create policy "Users can delete own videos"
+on public.videos for delete
+to authenticated
+using ((select auth.uid()) = user_id);
+
+-- comments
+create policy "Comments are viewable by everyone"
+on public.comments for select
+to anon, authenticated
+using (true);
+
+create policy "Authenticated users can create comments"
+on public.comments for insert
+to authenticated
+with check ((select auth.uid()) = user_id);
+
+create policy "Users can update own comments"
+on public.comments for update
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
+create policy "Users can delete own comments"
+on public.comments for delete
+to authenticated
+using ((select auth.uid()) = user_id);
+
+-- likes
+create policy "Likes are viewable by everyone"
+on public.likes for select
+to anon, authenticated
+using (true);
+
+create policy "Users can manage own likes"
+on public.likes for all
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
+-- subscriptions
+create policy "Subscriptions are viewable by everyone"
+on public.subscriptions for select
+to anon, authenticated
+using (true);
+
+create policy "Users can create own subscriptions"
+on public.subscriptions for insert
+to authenticated
+with check ((select auth.uid()) = subscriber_id);
+
+create policy "Users can delete own subscriptions"
+on public.subscriptions for delete
+to authenticated
+using ((select auth.uid()) = subscriber_id);
+
+-- notifications
+create policy "Users can view own notifications"
+on public.notifications for select
+to authenticated
+using ((select auth.uid()) = user_id);
+
+create policy "Users can update own notifications"
+on public.notifications for update
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
+-- Storage buckets
+insert into storage.buckets (id, name, public)
+values ('videos', 'videos', true)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('thumbnails', 'thumbnails', true)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+create policy "Public read access for videos bucket"
+on storage.objects for select
+to anon, authenticated
+using (bucket_id = 'videos');
+
+create policy "Authenticated upload to videos bucket"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'videos'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy "Owner can update videos bucket objects"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'videos'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+)
+with check (
+  bucket_id = 'videos'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy "Owner can delete videos bucket objects"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'videos'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy "Public read access for thumbnails bucket"
+on storage.objects for select
+to anon, authenticated
+using (bucket_id = 'thumbnails');
+
+create policy "Authenticated upload to thumbnails bucket"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'thumbnails'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy "Owner can update thumbnails objects"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'thumbnails'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+)
+with check (
+  bucket_id = 'thumbnails'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy "Owner can delete thumbnails objects"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'thumbnails'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy "Public read access for avatars bucket"
+on storage.objects for select
+to anon, authenticated
+using (bucket_id = 'avatars');
+
+create policy "Authenticated upload to avatars bucket"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy "Owner can update avatar objects"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+)
+with check (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy "Owner can delete avatar objects"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
