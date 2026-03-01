@@ -8,9 +8,13 @@ create table if not exists public.profiles (
   avatar_url text,
   banner_url text,
   bio text,
+  verified boolean not null default false,
   subscribers_count bigint not null default 0,
   created_at timestamptz not null default now()
 );
+
+alter table public.profiles
+add column if not exists verified boolean not null default false;
 
 create table if not exists public.videos (
   id uuid primary key default gen_random_uuid(),
@@ -22,11 +26,7 @@ create table if not exists public.videos (
   tags text[] not null default '{}',
   views bigint not null default 0,
   created_at timestamptz not null default now(),
-  search_vector tsvector generated always as (
-    setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
-    setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
-    setweight(to_tsvector('english', array_to_string(tags, ' ')), 'C')
-  ) stored
+  search_vector tsvector not null default ''::tsvector
 );
 
 create table if not exists public.comments (
@@ -78,6 +78,26 @@ create index if not exists idx_likes_user_id on public.likes using btree(user_id
 create index if not exists idx_subscriptions_subscriber_id on public.subscriptions using btree(subscriber_id);
 create index if not exists idx_subscriptions_creator_id on public.subscriptions using btree(creator_id);
 create index if not exists idx_notifications_user_id on public.notifications using btree(user_id);
+
+create or replace function public.videos_search_vector_update()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.search_vector :=
+    setweight(to_tsvector('english', coalesce(new.title, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(new.description, '')), 'B') ||
+    setweight(to_tsvector('english', array_to_string(coalesce(new.tags, '{}'), ' ')), 'C');
+  return new;
+end;
+$$;
+
+drop trigger if exists videos_search_vector_trigger on public.videos;
+create trigger videos_search_vector_trigger
+before insert or update of title, description, tags
+on public.videos
+for each row
+execute function public.videos_search_vector_update();
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -169,7 +189,8 @@ as $$
     v.created_at,
     jsonb_build_object(
       'username', p.username,
-      'avatar_url', p.avatar_url
+      'avatar_url', p.avatar_url,
+      'verified', p.verified
     ) as profiles
   from public.videos v
   join public.profiles p on p.id = v.user_id
@@ -196,7 +217,46 @@ create policy "Users can update their own profile"
 on public.profiles for update
 to authenticated
 using ((select auth.uid()) = id)
-with check ((select auth.uid()) = id);
+with check (
+  (select auth.uid()) = id
+  and subscribers_count = (select p.subscribers_count from public.profiles p where p.id = (select auth.uid()))
+  and verified = (select p.verified from public.profiles p where p.id = (select auth.uid()))
+);
+
+create or replace function public.admin_update_profile_meta(
+  target_profile_id uuid,
+  target_subscribers_count bigint,
+  target_verified boolean
+)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_email text;
+  updated_profile public.profiles;
+begin
+  current_email := coalesce(auth.jwt() ->> 'email', '');
+
+  if current_email <> 'jesuslearningclub@gmail.com' then
+    raise exception 'Unauthorized';
+  end if;
+
+  update public.profiles
+  set
+    subscribers_count = greatest(0, target_subscribers_count),
+    verified = target_verified
+  where id = target_profile_id
+  returning * into updated_profile;
+
+  if updated_profile.id is null then
+    raise exception 'Profile not found';
+  end if;
+
+  return updated_profile;
+end;
+$$;
 
 -- videos
 create policy "Videos are viewable by everyone"

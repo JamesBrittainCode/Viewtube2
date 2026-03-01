@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+import { VerifiedBadge } from '@/components/verified-badge';
 
 type Props = {
   video: {
@@ -12,6 +13,7 @@ type Props = {
     profiles?: {
       username?: string;
       avatar_url?: string | null;
+      verified?: boolean;
     };
   };
 };
@@ -51,9 +53,12 @@ export function VideoCard({ video }: Props) {
           <Link href={`/watch/${video.id}`} className="line-clamp-2 text-sm font-semibold">
             {video.title}
           </Link>
-          <Link href={channelHref} className="mt-1 block text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300">
-            {video.profiles?.username || 'Unknown channel'}
-          </Link>
+          <div className="mt-1 flex items-center gap-1 text-xs text-zinc-500">
+            <Link href={channelHref} className="hover:text-zinc-700 dark:hover:text-zinc-300">
+              {video.profiles?.username || 'Unknown channel'}
+            </Link>
+            {video.profiles?.verified && <VerifiedBadge className="h-3.5 w-3.5 text-blue-500" />}
+          </div>
           <p className="text-xs text-zinc-500">
             {video.views.toLocaleString()} views • {createdAt}
           </p>

@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { createClient } from '@/lib/supabase/client';
+import { VerifiedBadge } from '@/components/verified-badge';
 import type { Comment } from '@/lib/types';
 
 type FlatComment = Comment & {
   profiles?: {
     username: string;
     avatar_url: string | null;
+    verified: boolean;
   };
 };
 
@@ -24,6 +26,7 @@ function nestComments(comments: FlatComment[]): Comment[] {
       profile: {
         username: item.profiles?.username || 'unknown',
         avatar_url: item.profiles?.avatar_url || null,
+        verified: item.profiles?.verified || false,
       },
       replies: [],
     });
@@ -71,9 +74,12 @@ function CommentItem({
         />
         <div className="flex-1">
           <div className="text-xs text-zinc-500">
-            <Link href={`/channel/${item.profile?.username}`} className="font-medium text-zinc-700 dark:text-zinc-300">
-              @{item.profile?.username}
-            </Link>{' '}
+            <span className="inline-flex items-center gap-1">
+              <Link href={`/channel/${item.profile?.username}`} className="font-medium text-zinc-700 dark:text-zinc-300">
+                @{item.profile?.username}
+              </Link>
+              {item.profile?.verified && <VerifiedBadge className="h-3.5 w-3.5 text-blue-500" />}
+            </span>{' '}
             • {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
           </div>
           <p className="mt-1 text-sm">{item.content}</p>

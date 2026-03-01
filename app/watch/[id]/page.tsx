@@ -6,6 +6,7 @@ import { LikeButton } from '@/components/like-button';
 import { SubscribeButton } from '@/components/subscribe-button';
 import { VideoGrid } from '@/components/video-grid';
 import { VideoPlayer } from '@/components/video-player';
+import { VerifiedBadge } from '@/components/verified-badge';
 import { getRecommendations, getVideoById } from '@/lib/data';
 import { createClient } from '@/lib/supabase/server';
 
@@ -54,9 +55,12 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
         <h1 className="mt-4 text-xl font-bold">{video.title}</h1>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <Link href={`/channel/${channelName}`} className="font-semibold hover:underline">
-              {channelName}
-            </Link>
+            <div className="flex items-center gap-1">
+              <Link href={`/channel/${channelName}`} className="font-semibold hover:underline">
+                {channelName}
+              </Link>
+              {video.profiles?.verified && <VerifiedBadge />}
+            </div>
             <p className="text-sm text-zinc-500">
               {video.views.toLocaleString()} views •{' '}
               {formatDistanceToNow(new Date(video.created_at), { addSuffix: true })}

@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { SubscribeButton } from '@/components/subscribe-button';
+import { VerifiedBadge } from '@/components/verified-badge';
 import { VideoGrid } from '@/components/video-grid';
 import { createPublicClient } from '@/lib/supabase/public';
 import { createClient } from '@/lib/supabase/server';
@@ -26,7 +27,7 @@ export default async function ChannelPage({
   const { data: videos } = await publicClient
     .from('videos')
     .select(
-      'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,avatar_url)'
+      'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,avatar_url,verified)'
     )
     .eq('user_id', channel.id)
     .order('created_at', { ascending: false });
@@ -66,7 +67,10 @@ export default async function ChannelPage({
             className="h-20 w-20 rounded-full object-cover"
           />
           <div>
-            <h1 className="text-2xl font-bold">{channel.username}</h1>
+            <div className="flex items-center gap-1">
+              <h1 className="text-2xl font-bold">{channel.username}</h1>
+              {channel.verified && <VerifiedBadge className="h-5 w-5 text-blue-500" />}
+            </div>
             <p className="text-sm text-zinc-500">
               {channel.subscribers_count.toLocaleString()} subscribers
             </p>

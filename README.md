@@ -27,6 +27,7 @@ ViewTube is a full-stack, production-ready video-sharing platform built from scr
 - Trending page (last 24h by views)
 - Tag-based video recommendations
 - Notifications table (new subscriber events)
+- Admin controls for `jesuslearningclub@gmail.com` to set channel `subscribers_count` and `verified` status
 - Skeleton loading states and dark mode
 
 ## Project structure
@@ -62,6 +63,7 @@ supabase/
 
 1. Create a new Supabase project.
 2. In Supabase SQL Editor, run [`supabase/schema.sql`](/Users/jamesbrittain/Downloads/VsCodeFiles/Viewtube/supabase/schema.sql).
+   - If your project already has the base schema, run [`supabase/admin_feature_patch.sql`](/Users/jamesbrittain/Downloads/VsCodeFiles/Viewtube/supabase/admin_feature_patch.sql) instead for admin/verified updates.
 3. In **Authentication > Providers**:
    - Enable Email provider.
    - Optional: Enable Google provider and set redirect URL:

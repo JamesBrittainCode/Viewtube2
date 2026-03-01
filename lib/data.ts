@@ -16,6 +16,7 @@ const baseVideoSelect = `
     id,
     username,
     avatar_url,
+    verified,
     subscribers_count
   )
 `;

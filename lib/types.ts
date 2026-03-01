@@ -4,6 +4,7 @@ export type Profile = {
   avatar_url: string | null;
   bio: string | null;
   banner_url: string | null;
+  verified: boolean;
   subscribers_count: number;
   created_at: string;
 };
@@ -28,6 +29,6 @@ export type Comment = {
   parent_id: string | null;
   content: string;
   created_at: string;
-  profile?: Pick<Profile, 'username' | 'avatar_url'>;
+  profile?: Pick<Profile, 'username' | 'avatar_url' | 'verified'>;
   replies?: Comment[];
 };
