@@ -22,7 +22,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
 
     try {
       if (mode === 'sign-up') {
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -34,13 +34,26 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         });
 
         if (signUpError) throw signUpError;
+
+        // If email confirmation is enabled, session is null until user verifies.
+        if (!data.session) {
+          router.push(`/check-email?email=${encodeURIComponent(email)}`);
+          router.refresh();
+          return;
+        }
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
-        if (signInError) throw signInError;
+        if (signInError) {
+          const message = signInError.message.toLowerCase();
+          if (message.includes('email not confirmed') || message.includes('email not verified')) {
+            throw new Error('Please verify your email first. Check your inbox for the confirmation link.');
+          }
+          throw signInError;
+        }
       }
 
       router.push('/');
