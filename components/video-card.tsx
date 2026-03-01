@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+import { unwrapRelation } from '@/lib/profile';
 import { VerifiedBadge } from '@/components/verified-badge';
 
 type Props = {
@@ -10,11 +11,17 @@ type Props = {
     thumbnail_url: string | null;
     views: number;
     created_at: string;
-    profiles?: {
-      username?: string;
-      avatar_url?: string | null;
-      verified?: boolean;
-    };
+    profiles?:
+      | {
+          username?: string;
+          avatar_url?: string | null;
+          verified?: boolean;
+        }
+      | Array<{
+          username?: string;
+          avatar_url?: string | null;
+          verified?: boolean;
+        }>;
   };
 };
 
@@ -22,9 +29,8 @@ export function VideoCard({ video }: Props) {
   const createdAt = formatDistanceToNow(new Date(video.created_at), {
     addSuffix: true,
   });
-  const channelHref = video.profiles?.username
-    ? `/channel/${video.profiles.username}`
-    : '/';
+  const profile = unwrapRelation(video.profiles);
+  const channelHref = profile?.username ? `/channel/${profile.username}` : '/';
 
   return (
     <article className="group">
@@ -42,8 +48,8 @@ export function VideoCard({ video }: Props) {
 
       <div className="mt-3 flex gap-3">
         <Image
-          src={video.profiles?.avatar_url || '/avatar-placeholder.svg'}
-          alt={video.profiles?.username || 'Channel'}
+          src={profile?.avatar_url || '/avatar-placeholder.svg'}
+          alt={profile?.username || 'Channel'}
           width={36}
           height={36}
           className="h-9 w-9 rounded-full object-cover"
@@ -55,9 +61,9 @@ export function VideoCard({ video }: Props) {
           </Link>
           <div className="mt-1 flex items-center gap-1 text-xs text-zinc-500">
             <Link href={channelHref} className="hover:text-zinc-700 dark:hover:text-zinc-300">
-              {video.profiles?.username || 'Unknown channel'}
+              {profile?.username || 'Unknown channel'}
             </Link>
-            {video.profiles?.verified && <VerifiedBadge className="h-3.5 w-3.5 text-blue-500" />}
+            {profile?.verified && <VerifiedBadge className="h-3.5 w-3.5 text-blue-500" />}
           </div>
           <p className="text-xs text-zinc-500">
             {video.views.toLocaleString()} views • {createdAt}

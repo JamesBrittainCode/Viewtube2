@@ -6,7 +6,7 @@ const links = [
   { href: '/subscriptions', label: 'Subscriptions', icon: UserRound },
   { href: '/library', label: 'Library', icon: Folder },
   { href: '/trending', label: 'Trending', icon: Flame },
-];
+] as const;
 
 export function Sidebar() {
   return (

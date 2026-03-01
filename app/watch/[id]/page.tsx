@@ -8,6 +8,7 @@ import { VideoGrid } from '@/components/video-grid';
 import { VideoPlayer } from '@/components/video-player';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { getRecommendations, getVideoById } from '@/lib/data';
+import { unwrapRelation } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
@@ -45,7 +46,8 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
       : Promise.resolve({ data: null }),
   ]);
 
-  const channelName = video.profiles?.username || 'unknown';
+  const channelProfile = unwrapRelation(video.profiles);
+  const channelName = channelProfile?.username || 'unknown';
 
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -59,7 +61,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
               <Link href={`/channel/${channelName}`} className="font-semibold hover:underline">
                 {channelName}
               </Link>
-              {video.profiles?.verified && <VerifiedBadge />}
+              {channelProfile?.verified && <VerifiedBadge />}
             </div>
             <p className="text-sm text-zinc-500">
               {video.views.toLocaleString()} views •{' '}
@@ -77,7 +79,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
               <SubscribeButton
                 creatorId={video.user_id}
                 initialSubscribed={Boolean(subscribedRes?.data)}
-                initialCount={video.profiles?.subscribers_count || 0}
+                initialCount={channelProfile?.subscribers_count || 0}
               />
             )}
           </div>
