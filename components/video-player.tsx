@@ -23,7 +23,7 @@ export function VideoPlayer({ id, videoUrl }: Props) {
       src={videoUrl}
       controls
       preload="metadata"
-      className="aspect-video w-full rounded-xl bg-black"
+      className="viewtube-player aspect-video w-full rounded-xl bg-black"
     />
   );
 }

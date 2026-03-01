@@ -50,7 +50,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
   const channelName = channelProfile?.username || 'unknown';
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px]">
       <section>
         <VideoPlayer id={video.id} videoUrl={video.video_url} />
 
@@ -92,7 +92,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
         <CommentSection videoId={video.id} />
       </section>
 
-      <aside>
+      <aside className="lg:sticky lg:top-20 lg:self-start">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500">Recommended</h2>
         <VideoGrid videos={recommendations as never[]} />
       </aside>
