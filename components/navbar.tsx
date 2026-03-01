@@ -12,16 +12,18 @@ export async function Navbar() {
   } = await supabase.auth.getUser();
 
   let username: string | null = null;
+  let handle: string | null = null;
   let avatarUrl: string | null = null;
 
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('username, avatar_url')
+      .select('username, handle, avatar_url')
       .eq('id', user.id)
       .single();
 
     username = profile?.username ?? null;
+    handle = profile?.handle ?? null;
     avatarUrl = profile?.avatar_url ?? null;
   }
 
@@ -51,7 +53,7 @@ export async function Navbar() {
         )}
 
         {user ? (
-          <ProfileMenu avatarUrl={avatarUrl} username={username} />
+          <ProfileMenu avatarUrl={avatarUrl} username={username} handle={handle} />
         ) : (
           <Link
             href="/sign-in"

@@ -1,6 +1,7 @@
 export type Profile = {
   id: string;
   username: string;
+  handle: string;
   avatar_url: string | null;
   bio: string | null;
   banner_url: string | null;

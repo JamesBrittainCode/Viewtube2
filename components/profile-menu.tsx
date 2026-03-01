@@ -9,9 +9,10 @@ import { createClient } from '@/lib/supabase/client';
 type Props = {
   avatarUrl?: string | null;
   username?: string | null;
+  handle?: string | null;
 };
 
-export function ProfileMenu({ avatarUrl, username }: Props) {
+export function ProfileMenu({ avatarUrl, username, handle }: Props) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -40,7 +41,7 @@ export function ProfileMenu({ avatarUrl, username }: Props) {
 
       {open && (
         <div className="absolute right-0 mt-2 w-52 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-          <div className="px-3 py-2 text-sm text-zinc-500">@{username || 'user'}</div>
+          <div className="px-3 py-2 text-sm text-zinc-500">{handle || '@user'}</div>
           <Link href="/profile" className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
             Your profile
           </Link>

@@ -27,7 +27,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           password,
           options: {
             data: {
-              username,
+              username: username.trim(),
             },
             emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
@@ -70,14 +70,19 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
 
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
         {mode === 'sign-up' && (
-          <input
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            placeholder="Username"
-            required
-            minLength={3}
-            className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
-          />
+          <div className="space-y-1">
+            <input
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              placeholder="Username"
+              required
+              minLength={3}
+              className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
+            />
+            <p className="text-xs text-zinc-500">
+              A unique handle is auto-generated from your username (you can edit it later).
+            </p>
+          </div>
         )}
         <input
           value={email}

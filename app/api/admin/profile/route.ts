@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { normalizeHandle } from '@/lib/handle';
 import { isAdminEmail } from '@/lib/admin';
 import { createClient } from '@/lib/supabase/server';
 
@@ -13,23 +14,25 @@ export async function PATCH(request: Request) {
   }
 
   const body = (await request.json()) as {
-    username?: string;
+    handle?: string;
     subscribers_count?: number;
     verified?: boolean;
   };
 
-  const username = (body.username || '').trim();
+  const rawHandle = (body.handle || '').trim();
+  const normalizedRaw = rawHandle.replace(/^@+/, '').replace(/[^a-zA-Z0-9_]/g, '');
+  const handle = normalizeHandle(rawHandle);
   const subscribersCount = Math.max(0, Number(body.subscribers_count ?? 0));
   const verified = Boolean(body.verified);
 
-  if (!username) {
-    return NextResponse.json({ error: 'Username is required' }, { status: 400 });
+  if (!body.handle || normalizedRaw.length < 3) {
+    return NextResponse.json({ error: 'Valid handle is required' }, { status: 400 });
   }
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('id')
-    .eq('username', username)
+    .eq('handle', handle)
     .single();
 
   if (profileError || !profile) {

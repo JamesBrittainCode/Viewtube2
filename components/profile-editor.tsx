@@ -5,11 +5,17 @@ import { useRouter } from 'next/navigation';
 
 type Props = {
   username: string;
+  handle: string;
   bio: string;
 };
 
-export function ProfileEditor({ username: initialUsername, bio: initialBio }: Props) {
+export function ProfileEditor({
+  username: initialUsername,
+  handle: initialHandle,
+  bio: initialBio,
+}: Props) {
   const [username, setUsername] = useState(initialUsername);
+  const [handle, setHandle] = useState(initialHandle);
   const [bio, setBio] = useState(initialBio);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +32,7 @@ export function ProfileEditor({ username: initialUsername, bio: initialBio }: Pr
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, bio }),
+        body: JSON.stringify({ username, handle, bio }),
       });
 
       if (!res.ok) throw new Error('Failed to update profile');
@@ -55,6 +61,14 @@ export function ProfileEditor({ username: initialUsername, bio: initialBio }: Pr
         rows={4}
         className="w-full rounded-xl border border-zinc-300 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-950"
         placeholder="Bio"
+      />
+      <input
+        value={handle}
+        onChange={(event) => setHandle(event.target.value)}
+        minLength={4}
+        required
+        className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 dark:border-zinc-700 dark:bg-zinc-950"
+        placeholder="@your_handle"
       />
       {error && <p className="text-sm text-red-500">{error}</p>}
       <button

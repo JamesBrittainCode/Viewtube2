@@ -39,7 +39,11 @@ export default async function ProfilePage() {
             <AvatarUpload />
           </div>
 
-          <ProfileEditor username={profile?.username || ''} bio={profile?.bio || ''} />
+          <ProfileEditor
+            username={profile?.username || ''}
+            handle={profile?.handle || '@user'}
+            bio={profile?.bio || ''}
+          />
         </div>
       </section>
 

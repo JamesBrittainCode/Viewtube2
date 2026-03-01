@@ -2,10 +2,11 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { normalizeHandle } from '@/lib/handle';
 
 export function AdminProfileManager() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
+  const [handle, setHandle] = useState('@');
   const [subscribersCount, setSubscribersCount] = useState(0);
   const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -23,7 +24,7 @@ export function AdminProfileManager() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username,
+          handle: normalizeHandle(handle),
           subscribers_count: subscribersCount,
           verified,
         }),
@@ -48,14 +49,14 @@ export function AdminProfileManager() {
     <section className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
       <h2 className="text-lg font-semibold">Admin profile controls</h2>
       <p className="mt-1 text-sm text-zinc-500">
-        Update subscriber count and verification status by username.
+        Update subscriber count and verification status by exact handle.
       </p>
 
       <form onSubmit={onSubmit} className="mt-4 space-y-3">
         <input
-          value={username}
-          onChange={(event) => setUsername(event.target.value)}
-          placeholder="Target username"
+          value={handle}
+          onChange={(event) => setHandle(event.target.value)}
+          placeholder="@target_handle"
           required
           className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 dark:border-zinc-700 dark:bg-zinc-950"
         />
