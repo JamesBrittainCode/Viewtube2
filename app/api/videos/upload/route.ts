@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { THUMBNAIL_BUCKET, VIDEO_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/server';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 function parseTags(raw: string | null): string[] {
   if (!raw) return [];
@@ -23,56 +22,43 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const formData = await request.formData();
-  const title = String(formData.get('title') || '').trim();
-  const description = String(formData.get('description') || '').trim();
-  const tags = parseTags(formData.get('tags') as string | null);
-  const video = formData.get('video');
-  const thumbnail = formData.get('thumbnail');
+  const body = (await request.json()) as {
+    title?: string;
+    description?: string;
+    tags?: string[] | string;
+    video_url?: string;
+    thumbnail_url?: string;
+  };
+  const title = String(body.title || '').trim();
+  const description = String(body.description || '').trim();
+  const tags = Array.isArray(body.tags)
+    ? body.tags
+        .map((tag) => String(tag).trim().toLowerCase())
+        .filter(Boolean)
+        .slice(0, 15)
+    : parseTags(typeof body.tags === 'string' ? body.tags : null);
+  const videoUrl = String(body.video_url || '').trim();
+  const thumbnailUrl = String(body.thumbnail_url || '').trim();
 
   if (!title) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 });
   }
 
-  if (!(video instanceof File) || !video.type.startsWith('video/')) {
-    return NextResponse.json({ error: 'Invalid video file' }, { status: 400 });
+  if (!videoUrl || !thumbnailUrl) {
+    return NextResponse.json(
+      { error: 'Video and thumbnail URLs are required' },
+      { status: 400 },
+    );
   }
 
-  if (!(thumbnail instanceof File) || !thumbnail.type.startsWith('image/')) {
-    return NextResponse.json({ error: 'Invalid thumbnail image' }, { status: 400 });
+  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const publicPrefix = `${projectUrl}/storage/v1/object/public/`;
+  if (!videoUrl.startsWith(publicPrefix) || !thumbnailUrl.startsWith(publicPrefix)) {
+    return NextResponse.json(
+      { error: 'Invalid storage URLs. Upload to Supabase Storage first.' },
+      { status: 400 },
+    );
   }
-
-  const videoExt = video.name.split('.').pop() || 'mp4';
-  const thumbExt = thumbnail.name.split('.').pop() || 'jpg';
-  const videoPath = `${user.id}/${crypto.randomUUID()}.${videoExt}`;
-  const thumbnailPath = `${user.id}/${crypto.randomUUID()}.${thumbExt}`;
-
-  const { error: videoErr } = await supabase.storage
-    .from(VIDEO_BUCKET)
-    .upload(videoPath, video, {
-      contentType: video.type,
-      upsert: false,
-    });
-
-  if (videoErr) {
-    return NextResponse.json({ error: videoErr.message }, { status: 400 });
-  }
-
-  const { error: thumbErr } = await supabase.storage
-    .from(THUMBNAIL_BUCKET)
-    .upload(thumbnailPath, thumbnail, {
-      contentType: thumbnail.type,
-      upsert: false,
-    });
-
-  if (thumbErr) {
-    return NextResponse.json({ error: thumbErr.message }, { status: 400 });
-  }
-
-  const videoUrl = supabase.storage.from(VIDEO_BUCKET).getPublicUrl(videoPath).data.publicUrl;
-  const thumbnailUrl = supabase.storage
-    .from(THUMBNAIL_BUCKET)
-    .getPublicUrl(thumbnailPath).data.publicUrl;
 
   const { data, error } = await supabase
     .from('videos')

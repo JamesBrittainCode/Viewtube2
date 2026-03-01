@@ -2,6 +2,18 @@
 
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
+import { THUMBNAIL_BUCKET, VIDEO_BUCKET } from '@/lib/constants';
+import { createClient } from '@/lib/supabase/client';
+
+async function parseApiError(response: Response) {
+  const text = await response.text();
+  try {
+    const parsed = JSON.parse(text) as { error?: string };
+    return parsed.error || 'Upload failed';
+  } catch {
+    return text || 'Upload failed';
+  }
+}
 
 export function UploadForm() {
   const router = useRouter();
@@ -30,14 +42,59 @@ export function UploadForm() {
     setLoading(true);
 
     try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error('Please sign in before uploading.');
+      }
+
+      const videoExt = video.name.split('.').pop() || 'mp4';
+      const thumbExt = thumbnail.name.split('.').pop() || 'jpg';
+      const videoPath = `${user.id}/${crypto.randomUUID()}.${videoExt}`;
+      const thumbnailPath = `${user.id}/${crypto.randomUUID()}.${thumbExt}`;
+
+      const { error: videoErr } = await supabase.storage
+        .from(VIDEO_BUCKET)
+        .upload(videoPath, video, {
+          contentType: video.type,
+          upsert: false,
+        });
+      if (videoErr) throw new Error(videoErr.message);
+
+      const { error: thumbErr } = await supabase.storage
+        .from(THUMBNAIL_BUCKET)
+        .upload(thumbnailPath, thumbnail, {
+          contentType: thumbnail.type,
+          upsert: false,
+        });
+      if (thumbErr) throw new Error(thumbErr.message);
+
+      const videoUrl = supabase.storage
+        .from(VIDEO_BUCKET)
+        .getPublicUrl(videoPath).data.publicUrl;
+      const thumbnailUrl = supabase.storage
+        .from(THUMBNAIL_BUCKET)
+        .getPublicUrl(thumbnailPath).data.publicUrl;
+
       const res = await fetch('/api/videos/upload', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: String(formData.get('title') || ''),
+          description: String(formData.get('description') || ''),
+          tags: String(formData.get('tags') || ''),
+          video_url: videoUrl,
+          thumbnail_url: thumbnailUrl,
+        }),
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Upload failed');
+        throw new Error(await parseApiError(res));
       }
 
       const data = await res.json();
