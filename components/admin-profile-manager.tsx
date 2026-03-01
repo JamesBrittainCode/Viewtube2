@@ -6,26 +6,60 @@ import { normalizeHandle } from '@/lib/handle';
 
 export function AdminProfileManager() {
   const router = useRouter();
-  const [handle, setHandle] = useState('@');
+  const [countHandle, setCountHandle] = useState('@');
+  const [verifyHandle, setVerifyHandle] = useState('@');
   const [subscribersCount, setSubscribersCount] = useState(0);
   const [verified, setVerified] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [countLoading, setCountLoading] = useState(false);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [countError, setCountError] = useState<string | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [countMessage, setCountMessage] = useState<string | null>(null);
+  const [verifyMessage, setVerifyMessage] = useState<string | null>(null);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onCountSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
-    setError(null);
-    setMessage(null);
+    setCountLoading(true);
+    setCountError(null);
+    setCountMessage(null);
 
     try {
       const res = await fetch('/api/admin/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          handle: normalizeHandle(handle),
+          handle: normalizeHandle(countHandle),
           subscribers_count: subscribersCount,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update profile');
+      }
+
+      setCountMessage('Subscriber count updated.');
+      router.refresh();
+    } catch (err) {
+      setCountError((err as Error).message);
+    } finally {
+      setCountLoading(false);
+    }
+  }
+
+  async function onVerifySubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setVerifyLoading(true);
+    setVerifyError(null);
+    setVerifyMessage(null);
+
+    try {
+      const res = await fetch('/api/admin/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          handle: normalizeHandle(verifyHandle),
           verified,
         }),
       });
@@ -36,26 +70,27 @@ export function AdminProfileManager() {
         throw new Error(data.error || 'Failed to update profile');
       }
 
-      setMessage('Profile updated.');
+      setVerifyMessage('Verification status updated.');
       router.refresh();
     } catch (err) {
-      setError((err as Error).message);
+      setVerifyError((err as Error).message);
     } finally {
-      setLoading(false);
+      setVerifyLoading(false);
     }
   }
 
   return (
-    <section className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+    <section className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
       <h2 className="text-lg font-semibold">Admin profile controls</h2>
       <p className="mt-1 text-sm text-zinc-500">
-        Update subscriber count and verification status by exact handle.
+        Use an exact handle (`@...`) to target a single user.
       </p>
 
-      <form onSubmit={onSubmit} className="mt-4 space-y-3">
+      <form onSubmit={onCountSubmit} className="mt-5 space-y-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+        <h3 className="text-sm font-semibold">Subscriber Count</h3>
         <input
-          value={handle}
-          onChange={(event) => setHandle(event.target.value)}
+          value={countHandle}
+          onChange={(event) => setCountHandle(event.target.value)}
           placeholder="@target_handle"
           required
           className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 dark:border-zinc-700 dark:bg-zinc-950"
@@ -71,6 +106,28 @@ export function AdminProfileManager() {
           className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 dark:border-zinc-700 dark:bg-zinc-950"
         />
 
+        {countError && <p className="text-sm text-red-500">{countError}</p>}
+        {countMessage && <p className="text-sm text-green-600 dark:text-green-400">{countMessage}</p>}
+
+        <button
+          type="submit"
+          disabled={countLoading}
+          className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white dark:bg-white dark:text-zinc-900"
+        >
+          {countLoading ? 'Updating...' : 'Save subscriber count'}
+        </button>
+      </form>
+
+      <form onSubmit={onVerifySubmit} className="mt-4 space-y-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+        <h3 className="text-sm font-semibold">Channel Verification</h3>
+        <input
+          value={verifyHandle}
+          onChange={(event) => setVerifyHandle(event.target.value)}
+          placeholder="@target_handle"
+          required
+          className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 dark:border-zinc-700 dark:bg-zinc-950"
+        />
+
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -80,15 +137,15 @@ export function AdminProfileManager() {
           Verified channel
         </label>
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
-        {message && <p className="text-sm text-green-600 dark:text-green-400">{message}</p>}
+        {verifyError && <p className="text-sm text-red-500">{verifyError}</p>}
+        {verifyMessage && <p className="text-sm text-green-600 dark:text-green-400">{verifyMessage}</p>}
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={verifyLoading}
           className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white dark:bg-white dark:text-zinc-900"
         >
-          {loading ? 'Updating...' : 'Apply changes'}
+          {verifyLoading ? 'Updating...' : 'Save verification status'}
         </button>
       </form>
     </section>

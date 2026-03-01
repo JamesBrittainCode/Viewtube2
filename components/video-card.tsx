@@ -63,7 +63,7 @@ export function VideoCard({ video }: Props) {
             <Link href={channelHref} className="hover:text-zinc-700 dark:hover:text-zinc-300">
               {profile?.username || 'Unknown channel'}
             </Link>
-            {profile?.verified && <VerifiedBadge className="h-3.5 w-3.5 text-blue-500" />}
+            {profile?.verified && <VerifiedBadge className="h-3.5 w-3.5" />}
           </div>
           <p className="text-xs text-zinc-500">
             {video.views.toLocaleString()} views • {createdAt}

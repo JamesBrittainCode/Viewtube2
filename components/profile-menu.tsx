@@ -10,9 +10,10 @@ type Props = {
   avatarUrl?: string | null;
   username?: string | null;
   handle?: string | null;
+  isAdmin?: boolean;
 };
 
-export function ProfileMenu({ avatarUrl, username, handle }: Props) {
+export function ProfileMenu({ avatarUrl, username, handle, isAdmin = false }: Props) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -45,6 +46,16 @@ export function ProfileMenu({ avatarUrl, username, handle }: Props) {
           <Link href="/profile" className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
             Your profile
           </Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
+              Admin settings
+            </Link>
+          )}
           {username && (
             <Link
               href={`/channel/${username}`}

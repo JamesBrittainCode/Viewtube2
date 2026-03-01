@@ -1,9 +1,7 @@
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
-import { AdminProfileManager } from '@/components/admin-profile-manager';
 import { AvatarUpload } from '@/components/avatar-upload';
 import { ProfileEditor } from '@/components/profile-editor';
-import { isAdminEmail } from '@/lib/admin';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function ProfilePage() {
@@ -14,8 +12,6 @@ export default async function ProfilePage() {
 
   if (!user) redirect('/sign-in');
 
-  const isAdmin = isAdminEmail(user.email);
-
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
@@ -23,35 +19,27 @@ export default async function ProfilePage() {
     .single();
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <section className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h1 className="mb-6 text-2xl font-bold">Profile settings</h1>
+    <section className="mx-auto max-w-3xl rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <h1 className="mb-6 text-2xl font-bold">Profile settings</h1>
 
-        <div className="grid gap-6 md:grid-cols-[220px_1fr]">
-          <div className="space-y-4">
-            <Image
-              src={profile?.avatar_url || '/avatar-placeholder.svg'}
-              alt="Avatar"
-              width={160}
-              height={160}
-              className="h-40 w-40 rounded-full object-cover"
-            />
-            <AvatarUpload />
-          </div>
-
-          <ProfileEditor
-            username={profile?.username || ''}
-            handle={profile?.handle || '@user'}
-            bio={profile?.bio || ''}
+      <div className="grid gap-6 md:grid-cols-[220px_1fr]">
+        <div className="space-y-4">
+          <Image
+            src={profile?.avatar_url || '/avatar-placeholder.svg'}
+            alt="Avatar"
+            width={160}
+            height={160}
+            className="h-40 w-40 rounded-full object-cover"
           />
+          <AvatarUpload />
         </div>
-      </section>
 
-      {isAdmin && (
-        <section>
-          <AdminProfileManager />
-        </section>
-      )}
-    </div>
+        <ProfileEditor
+          username={profile?.username || ''}
+          handle={profile?.handle || '@user'}
+          bio={profile?.bio || ''}
+        />
+      </div>
+    </section>
   );
 }

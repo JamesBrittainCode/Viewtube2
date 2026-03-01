@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Upload } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { isAdminEmail } from '@/lib/admin';
 import { Logo } from '@/components/logo';
 import { ProfileMenu } from '@/components/profile-menu';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -14,6 +15,7 @@ export async function Navbar() {
   let username: string | null = null;
   let handle: string | null = null;
   let avatarUrl: string | null = null;
+  const isAdmin = isAdminEmail(user?.email);
 
   if (user) {
     const { data: profile } = await supabase
@@ -53,7 +55,7 @@ export async function Navbar() {
         )}
 
         {user ? (
-          <ProfileMenu avatarUrl={avatarUrl} username={username} handle={handle} />
+          <ProfileMenu avatarUrl={avatarUrl} username={username} handle={handle} isAdmin={isAdmin} />
         ) : (
           <Link
             href="/sign-in"

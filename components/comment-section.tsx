@@ -78,7 +78,7 @@ function CommentItem({
               <Link href={`/channel/${item.profile?.username}`} className="font-medium text-zinc-700 dark:text-zinc-300">
                 @{item.profile?.username}
               </Link>
-              {item.profile?.verified && <VerifiedBadge className="h-3.5 w-3.5 text-blue-500" />}
+              {item.profile?.verified && <VerifiedBadge className="h-3.5 w-3.5" />}
             </span>{' '}
             • {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
           </div>

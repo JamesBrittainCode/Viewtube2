@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { formatCompactCount } from '@/lib/number';
 
 type Props = {
   creatorId: string;
@@ -70,7 +71,7 @@ export function SubscribeButton({
           : 'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900'
       }`}
     >
-      {subscribed ? 'Subscribed' : 'Subscribe'} • {count.toLocaleString()}
+      {subscribed ? 'Subscribed' : 'Subscribe'} • {formatCompactCount(count)}
     </button>
   );
 }
