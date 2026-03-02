@@ -15,6 +15,7 @@ const baseVideoSelect = `
   profiles:profiles!videos_user_id_fkey (
     id,
     username,
+    handle,
     avatar_url,
     verified,
     subscribers_count

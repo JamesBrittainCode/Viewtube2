@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { SubscribeButton } from '@/components/subscribe-button';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { VideoGrid } from '@/components/video-grid';
@@ -15,20 +15,34 @@ export default async function ChannelPage({
   params: Promise<{ username: string }>;
 }) {
   const { username } = await params;
+  const channelKey = decodeURIComponent(username);
   const publicClient = createPublicClient();
 
-  const { data: channel, error } = await publicClient
+  let { data: channel, error } = await publicClient
     .from('profiles')
     .select('*')
-    .eq('username', username)
+    .eq('handle', channelKey)
     .single();
 
+  if (error || !channel) {
+    const fallback = await publicClient
+      .from('profiles')
+      .select('*')
+      .eq('username', channelKey)
+      .single();
+    channel = fallback.data;
+    error = fallback.error;
+  }
+
   if (error || !channel) notFound();
+  if (channel.handle !== channelKey) {
+    redirect(`/channel/${channel.handle}`);
+  }
 
   const { data: videos } = await publicClient
     .from('videos')
     .select(
-      'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,avatar_url,verified)'
+      'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified)'
     )
     .eq('user_id', channel.id)
     .order('created_at', { ascending: false });

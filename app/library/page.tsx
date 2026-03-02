@@ -14,7 +14,7 @@ export default async function LibraryPage() {
   const { data: videos } = await supabase
     .from('videos')
     .select(
-      'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,avatar_url,verified)'
+      'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified)'
     )
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });

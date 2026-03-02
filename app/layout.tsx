@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { AppShell } from '@/components/app-shell';
 import { Navbar } from '@/components/navbar';
-import { Sidebar } from '@/components/sidebar';
 import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
@@ -14,9 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider>
-          <Navbar />
-          <Sidebar />
-          <main className="mx-auto max-w-[1600px] px-4 py-6 lg:ml-64 lg:px-6">{children}</main>
+          <AppShell navbar={<Navbar />}>{children}</AppShell>
         </ThemeProvider>
       </body>
     </html>

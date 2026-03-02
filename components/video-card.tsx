@@ -14,11 +14,13 @@ type Props = {
     profiles?:
       | {
           username?: string;
+          handle?: string;
           avatar_url?: string | null;
           verified?: boolean;
         }
       | Array<{
           username?: string;
+          handle?: string;
           avatar_url?: string | null;
           verified?: boolean;
         }>;
@@ -30,7 +32,7 @@ export function VideoCard({ video }: Props) {
     addSuffix: true,
   });
   const profile = unwrapRelation(video.profiles);
-  const channelHref = profile?.username ? `/channel/${profile.username}` : '/';
+  const channelHref = profile?.handle ? `/channel/${profile.handle}` : '/';
 
   return (
     <article className="group">

@@ -8,12 +8,10 @@ import { createClient } from '@/lib/supabase/client';
 
 type Props = {
   avatarUrl?: string | null;
-  username?: string | null;
   handle?: string | null;
-  isAdmin?: boolean;
 };
 
-export function ProfileMenu({ avatarUrl, username, handle, isAdmin = false }: Props) {
+export function ProfileMenu({ avatarUrl, handle }: Props) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -46,19 +44,17 @@ export function ProfileMenu({ avatarUrl, username, handle, isAdmin = false }: Pr
           <Link href="/profile" className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
             Your profile
           </Link>
-          {isAdmin && (
+          <Link
+            href="/studio"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
+            ViewTube Studio
+          </Link>
+          {handle && (
             <Link
-              href="/admin"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
-              ViewTube Studio
-            </Link>
-          )}
-          {username && (
-            <Link
-              href={`/channel/${username}`}
+              href={`/channel/${handle}`}
               className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
               Your channel

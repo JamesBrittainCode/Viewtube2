@@ -30,6 +30,6 @@ export type Comment = {
   parent_id: string | null;
   content: string;
   created_at: string;
-  profile?: Pick<Profile, 'username' | 'avatar_url' | 'verified'>;
+  profile?: Pick<Profile, 'username' | 'handle' | 'avatar_url' | 'verified'>;
   replies?: Comment[];
 };

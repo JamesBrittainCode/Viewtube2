@@ -11,6 +11,7 @@ import type { Comment } from '@/lib/types';
 type FlatComment = Comment & {
   profiles?: {
     username: string;
+    handle: string;
     avatar_url: string | null;
     verified: boolean;
   };
@@ -25,6 +26,7 @@ function nestComments(comments: FlatComment[]): Comment[] {
       ...item,
       profile: {
         username: item.profiles?.username || 'unknown',
+        handle: item.profiles?.handle || '',
         avatar_url: item.profiles?.avatar_url || null,
         verified: item.profiles?.verified || false,
       },
@@ -75,7 +77,7 @@ function CommentItem({
         <div className="flex-1">
           <div className="text-xs text-zinc-500">
             <span className="inline-flex items-center gap-1">
-              <Link href={`/channel/${item.profile?.username}`} className="font-medium text-zinc-700 dark:text-zinc-300">
+              <Link href={`/channel/${item.profile?.handle || item.profile?.username}`} className="font-medium text-zinc-700 dark:text-zinc-300">
                 @{item.profile?.username}
               </Link>
               {item.profile?.verified && <VerifiedBadge className="h-3.5 w-3.5" />}

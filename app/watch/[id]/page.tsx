@@ -51,6 +51,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
 
   const channelProfile = unwrapRelation(video.profiles);
   const channelName = channelProfile?.username || 'unknown';
+  const channelHref = channelProfile?.handle ? `/channel/${channelProfile.handle}` : '/';
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -61,7 +62,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-1">
-              <Link href={`/channel/${channelName}`} className="font-semibold hover:underline">
+              <Link href={channelHref} className="font-semibold hover:underline">
                 {channelName}
               </Link>
               {channelProfile?.verified && <VerifiedBadge />}
