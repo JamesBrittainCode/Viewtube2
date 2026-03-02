@@ -188,3 +188,70 @@ as $$
      or v.description ilike ('%' || search_query || '%')
   order by ts_rank(v.search_vector, websearch_to_tsquery('english', search_query)) desc, v.created_at desc;
 $$;
+
+create table if not exists public.creator_spotlights (
+  id uuid primary key default gen_random_uuid(),
+  video_id uuid not null references public.videos(id) on delete cascade,
+  scheduled_for timestamptz not null,
+  created_by uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_creator_spotlights_scheduled_for on public.creator_spotlights using btree(scheduled_for desc);
+create unique index if not exists idx_creator_spotlights_unique_slot on public.creator_spotlights(scheduled_for);
+
+alter table public.creator_spotlights enable row level security;
+
+drop policy if exists "Creator spotlights are viewable by everyone" on public.creator_spotlights;
+create policy "Creator spotlights are viewable by everyone"
+on public.creator_spotlights for select
+to anon, authenticated
+using (true);
+
+drop policy if exists "Only admin can manage creator spotlights" on public.creator_spotlights;
+create policy "Only admin can manage creator spotlights"
+on public.creator_spotlights for all
+to authenticated
+using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com')
+with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
+
+insert into storage.buckets (id, name, public)
+values ('banners', 'banners', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Public read access for banners bucket" on storage.objects;
+create policy "Public read access for banners bucket"
+on storage.objects for select
+to anon, authenticated
+using (bucket_id = 'banners');
+
+drop policy if exists "Authenticated upload to banners bucket" on storage.objects;
+create policy "Authenticated upload to banners bucket"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'banners'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+drop policy if exists "Owner can update banner objects" on storage.objects;
+create policy "Owner can update banner objects"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'banners'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+)
+with check (
+  bucket_id = 'banners'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+drop policy if exists "Owner can delete banner objects" on storage.objects;
+create policy "Owner can delete banner objects"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'banners'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);

@@ -7,6 +7,8 @@ import { SubscribeButton } from '@/components/subscribe-button';
 import { VideoGrid } from '@/components/video-grid';
 import { VideoPlayer } from '@/components/video-player';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { SetSpotlightButton } from '@/components/set-spotlight-button';
+import { isAdminEmail } from '@/lib/admin';
 import { getRecommendations, getVideoById } from '@/lib/data';
 import { unwrapRelation } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
@@ -25,6 +27,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const isAdmin = isAdminEmail(user?.email);
 
   const [{ count: likeCount }, likedRes, subscribedRes] = await Promise.all([
     supabase.from('likes').select('*', { count: 'exact', head: true }).eq('video_id', video.id),
@@ -75,6 +78,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
               initiallyLiked={Boolean(likedRes?.data)}
               initialCount={likeCount || 0}
             />
+            {isAdmin && <SetSpotlightButton videoId={video.id} />}
             {user && user.id !== video.user_id && (
               <SubscribeButton
                 creatorId={video.user_id}

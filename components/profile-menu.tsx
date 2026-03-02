@@ -53,7 +53,7 @@ export function ProfileMenu({ avatarUrl, username, handle, isAdmin = false }: Pr
               rel="noopener noreferrer"
               className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
-              Admin settings
+              ViewTube Studio
             </Link>
           )}
           {username && (

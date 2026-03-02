@@ -68,6 +68,14 @@ create table if not exists public.notifications (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.creator_spotlights (
+  id uuid primary key default gen_random_uuid(),
+  video_id uuid not null references public.videos(id) on delete cascade,
+  scheduled_for timestamptz not null,
+  created_by uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists idx_profiles_username on public.profiles using btree(username);
 create unique index if not exists idx_profiles_username_lower_unique on public.profiles (lower(username));
 create unique index if not exists idx_profiles_handle_unique on public.profiles (handle);
@@ -83,6 +91,8 @@ create index if not exists idx_likes_user_id on public.likes using btree(user_id
 create index if not exists idx_subscriptions_subscriber_id on public.subscriptions using btree(subscriber_id);
 create index if not exists idx_subscriptions_creator_id on public.subscriptions using btree(creator_id);
 create index if not exists idx_notifications_user_id on public.notifications using btree(user_id);
+create index if not exists idx_creator_spotlights_scheduled_for on public.creator_spotlights using btree(scheduled_for desc);
+create unique index if not exists idx_creator_spotlights_unique_slot on public.creator_spotlights(scheduled_for);
 
 create or replace function public.videos_search_vector_update()
 returns trigger
@@ -287,6 +297,7 @@ alter table public.comments enable row level security;
 alter table public.likes enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.notifications enable row level security;
+alter table public.creator_spotlights enable row level security;
 
 -- profiles
 create policy "Profiles are viewable by everyone"
@@ -423,6 +434,18 @@ to authenticated
 using ((select auth.uid()) = user_id)
 with check ((select auth.uid()) = user_id);
 
+-- creator spotlights
+create policy "Creator spotlights are viewable by everyone"
+on public.creator_spotlights for select
+to anon, authenticated
+using (true);
+
+create policy "Only admin can manage creator spotlights"
+on public.creator_spotlights for all
+to authenticated
+using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com')
+with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
+
 -- Storage buckets
 insert into storage.buckets (id, name, public)
 values ('videos', 'videos', true)
@@ -434,6 +457,10 @@ on conflict (id) do nothing;
 
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('banners', 'banners', true)
 on conflict (id) do nothing;
 
 create policy "Public read access for videos bucket"
@@ -532,5 +559,38 @@ on storage.objects for delete
 to authenticated
 using (
   bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy "Public read access for banners bucket"
+on storage.objects for select
+to anon, authenticated
+using (bucket_id = 'banners');
+
+create policy "Authenticated upload to banners bucket"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'banners'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy "Owner can update banner objects"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'banners'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+)
+with check (
+  bucket_id = 'banners'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+create policy "Owner can delete banner objects"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'banners'
   and (storage.foldername(name))[1] = (select auth.uid()::text)
 );

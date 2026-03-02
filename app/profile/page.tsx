@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { AvatarUpload } from '@/components/avatar-upload';
+import { BannerUpload } from '@/components/banner-upload';
 import { ProfileEditor } from '@/components/profile-editor';
 import { createClient } from '@/lib/supabase/server';
 
@@ -19,8 +20,22 @@ export default async function ProfilePage() {
     .single();
 
   return (
-    <section className="mx-auto max-w-3xl rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-      <h1 className="mb-6 text-2xl font-bold">Profile settings</h1>
+    <section className="mx-auto max-w-3xl space-y-6 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <h1 className="text-2xl font-bold">Profile settings</h1>
+
+      <div className="space-y-3">
+        <div className="relative h-36 overflow-hidden rounded-xl bg-zinc-200 dark:bg-zinc-800">
+          {profile?.banner_url && (
+            <Image
+              src={profile.banner_url}
+              alt="Banner"
+              fill
+              className="object-cover"
+            />
+          )}
+        </div>
+        <BannerUpload />
+      </div>
 
       <div className="grid gap-6 md:grid-cols-[220px_1fr]">
         <div className="space-y-4">
