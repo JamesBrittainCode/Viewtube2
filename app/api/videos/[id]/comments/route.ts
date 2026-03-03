@@ -37,6 +37,20 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const { data: video, error: videoError } = await supabase
+    .from('videos')
+    .select('id,comments_enabled')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (videoError || !video) {
+    return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+  }
+
+  if (!video.comments_enabled) {
+    return NextResponse.json({ error: 'Comments are turned off for this video' }, { status: 403 });
+  }
+
   const body = (await request.json()) as { parentId: string | null; content: string };
   const content = body.content?.trim();
 

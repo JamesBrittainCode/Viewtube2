@@ -13,7 +13,7 @@ export default async function StudioContentPage() {
 
   const { data: videos } = await supabase
     .from('videos')
-    .select('id,title,views,created_at')
+    .select('id,title,views,created_at,comments_enabled')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
@@ -31,6 +31,8 @@ export default async function StudioContentPage() {
               <th className="px-4 py-3 text-left">Title</th>
               <th className="px-4 py-3 text-left">Views</th>
               <th className="px-4 py-3 text-left">Published</th>
+              <th className="px-4 py-3 text-left">Comments</th>
+              <th className="px-4 py-3 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -41,11 +43,17 @@ export default async function StudioContentPage() {
                 </td>
                 <td className="px-4 py-3">{formatCompactCount(video.views || 0)}</td>
                 <td className="px-4 py-3">{new Date(video.created_at).toLocaleDateString()}</td>
+                <td className="px-4 py-3">{video.comments_enabled === false ? 'Off' : 'On'}</td>
+                <td className="px-4 py-3">
+                  <Link href={`/studio/content/${video.id}`} className="hover:underline">
+                    Edit
+                  </Link>
+                </td>
               </tr>
             ))}
             {!(videos || []).length && (
               <tr>
-                <td className="px-4 py-6 text-zinc-500" colSpan={3}>No videos yet.</td>
+                <td className="px-4 py-6 text-zinc-500" colSpan={5}>No videos yet.</td>
               </tr>
             )}
           </tbody>

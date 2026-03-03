@@ -49,9 +49,11 @@ function nestComments(comments: FlatComment[]): Comment[] {
 function CommentItem({
   item,
   onReply,
+  canReply,
 }: {
   item: Comment;
   onReply: (parentId: string, content: string) => Promise<void>;
+  canReply: boolean;
 }) {
   const [showReply, setShowReply] = useState(false);
   const [value, setValue] = useState('');
@@ -85,13 +87,15 @@ function CommentItem({
             • {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
           </div>
           <p className="mt-1 text-sm">{item.content}</p>
-          <button
-            type="button"
-            onClick={() => setShowReply((state) => !state)}
-            className="mt-2 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-          >
-            Reply
-          </button>
+          {canReply && (
+            <button
+              type="button"
+              onClick={() => setShowReply((state) => !state)}
+              className="mt-2 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+            >
+              Reply
+            </button>
+          )}
 
           {showReply && (
             <form onSubmit={submitReply} className="mt-2 flex gap-2">
@@ -110,7 +114,12 @@ function CommentItem({
           {!!item.replies?.length && (
             <div className="ml-6 mt-3 border-l border-zinc-200 pl-4 dark:border-zinc-800">
               {item.replies?.map((reply) => (
-                <CommentItem key={reply.id} item={reply} onReply={onReply} />
+                <CommentItem
+                  key={reply.id}
+                  item={reply}
+                  onReply={onReply}
+                  canReply={canReply}
+                />
               ))}
             </div>
           )}
@@ -120,7 +129,13 @@ function CommentItem({
   );
 }
 
-export function CommentSection({ videoId }: { videoId: string }) {
+export function CommentSection({
+  videoId,
+  commentsEnabled,
+}: {
+  videoId: string;
+  commentsEnabled: boolean;
+}) {
   const [comments, setComments] = useState<FlatComment[]>([]);
   const [value, setValue] = useState('');
   const [loading, setLoading] = useState(true);
@@ -176,24 +191,30 @@ export function CommentSection({ videoId }: { videoId: string }) {
     <section className="mt-6">
       <h3 className="text-lg font-semibold">Comments</h3>
 
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!value.trim()) return;
-          postComment(null, value.trim());
-        }}
-        className="mt-3 flex gap-2"
-      >
-        <input
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          placeholder="Add a comment"
-          className="h-10 flex-1 rounded-full border border-zinc-300 px-4 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-        />
-        <button className="rounded-full bg-zinc-900 px-4 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">
-          Comment
-        </button>
-      </form>
+      {commentsEnabled ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!value.trim()) return;
+            postComment(null, value.trim());
+          }}
+          className="mt-3 flex gap-2"
+        >
+          <input
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            placeholder="Add a comment"
+            className="h-10 flex-1 rounded-full border border-zinc-300 px-4 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          />
+          <button className="rounded-full bg-zinc-900 px-4 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">
+            Comment
+          </button>
+        </form>
+      ) : (
+        <p className="mt-3 text-sm text-zinc-500">
+          Comments are turned off for this video.
+        </p>
+      )}
 
       <div className="mt-4 divide-y divide-zinc-100 dark:divide-zinc-800">
         {loading ? (
@@ -204,6 +225,7 @@ export function CommentSection({ videoId }: { videoId: string }) {
               key={comment.id}
               item={comment}
               onReply={(parentId, content) => postComment(parentId, content)}
+              canReply={commentsEnabled}
             />
           ))
         )}

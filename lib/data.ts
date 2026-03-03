@@ -7,6 +7,7 @@ const baseVideoSelect = `
   user_id,
   title,
   description,
+  comments_enabled,
   thumbnail_url,
   video_url,
   tags,

@@ -94,7 +94,10 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
           <p className="whitespace-pre-wrap">{video.description || 'No description provided.'}</p>
         </div>
 
-        <CommentSection videoId={video.id} />
+        <CommentSection
+          videoId={video.id}
+          commentsEnabled={video.comments_enabled !== false}
+        />
       </section>
 
       <aside className="lg:sticky lg:top-20 lg:self-start">

@@ -88,6 +88,7 @@ export function UploadForm() {
           title: String(formData.get('title') || ''),
           description: String(formData.get('description') || ''),
           tags: String(formData.get('tags') || ''),
+          comments_enabled: formData.get('comments_enabled') === 'on',
           video_url: videoUrl,
           thumbnail_url: thumbnailUrl,
         }),
@@ -142,6 +143,11 @@ export function UploadForm() {
         <label className="block font-medium">Thumbnail image</label>
         <input name="thumbnail" type="file" accept="image/*" required className="block w-full" />
       </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input name="comments_enabled" type="checkbox" defaultChecked className="h-4 w-4" />
+        Allow comments
+      </label>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 

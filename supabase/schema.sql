@@ -24,6 +24,7 @@ create table if not exists public.videos (
   user_id uuid not null references public.profiles(id) on delete cascade,
   title text not null,
   description text not null default '',
+  comments_enabled boolean not null default true,
   thumbnail_url text,
   video_url text not null,
   tags text[] not null default '{}',
@@ -31,6 +32,9 @@ create table if not exists public.videos (
   created_at timestamptz not null default now(),
   search_vector tsvector not null default ''::tsvector
 );
+
+alter table public.videos
+add column if not exists comments_enabled boolean not null default true;
 
 create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),

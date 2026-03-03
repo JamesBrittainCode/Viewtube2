@@ -26,6 +26,7 @@ export async function POST(request: Request) {
     title?: string;
     description?: string;
     tags?: string[] | string;
+    comments_enabled?: boolean;
     video_url?: string;
     thumbnail_url?: string;
   };
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
     : parseTags(typeof body.tags === 'string' ? body.tags : null);
   const videoUrl = String(body.video_url || '').trim();
   const thumbnailUrl = String(body.thumbnail_url || '').trim();
+  const commentsEnabled = body.comments_enabled !== false;
 
   if (!title) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 });
@@ -67,6 +69,7 @@ export async function POST(request: Request) {
       title,
       description,
       tags,
+      comments_enabled: commentsEnabled,
       thumbnail_url: thumbnailUrl,
       video_url: videoUrl,
     })

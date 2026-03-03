@@ -4,6 +4,8 @@ alter table public.profiles
 add column if not exists verified boolean not null default false;
 alter table public.profiles
 add column if not exists handle text;
+alter table public.videos
+add column if not exists comments_enabled boolean not null default true;
 
 create or replace function public.normalize_handle(input_text text)
 returns text
