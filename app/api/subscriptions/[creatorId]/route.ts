@@ -43,11 +43,18 @@ export async function POST(
     }
     subscribed = true;
 
+    const { data: actorProfile } = await supabase
+      .from('profiles')
+      .select('handle')
+      .eq('id', user.id)
+      .maybeSingle();
+
     await supabase.rpc('push_notification', {
       target_user_id: creatorId,
       target_type: 'new_subscriber',
       target_message: 'You have a new subscriber',
       target_actor_id: user.id,
+      target_url: actorProfile?.handle ? `/channel/${actorProfile.handle}` : null,
     });
   }
 

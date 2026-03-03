@@ -188,6 +188,8 @@ create table if not exists public.moderation_events (
 create index if not exists idx_moderation_events_user_id on public.moderation_events using btree(user_id, created_at desc);
 
 alter table public.moderation_events enable row level security;
+alter table public.notifications
+add column if not exists target_url text;
 
 drop policy if exists "Users can view own moderation events" on public.moderation_events;
 create policy "Users can view own moderation events"
@@ -273,7 +275,8 @@ create or replace function public.push_notification(
   target_user_id uuid,
   target_type text,
   target_message text,
-  target_actor_id uuid default null
+  target_actor_id uuid default null,
+  target_url text default null
 )
 returns void
 language plpgsql
@@ -290,11 +293,11 @@ begin
   end if;
 
   insert into public.notifications (user_id, actor_id, type, message)
-  values (target_user_id, target_actor_id, target_type, target_message);
+  values (target_user_id, target_actor_id, target_type, target_message, target_url);
 end;
 $$;
 
-grant execute on function public.push_notification(uuid, text, text, uuid) to authenticated;
+grant execute on function public.push_notification(uuid, text, text, uuid, text) to authenticated;
 
 create or replace function public.search_videos(search_query text)
 returns table (

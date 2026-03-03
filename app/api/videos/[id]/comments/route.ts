@@ -75,6 +75,7 @@ export async function POST(
       target_type: 'new_comment',
       target_message: 'Someone commented on your video',
       target_actor_id: user.id,
+      target_url: `/watch/${id}#comments`,
     });
   }
 

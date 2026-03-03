@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { unwrapRelation } from '@/lib/profile';
@@ -15,7 +16,7 @@ export default async function NotificationsPage() {
   const { data: notifications } = await supabase
     .from('notifications')
     .select(
-      'id,type,message,is_read,created_at,actor:profiles!notifications_actor_id_fkey(username,handle,avatar_url)',
+      'id,type,message,target_url,is_read,created_at,actor:profiles!notifications_actor_id_fkey(username,handle,avatar_url)',
     )
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
@@ -30,8 +31,12 @@ export default async function NotificationsPage() {
           return (
           <article
             key={n.id}
-            className={`rounded-xl border p-4 ${n.is_read ? 'border-zinc-200 dark:border-zinc-700' : 'border-red-300 dark:border-red-700'}`}
+            className={`rounded-xl border ${n.is_read ? 'border-zinc-200 dark:border-zinc-700' : 'border-red-300 dark:border-red-700'}`}
           >
+            <Link
+              href={n.target_url || '/notifications'}
+              className="block p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
+            >
             <div className="flex items-start gap-3">
               <Image
                 src={actor?.avatar_url || '/avatar-placeholder.svg'}
@@ -47,6 +52,7 @@ export default async function NotificationsPage() {
                 </p>
               </div>
             </div>
+            </Link>
           </article>
           );
         })}

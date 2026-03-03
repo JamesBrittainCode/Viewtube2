@@ -19,6 +19,7 @@ export async function Navbar() {
     id: string;
     type: string;
     message: string;
+    target_url?: string | null;
     is_read: boolean;
     created_at: string;
     actor?: { username?: string; handle?: string; avatar_url?: string | null } | null;
@@ -31,7 +32,7 @@ export async function Navbar() {
       supabase
         .from('notifications')
         .select(
-          'id,type,message,is_read,created_at,actor:profiles!notifications_actor_id_fkey(username,handle,avatar_url)',
+          'id,type,message,target_url,is_read,created_at,actor:profiles!notifications_actor_id_fkey(username,handle,avatar_url)',
         )
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -49,6 +50,7 @@ export async function Navbar() {
       id: item.id,
       type: item.type,
       message: item.message,
+      target_url: item.target_url,
       is_read: item.is_read,
       created_at: item.created_at,
       actor: unwrapRelation(item.actor),

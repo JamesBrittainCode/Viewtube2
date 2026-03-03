@@ -16,7 +16,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('notifications')
     .select(
-      'id,type,message,is_read,created_at,actor:profiles!notifications_actor_id_fkey(username,handle,avatar_url)',
+      'id,type,message,target_url,is_read,created_at,actor:profiles!notifications_actor_id_fkey(username,handle,avatar_url)',
     )
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })

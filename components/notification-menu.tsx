@@ -10,6 +10,7 @@ type Notification = {
   id: string;
   type: string;
   message: string;
+  target_url?: string | null;
   is_read: boolean;
   created_at: string;
   actor?: {
@@ -63,22 +64,28 @@ export function NotificationMenu({
 
           <div className="max-h-[420px] space-y-2 overflow-y-auto">
             {notifications.map((n) => (
-              <div key={n.id} className={`rounded-lg border p-2 ${n.is_read ? 'border-zinc-200 dark:border-zinc-700' : 'border-red-300 dark:border-red-700'}`}>
-                <div className="flex items-start gap-2">
-                  <Image
-                    src={n.actor?.avatar_url || '/avatar-placeholder.svg'}
-                    alt={n.actor?.username || 'User'}
-                    width={28}
-                    height={28}
-                    className="h-7 w-7 rounded-full object-cover"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm">{n.message}</p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
-                    </p>
+              <div key={n.id} className={`rounded-lg border ${n.is_read ? 'border-zinc-200 dark:border-zinc-700' : 'border-red-300 dark:border-red-700'}`}>
+                <Link
+                  href={n.target_url || '/notifications'}
+                  className="block p-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                  onClick={() => setOpen(false)}
+                >
+                  <div className="flex items-start gap-2">
+                    <Image
+                      src={n.actor?.avatar_url || '/avatar-placeholder.svg'}
+                      alt={n.actor?.username || 'User'}
+                      width={28}
+                      height={28}
+                      className="h-7 w-7 rounded-full object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm">{n.message}</p>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </Link>
               </div>
             ))}
             {!notifications.length && (

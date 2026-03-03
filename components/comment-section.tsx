@@ -190,7 +190,7 @@ export function CommentSection({
   const tree = useMemo(() => nestComments(comments), [comments]);
 
   return (
-    <section className="mt-8 rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-4 sm:p-5 dark:border-zinc-800 dark:bg-zinc-900/40">
+    <section id="comments" className="mt-8 rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-4 sm:p-5 dark:border-zinc-800 dark:bg-zinc-900/40">
       <h3 className="inline-flex items-center gap-2 text-lg font-semibold">
         <MessageCircle className="h-5 w-5 text-zinc-500" />
         Comments

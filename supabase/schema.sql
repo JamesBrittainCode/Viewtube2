@@ -80,9 +80,13 @@ create table if not exists public.notifications (
   actor_id uuid references public.profiles(id) on delete set null,
   type text not null,
   message text not null,
+  target_url text,
   is_read boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+alter table public.notifications
+add column if not exists target_url text;
 
 create table if not exists public.moderation_events (
   id uuid primary key default gen_random_uuid(),
@@ -427,7 +431,8 @@ create or replace function public.push_notification(
   target_user_id uuid,
   target_type text,
   target_message text,
-  target_actor_id uuid default null
+  target_actor_id uuid default null,
+  target_url text default null
 )
 returns void
 language plpgsql
@@ -444,11 +449,11 @@ begin
   end if;
 
   insert into public.notifications (user_id, actor_id, type, message)
-  values (target_user_id, target_actor_id, target_type, target_message);
+  values (target_user_id, target_actor_id, target_type, target_message, target_url);
 end;
 $$;
 
-grant execute on function public.push_notification(uuid, text, text, uuid) to authenticated;
+grant execute on function public.push_notification(uuid, text, text, uuid, text) to authenticated;
 
 create or replace function public.increment_video_views(video_id uuid)
 returns void
