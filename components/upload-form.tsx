@@ -23,6 +23,10 @@ type GeneratedThumb = {
   url: string;
 };
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function createGeneratedThumbnails(videoFile: File): Promise<GeneratedThumb[]> {
   const videoUrl = URL.createObjectURL(videoFile);
   const video = document.createElement('video');
@@ -102,6 +106,7 @@ export function UploadForm() {
   const [generatedThumbs, setGeneratedThumbs] = useState<GeneratedThumb[]>([]);
   const [selectedGeneratedThumbId, setSelectedGeneratedThumbId] = useState<string | null>(null);
   const [generatingThumbs, setGeneratingThumbs] = useState(false);
+  const [thumbsVisible, setThumbsVisible] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -117,6 +122,7 @@ export function UploadForm() {
     generatedThumbs.forEach((item) => URL.revokeObjectURL(item.url));
     setGeneratedThumbs([]);
     setSelectedGeneratedThumbId(null);
+    setThumbsVisible(false);
 
     if (!file) return;
     if (!file.type.startsWith('video/')) {
@@ -126,9 +132,16 @@ export function UploadForm() {
 
     setGeneratingThumbs(true);
     try {
+      const start = Date.now();
       const thumbs = await createGeneratedThumbnails(file);
+      const elapsed = Date.now() - start;
+      const minimumDelay = 1200 + Math.floor(Math.random() * 700);
+      if (elapsed < minimumDelay) {
+        await sleep(minimumDelay - elapsed);
+      }
       setGeneratedThumbs(thumbs);
       if (thumbs[0]) setSelectedGeneratedThumbId(thumbs[0].id);
+      requestAnimationFrame(() => setThumbsVisible(true));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -339,13 +352,21 @@ export function UploadForm() {
 
         {generatingThumbs && (
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950">
-            Generating thumbnail options...
+            <p>Generating thumbnail options...</p>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {[0, 1, 2].map((slot) => (
+                <div
+                  key={slot}
+                  className="aspect-video animate-pulse rounded-lg bg-zinc-200/80 dark:bg-zinc-800"
+                />
+              ))}
+            </div>
           </div>
         )}
 
         {!generatingThumbs && generatedThumbs.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {generatedThumbs.map((thumb) => (
+            {generatedThumbs.map((thumb, index) => (
               <button
                 key={thumb.id}
                 type="button"
@@ -353,7 +374,10 @@ export function UploadForm() {
                   setSelectedGeneratedThumbId(thumb.id);
                   setCustomThumbnailFile(null);
                 }}
-                className={`overflow-hidden rounded-xl border text-left transition ${
+                style={{ transitionDelay: `${index * 90}ms` }}
+                className={`overflow-hidden rounded-xl border text-left transition duration-500 ${
+                  thumbsVisible ? 'translate-y-0 opacity-100' : 'translate-y-1.5 opacity-0'
+                } ${
                   selectedGeneratedThumbId === thumb.id && !customThumbnailFile
                     ? 'border-red-600 ring-2 ring-red-200 dark:ring-red-900'
                     : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700'
