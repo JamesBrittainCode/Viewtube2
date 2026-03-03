@@ -58,18 +58,20 @@ export async function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
-      <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-4 px-4 lg:px-6">
+      <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-2 px-3 sm:gap-4 sm:px-4 lg:px-6">
         <Logo />
 
-        <form action="/search" className="mx-auto w-full max-w-2xl">
+        <form action="/search" className="mx-1 flex-1 sm:mx-auto sm:w-full sm:max-w-2xl">
           <input
             name="q"
             placeholder="Search"
-            className="h-10 w-full rounded-full border border-zinc-300 bg-zinc-50 px-4 text-sm outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900"
+            className="h-10 w-full rounded-full border border-zinc-300 bg-zinc-50 px-3 text-sm outline-none transition focus:border-zinc-400 sm:px-4 dark:border-zinc-700 dark:bg-zinc-900"
           />
         </form>
 
-        <ThemeToggle />
+        <div className="hidden sm:block">
+          <ThemeToggle />
+        </div>
 
         {user && (
           <NotificationMenu
@@ -81,10 +83,10 @@ export async function Navbar() {
         {user && (
           <Link
             href="/upload"
-            className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+            className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-2 text-sm font-medium hover:bg-zinc-200 sm:gap-2 sm:px-4 dark:bg-zinc-800 dark:hover:bg-zinc-700"
           >
             <Upload className="h-4 w-4" />
-            Upload
+            <span className="hidden sm:inline">Upload</span>
           </Link>
         )}
 
@@ -93,7 +95,7 @@ export async function Navbar() {
         ) : (
           <Link
             href="/sign-in"
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className="rounded-full border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 sm:px-4 dark:border-zinc-700 dark:hover:bg-zinc-800"
           >
             Sign in
           </Link>

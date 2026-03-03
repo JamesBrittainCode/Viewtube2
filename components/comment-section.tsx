@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { MessageCircle, Reply } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { VerifiedBadge } from '@/components/verified-badge';
 import type { Comment } from '@/lib/types';
@@ -67,7 +68,7 @@ function CommentItem({
   }
 
   return (
-    <div className="py-3">
+    <article className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex gap-3">
         <Image
           src={item.profile?.avatar_url || '/avatar-placeholder.svg'}
@@ -79,20 +80,21 @@ function CommentItem({
         <div className="flex-1">
           <div className="text-xs text-zinc-500">
             <span className="inline-flex items-center gap-1">
-              <Link href={`/channel/${item.profile?.handle || item.profile?.username}`} className="font-medium text-zinc-700 dark:text-zinc-300">
+              <Link href={`/channel/${item.profile?.handle || item.profile?.username}`} className="font-medium text-zinc-800 hover:underline dark:text-zinc-200">
                 @{item.profile?.username}
               </Link>
               {item.profile?.verified && <VerifiedBadge className="h-3.5 w-3.5" />}
             </span>{' '}
             • {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
           </div>
-          <p className="mt-1 text-sm">{item.content}</p>
+          <p className="mt-1.5 text-sm leading-relaxed">{item.content}</p>
           {canReply && (
             <button
               type="button"
               onClick={() => setShowReply((state) => !state)}
-              className="mt-2 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              className="mt-2 inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
             >
+              <Reply className="h-3.5 w-3.5" />
               Reply
             </button>
           )}
@@ -102,17 +104,17 @@ function CommentItem({
               <input
                 value={value}
                 onChange={(event) => setValue(event.target.value)}
-                className="h-9 flex-1 rounded-full border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                className="h-9 flex-1 rounded-full border border-zinc-300 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950"
                 placeholder="Write a reply"
               />
-              <button className="rounded-full bg-zinc-900 px-3 text-xs font-semibold text-white dark:bg-white dark:text-zinc-900">
+              <button className="rounded-full bg-red-600 px-3 text-xs font-semibold text-white hover:bg-red-500">
                 Post
               </button>
             </form>
           )}
 
           {!!item.replies?.length && (
-            <div className="ml-6 mt-3 border-l border-zinc-200 pl-4 dark:border-zinc-800">
+            <div className="ml-4 mt-3 space-y-2 border-l border-zinc-200 pl-3 dark:border-zinc-800">
               {item.replies?.map((reply) => (
                 <CommentItem
                   key={reply.id}
@@ -125,7 +127,7 @@ function CommentItem({
           )}
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -188,8 +190,11 @@ export function CommentSection({
   const tree = useMemo(() => nestComments(comments), [comments]);
 
   return (
-    <section className="mt-6">
-      <h3 className="text-lg font-semibold">Comments</h3>
+    <section className="mt-8 rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-4 sm:p-5 dark:border-zinc-800 dark:bg-zinc-900/40">
+      <h3 className="inline-flex items-center gap-2 text-lg font-semibold">
+        <MessageCircle className="h-5 w-5 text-zinc-500" />
+        Comments
+      </h3>
 
       {commentsEnabled ? (
         <form
@@ -198,15 +203,15 @@ export function CommentSection({
             if (!value.trim()) return;
             postComment(null, value.trim());
           }}
-          className="mt-3 flex gap-2"
+          className="mt-4 flex gap-2"
         >
           <input
             value={value}
             onChange={(event) => setValue(event.target.value)}
             placeholder="Add a comment"
-            className="h-10 flex-1 rounded-full border border-zinc-300 px-4 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="h-11 flex-1 rounded-full border border-zinc-300 bg-white px-4 text-sm dark:border-zinc-700 dark:bg-zinc-950"
           />
-          <button className="rounded-full bg-zinc-900 px-4 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">
+          <button className="rounded-full bg-red-600 px-5 text-sm font-medium text-white hover:bg-red-500">
             Comment
           </button>
         </form>
@@ -216,10 +221,10 @@ export function CommentSection({
         </p>
       )}
 
-      <div className="mt-4 divide-y divide-zinc-100 dark:divide-zinc-800">
+      <div className="mt-5 space-y-3">
         {loading ? (
           <p className="text-sm text-zinc-500">Loading comments...</p>
-        ) : (
+        ) : tree.length ? (
           tree.map((comment) => (
             <CommentItem
               key={comment.id}
@@ -228,6 +233,8 @@ export function CommentSection({
               canReply={commentsEnabled}
             />
           ))
+        ) : (
+          <p className="text-sm text-zinc-500">No comments yet.</p>
         )}
       </div>
     </section>

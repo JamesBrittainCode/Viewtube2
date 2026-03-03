@@ -44,7 +44,7 @@ export default async function StudioLayout({ children }: { children: React.React
     <div className="min-h-screen bg-[#202124] text-zinc-100">
       <header className="sticky top-0 z-40 border-b border-zinc-800 bg-[#202124]/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-[1700px] items-center gap-4 px-4">
-          <Link href="/" className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+          <Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight sm:text-2xl">
             <span className="rounded-md bg-red-600 px-2 py-1 text-white">View</span>
             <span>Tube</span>
             <span className="text-zinc-400">Studio</span>
@@ -58,17 +58,31 @@ export default async function StudioLayout({ children }: { children: React.React
             <span className="text-sm">Search across your channel</span>
           </Link>
 
-          <div className="ml-auto flex items-center gap-2">
-            <Link href="/studio/feedback" className="rounded-full p-2 hover:bg-zinc-800"><MessageSquareMore className="h-5 w-5" /></Link>
-            <Link href="/studio/help" className="rounded-full p-2 hover:bg-zinc-800"><CircleHelp className="h-5 w-5" /></Link>
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            <Link href="/studio/feedback" className="hidden rounded-full p-2 hover:bg-zinc-800 md:inline-flex"><MessageSquareMore className="h-5 w-5" /></Link>
+            <Link href="/studio/help" className="hidden rounded-full p-2 hover:bg-zinc-800 md:inline-flex"><CircleHelp className="h-5 w-5" /></Link>
             <Link href="/studio/notifications" className="rounded-full p-2 hover:bg-zinc-800"><Bell className="h-5 w-5" /></Link>
-            <Link href="/upload" className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold hover:bg-zinc-800">Create</Link>
+            <Link href="/upload" className="rounded-full border border-zinc-700 px-3 py-2 text-sm font-semibold hover:bg-zinc-800 sm:px-4">Create</Link>
           </div>
         </div>
       </header>
 
+      <div className="border-b border-zinc-800 bg-[#1f2021] px-3 py-2 lg:hidden">
+        <nav className="flex gap-2 overflow-x-auto pb-1 text-xs">
+          {navLinks.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="shrink-0 rounded-full border border-zinc-700 px-3 py-1.5 text-zinc-300 hover:bg-zinc-800"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr]">
-        <aside className="border-r border-zinc-800 bg-[#1b1c1d] p-4">
+        <aside className="hidden border-r border-zinc-800 bg-[#1b1c1d] p-4 lg:block">
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-center">
             <Image
               src={profile?.avatar_url || '/avatar-placeholder.svg'}
@@ -99,7 +113,7 @@ export default async function StudioLayout({ children }: { children: React.React
           </nav>
         </aside>
 
-        <main className="p-6">{children}</main>
+        <main className="p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 import { Sidebar } from '@/components/sidebar';
 import { cn } from '@/lib/utils';
 
@@ -25,9 +26,10 @@ export function AppShell({
     <>
       {navbar}
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
+      <MobileBottomNav />
       <main
         className={cn(
-          'mx-auto max-w-[1600px] px-4 py-6 transition-[margin-left] duration-300 ease-out lg:px-6',
+          'mx-auto max-w-[1600px] px-4 py-4 pb-24 transition-[margin-left] duration-300 ease-out sm:py-6 lg:px-6 lg:pb-6',
           collapsed ? 'lg:ml-20' : 'lg:ml-64',
         )}
       >

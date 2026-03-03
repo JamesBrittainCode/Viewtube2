@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
+import { FileVideo, Image as ImageIcon, MessageSquareText, Tags, Type } from 'lucide-react';
 import { THUMBNAIL_BUCKET, VIDEO_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 
@@ -111,41 +112,74 @@ export function UploadForm() {
   return (
     <form
       onSubmit={onSubmit}
-      className="mx-auto w-full max-w-3xl space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900"
+      className="mx-auto w-full max-w-4xl space-y-6 rounded-3xl border border-zinc-200/80 bg-white p-5 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <h1 className="text-2xl font-bold">Upload video</h1>
-
-      <input
-        name="title"
-        placeholder="Title"
-        required
-        maxLength={120}
-        className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
-      />
-      <textarea
-        name="description"
-        placeholder="Description"
-        rows={5}
-        className="w-full rounded-xl border border-zinc-300 bg-white p-3 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
-      />
-      <input
-        name="tags"
-        placeholder="Tags (comma-separated)"
-        className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
-      />
-
-      <div className="space-y-2 text-sm">
-        <label className="block font-medium">Video file</label>
-        <input name="video" type="file" accept="video/*" required className="block w-full" />
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Upload video</h1>
+        <p className="mt-1 text-sm text-zinc-500">Share your next ViewTube upload.</p>
       </div>
 
-      <div className="space-y-2 text-sm">
-        <label className="block font-medium">Thumbnail image</label>
-        <input name="thumbnail" type="file" accept="image/*" required className="block w-full" />
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="space-y-2 md:col-span-2">
+          <span className="inline-flex items-center gap-2 text-sm font-medium">
+            <Type className="h-4 w-4 text-zinc-500" />
+            Title
+          </span>
+          <input
+            name="title"
+            placeholder="Add a clear, descriptive title"
+            required
+            maxLength={120}
+            className="h-12 w-full rounded-xl border border-zinc-300 bg-white px-4 text-sm outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
+          />
+        </label>
+
+        <label className="space-y-2 md:col-span-2">
+          <span className="inline-flex items-center gap-2 text-sm font-medium">
+            <MessageSquareText className="h-4 w-4 text-zinc-500" />
+            Description
+          </span>
+          <textarea
+            name="description"
+            placeholder="Tell viewers what this video is about"
+            rows={6}
+            className="w-full rounded-xl border border-zinc-300 bg-white p-4 text-sm outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
+          />
+        </label>
+
+        <label className="space-y-2 md:col-span-2">
+          <span className="inline-flex items-center gap-2 text-sm font-medium">
+            <Tags className="h-4 w-4 text-zinc-500" />
+            Tags
+          </span>
+          <input
+            name="tags"
+            placeholder="e.g. tutorial, coding, react"
+            className="h-12 w-full rounded-xl border border-zinc-300 bg-white px-4 text-sm outline-none transition focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
+          />
+        </label>
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input name="comments_enabled" type="checkbox" defaultChecked className="h-4 w-4" />
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/60">
+          <span className="mb-2 inline-flex items-center gap-2 text-sm font-medium">
+            <FileVideo className="h-4 w-4 text-zinc-500" />
+            Video file
+          </span>
+          <input name="video" type="file" accept="video/*" required className="mt-2 block w-full text-sm" />
+        </label>
+
+        <label className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/60">
+          <span className="mb-2 inline-flex items-center gap-2 text-sm font-medium">
+            <ImageIcon className="h-4 w-4 text-zinc-500" />
+            Thumbnail image
+          </span>
+          <input name="thumbnail" type="file" accept="image/*" required className="mt-2 block w-full text-sm" />
+        </label>
+      </div>
+
+      <label className="flex items-center gap-2 rounded-xl bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-800">
+        <input name="comments_enabled" type="checkbox" defaultChecked className="h-4 w-4 accent-red-600" />
         Allow comments
       </label>
 
@@ -154,7 +188,7 @@ export function UploadForm() {
       <button
         type="submit"
         disabled={loading}
-        className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-70 dark:bg-white dark:text-zinc-900"
+        className="inline-flex h-11 items-center justify-center rounded-full bg-red-600 px-6 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-70"
       >
         {loading ? 'Uploading...' : 'Publish video'}
       </button>
