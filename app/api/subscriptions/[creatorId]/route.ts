@@ -39,13 +39,6 @@ export async function POST(
       .from('subscriptions')
       .insert({ subscriber_id: user.id, creator_id: creatorId });
     subscribed = true;
-
-    await supabase.from('notifications').insert({
-      user_id: creatorId,
-      actor_id: user.id,
-      type: 'new_subscriber',
-      message: 'You have a new subscriber',
-    });
   }
 
   const { data: profile } = await supabase

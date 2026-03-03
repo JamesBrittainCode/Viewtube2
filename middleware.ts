@@ -1,7 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
-const protectedRoutes = ['/upload', '/profile', '/subscriptions', '/library', '/studio', '/admin'];
+const protectedRoutes = [
+  '/upload',
+  '/profile',
+  '/subscriptions',
+  '/library',
+  '/notifications',
+  '/studio',
+  '/admin',
+];
 
 export async function middleware(request: NextRequest) {
   const { supabase, response } = await updateSession(request);

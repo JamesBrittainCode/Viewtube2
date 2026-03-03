@@ -62,7 +62,7 @@ export default async function StudioSpotlightPage() {
       <h1 className="text-4xl font-bold">Creator Spotlight</h1>
       <p className="text-zinc-400">Weekly feature video. New picks publish Monday at 1:00 AM PST.</p>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className={`grid gap-4 ${isAdmin ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
         <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-4">
           <h4 className="text-sm font-semibold text-zinc-500">Live now</h4>
           {currentRes.data && currentVideo?.id ? (
@@ -83,28 +83,30 @@ export default async function StudioSpotlightPage() {
           )}
         </div>
 
-        <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-4">
-          <h4 className="text-sm font-semibold text-zinc-500">Next up</h4>
-          {nextRes.data && nextVideo?.id ? (
-            <Link href={`/watch/${nextVideo.id}`} className="mt-3 block">
-              <div className="relative aspect-video overflow-hidden rounded-lg bg-zinc-800">
-                <Image
-                  src={nextVideo.thumbnail_url || '/thumbnail-placeholder.svg'}
-                  alt={nextVideo.title || 'Next spotlight'}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <p className="mt-2 line-clamp-2 text-sm font-semibold">{nextVideo.title}</p>
-              <p className="text-xs text-zinc-500">{nextChannel?.username}</p>
-              <p className="text-xs text-zinc-500">
-                Publishes: {new Date(nextRes.data.scheduled_for).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PT
-              </p>
-            </Link>
-          ) : (
-            <p className="mt-3 text-sm text-zinc-500">No next spotlight scheduled yet.</p>
-          )}
-        </div>
+        {isAdmin && (
+          <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-4">
+            <h4 className="text-sm font-semibold text-zinc-500">Next up</h4>
+            {nextRes.data && nextVideo?.id ? (
+              <Link href={`/watch/${nextVideo.id}`} className="mt-3 block">
+                <div className="relative aspect-video overflow-hidden rounded-lg bg-zinc-800">
+                  <Image
+                    src={nextVideo.thumbnail_url || '/thumbnail-placeholder.svg'}
+                    alt={nextVideo.title || 'Next spotlight'}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <p className="mt-2 line-clamp-2 text-sm font-semibold">{nextVideo.title}</p>
+                <p className="text-xs text-zinc-500">{nextChannel?.username}</p>
+                <p className="text-xs text-zinc-500">
+                  Publishes: {new Date(nextRes.data.scheduled_for).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PT
+                </p>
+              </Link>
+            ) : (
+              <p className="mt-3 text-sm text-zinc-500">No next spotlight scheduled yet.</p>
+            )}
+          </div>
+        )}
       </div>
 
       {isAdmin && (

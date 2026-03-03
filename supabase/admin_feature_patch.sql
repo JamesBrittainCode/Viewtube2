@@ -189,6 +189,96 @@ as $$
   order by ts_rank(v.search_vector, websearch_to_tsquery('english', search_query)) desc, v.created_at desc;
 $$;
 
+create or replace function public.notify_new_subscriber()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.notifications (user_id, actor_id, type, message)
+  values (new.creator_id, new.subscriber_id, 'new_subscriber', 'You have a new subscriber');
+  return new;
+end;
+$$;
+
+drop trigger if exists subscriptions_notify_trigger on public.subscriptions;
+create trigger subscriptions_notify_trigger
+after insert on public.subscriptions
+for each row execute function public.notify_new_subscriber();
+
+create or replace function public.notify_video_comment()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  owner_id uuid;
+begin
+  select v.user_id into owner_id
+  from public.videos v
+  where v.id = new.video_id;
+
+  if owner_id is not null and owner_id <> new.user_id then
+    insert into public.notifications (user_id, actor_id, type, message)
+    values (owner_id, new.user_id, 'new_comment', 'Someone commented on your video');
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists comments_notify_trigger on public.comments;
+create trigger comments_notify_trigger
+after insert on public.comments
+for each row execute function public.notify_video_comment();
+
+create or replace function public.notify_new_video_to_subscribers()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.notifications (user_id, actor_id, type, message)
+  select
+    s.subscriber_id,
+    new.user_id,
+    'new_video',
+    'A creator you subscribe to uploaded: ' || new.title
+  from public.subscriptions s
+  where s.creator_id = new.user_id;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists videos_notify_subscribers_trigger on public.videos;
+create trigger videos_notify_subscribers_trigger
+after insert on public.videos
+for each row execute function public.notify_new_video_to_subscribers();
+
+create or replace function public.notify_verified_status_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if old.verified is distinct from new.verified and new.verified = true then
+    insert into public.notifications (user_id, actor_id, type, message)
+    values (new.id, (select auth.uid()), 'verified', 'You''ve Been Verified! Congrats! 🎉');
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_notify_verified_trigger on public.profiles;
+create trigger profiles_notify_verified_trigger
+after update of verified on public.profiles
+for each row execute function public.notify_verified_status_change();
+
 create table if not exists public.creator_spotlights (
   id uuid primary key default gen_random_uuid(),
   video_id uuid not null references public.videos(id) on delete cascade,

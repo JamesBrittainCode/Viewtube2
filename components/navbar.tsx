@@ -2,8 +2,10 @@ import Link from 'next/link';
 import { Upload } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { Logo } from '@/components/logo';
+import { NotificationMenu } from '@/components/notification-menu';
 import { ProfileMenu } from '@/components/profile-menu';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { unwrapRelation } from '@/lib/profile';
 
 export async function Navbar() {
   const supabase = await createClient();
@@ -13,16 +15,45 @@ export async function Navbar() {
 
   let handle: string | null = null;
   let avatarUrl: string | null = null;
+  let notifications: {
+    id: string;
+    type: string;
+    message: string;
+    is_read: boolean;
+    created_at: string;
+    actor?: { username?: string; handle?: string; avatar_url?: string | null } | null;
+  }[] = [];
+  let unreadCount = 0;
 
   if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('handle, avatar_url')
-      .eq('id', user.id)
-      .single();
+    const [{ data: profile }, { data: notificationsData }, { count }] = await Promise.all([
+      supabase.from('profiles').select('handle, avatar_url').eq('id', user.id).single(),
+      supabase
+        .from('notifications')
+        .select(
+          'id,type,message,is_read,created_at,actor:profiles!notifications_actor_id_fkey(username,handle,avatar_url)',
+        )
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20),
+      supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false),
+    ]);
 
     handle = profile?.handle ?? null;
     avatarUrl = profile?.avatar_url ?? null;
+    notifications = (notificationsData || []).map((item) => ({
+      id: item.id,
+      type: item.type,
+      message: item.message,
+      is_read: item.is_read,
+      created_at: item.created_at,
+      actor: unwrapRelation(item.actor),
+    }));
+    unreadCount = count || 0;
   }
 
   return (
@@ -39,6 +70,13 @@ export async function Navbar() {
         </form>
 
         <ThemeToggle />
+
+        {user && (
+          <NotificationMenu
+            initialNotifications={notifications}
+            initialUnreadCount={unreadCount}
+          />
+        )}
 
         {user && (
           <Link
