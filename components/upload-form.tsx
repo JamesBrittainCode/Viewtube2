@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { FileVideo, Image as ImageIcon, MessageSquareText, Tags, Type } from 'lucide-react';
 import { THUMBNAIL_BUCKET, VIDEO_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
@@ -16,10 +16,125 @@ async function parseApiError(response: Response) {
   }
 }
 
+type GeneratedThumb = {
+  id: string;
+  time: number;
+  blob: Blob;
+  url: string;
+};
+
+async function createGeneratedThumbnails(videoFile: File): Promise<GeneratedThumb[]> {
+  const videoUrl = URL.createObjectURL(videoFile);
+  const video = document.createElement('video');
+  video.src = videoUrl;
+  video.preload = 'metadata';
+  video.muted = true;
+  video.playsInline = true;
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      video.onloadedmetadata = () => resolve();
+      video.onerror = () => reject(new Error('Failed to read uploaded video.'));
+    });
+
+    const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 1;
+    const points = [0.15, 0.5, 0.85].map((ratio) => {
+      const t = duration * ratio;
+      return Math.max(0.1, Math.min(duration - 0.1, t));
+    });
+
+    const sourceWidth = video.videoWidth || 1280;
+    const sourceHeight = video.videoHeight || 720;
+    const width = Math.min(1280, sourceWidth);
+    const height = Math.max(1, Math.round((width / sourceWidth) * sourceHeight));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Failed to generate thumbnail previews.');
+
+    const results: GeneratedThumb[] = [];
+
+    for (let i = 0; i < points.length; i += 1) {
+      const time = points[i];
+      await new Promise<void>((resolve, reject) => {
+        video.currentTime = time;
+        video.onseeked = () => resolve();
+        video.onerror = () => reject(new Error('Failed to generate thumbnails from video.'));
+      });
+
+      ctx.drawImage(video, 0, 0, width, height);
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (result) => {
+            if (!result) {
+              reject(new Error('Could not encode thumbnail image.'));
+              return;
+            }
+            resolve(result);
+          },
+          'image/jpeg',
+          0.9,
+        );
+      });
+
+      results.push({
+        id: `auto-${i + 1}`,
+        time,
+        blob,
+        url: URL.createObjectURL(blob),
+      });
+    }
+
+    return results;
+  } finally {
+    URL.revokeObjectURL(videoUrl);
+  }
+}
+
 export function UploadForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [customThumbnailFile, setCustomThumbnailFile] = useState<File | null>(null);
+  const [generatedThumbs, setGeneratedThumbs] = useState<GeneratedThumb[]>([]);
+  const [selectedGeneratedThumbId, setSelectedGeneratedThumbId] = useState<string | null>(null);
+  const [generatingThumbs, setGeneratingThumbs] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      generatedThumbs.forEach((item) => URL.revokeObjectURL(item.url));
+    };
+  }, [generatedThumbs]);
+
+  async function onVideoSelect(file: File | null) {
+    setVideoFile(file);
+    setCustomThumbnailFile(null);
+    setError(null);
+
+    generatedThumbs.forEach((item) => URL.revokeObjectURL(item.url));
+    setGeneratedThumbs([]);
+    setSelectedGeneratedThumbId(null);
+
+    if (!file) return;
+    if (!file.type.startsWith('video/')) {
+      setError('Please upload a valid video file.');
+      return;
+    }
+
+    setGeneratingThumbs(true);
+    try {
+      const thumbs = await createGeneratedThumbnails(file);
+      setGeneratedThumbs(thumbs);
+      if (thumbs[0]) setSelectedGeneratedThumbId(thumbs[0].id);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setGeneratingThumbs(false);
+    }
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -27,8 +142,15 @@ export function UploadForm() {
 
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const video = formData.get('video') as File;
-    const thumbnail = formData.get('thumbnail') as File;
+    const video = videoFile;
+    const generated = generatedThumbs.find((item) => item.id === selectedGeneratedThumbId);
+    const thumbnail =
+      customThumbnailFile ||
+      (generated
+        ? new File([generated.blob], `auto-thumbnail-${generated.id}.jpg`, {
+            type: 'image/jpeg',
+          })
+        : null);
 
     if (!video || !video.type.startsWith('video/')) {
       setError('Please upload a valid video file.');
@@ -36,7 +158,7 @@ export function UploadForm() {
     }
 
     if (!thumbnail || !thumbnail.type.startsWith('image/')) {
-      setError('Please upload a valid image thumbnail.');
+      setError('Choose an auto-generated thumbnail or upload your own image.');
       return;
     }
 
@@ -166,17 +288,96 @@ export function UploadForm() {
             <FileVideo className="h-4 w-4 text-zinc-500" />
             Video file
           </span>
-          <input name="video" type="file" accept="video/*" required className="mt-2 block w-full text-sm" />
+          <input
+            name="video"
+            type="file"
+            accept="video/*"
+            required
+            onChange={(event) => {
+              const file = event.target.files?.[0] || null;
+              void onVideoSelect(file);
+            }}
+            className="mt-2 block w-full text-sm"
+          />
         </label>
 
         <label className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/60">
           <span className="mb-2 inline-flex items-center gap-2 text-sm font-medium">
             <ImageIcon className="h-4 w-4 text-zinc-500" />
-            Thumbnail image
+            Custom thumbnail (optional)
           </span>
-          <input name="thumbnail" type="file" accept="image/*" required className="mt-2 block w-full text-sm" />
+          <input
+            name="thumbnail"
+            type="file"
+            accept="image/*"
+            onChange={(event) => {
+              const file = event.target.files?.[0] || null;
+              if (file && !file.type.startsWith('image/')) {
+                setError('Please upload a valid image thumbnail.');
+                return;
+              }
+              setCustomThumbnailFile(file);
+              setError(null);
+            }}
+            className="mt-2 block w-full text-sm"
+          />
+          <p className="mt-2 text-xs text-zinc-500">
+            Upload your own image to override auto-generated options.
+          </p>
         </label>
       </div>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Auto-generated thumbnails</h3>
+          {customThumbnailFile && (
+            <span className="text-xs text-emerald-600 dark:text-emerald-400">
+              Custom thumbnail selected
+            </span>
+          )}
+        </div>
+
+        {generatingThumbs && (
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950">
+            Generating thumbnail options...
+          </div>
+        )}
+
+        {!generatingThumbs && generatedThumbs.length > 0 && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {generatedThumbs.map((thumb) => (
+              <button
+                key={thumb.id}
+                type="button"
+                onClick={() => {
+                  setSelectedGeneratedThumbId(thumb.id);
+                  setCustomThumbnailFile(null);
+                }}
+                className={`overflow-hidden rounded-xl border text-left transition ${
+                  selectedGeneratedThumbId === thumb.id && !customThumbnailFile
+                    ? 'border-red-600 ring-2 ring-red-200 dark:ring-red-900'
+                    : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700'
+                }`}
+              >
+                <img
+                  src={thumb.url}
+                  alt={`Auto thumbnail at ${Math.round(thumb.time)} seconds`}
+                  className="aspect-video w-full object-cover"
+                />
+                <p className="px-3 py-2 text-xs text-zinc-500">
+                  {Math.round(thumb.time)}s
+                </p>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!generatingThumbs && !generatedThumbs.length && (
+          <p className="text-xs text-zinc-500">
+            Select a video to generate three thumbnail choices automatically.
+          </p>
+        )}
+      </section>
 
       <label className="flex items-center gap-2 rounded-xl bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-800">
         <input name="comments_enabled" type="checkbox" defaultChecked className="h-4 w-4 accent-red-600" />
