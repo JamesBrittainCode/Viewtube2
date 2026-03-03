@@ -17,6 +17,7 @@ export async function PATCH(request: Request) {
     handle?: string;
     subscribers_count?: number;
     verified?: boolean;
+    suspended?: boolean;
   };
 
   const rawHandle = (body.handle || '').trim();
@@ -26,6 +27,8 @@ export async function PATCH(request: Request) {
     typeof body.subscribers_count === 'number' ? Math.max(0, Number(body.subscribers_count)) : undefined;
   const verified =
     typeof body.verified === 'boolean' ? body.verified : undefined;
+  const suspended =
+    typeof body.suspended === 'boolean' ? body.suspended : undefined;
 
   if (!body.handle || normalizedRaw.length < 3) {
     return NextResponse.json({ error: 'Valid handle is required' }, { status: 400 });
@@ -33,7 +36,7 @@ export async function PATCH(request: Request) {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, subscribers_count, verified')
+    .select('id, subscribers_count, verified, suspended')
     .eq('handle', handle)
     .single();
 
@@ -41,7 +44,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
   }
 
-  if (subscribersCount === undefined && verified === undefined) {
+  if (subscribersCount === undefined && verified === undefined && suspended === undefined) {
     return NextResponse.json({ error: 'No admin changes provided' }, { status: 400 });
   }
 
@@ -49,6 +52,7 @@ export async function PATCH(request: Request) {
     target_profile_id: profile.id,
     target_subscribers_count: subscribersCount ?? profile.subscribers_count,
     target_verified: verified ?? profile.verified,
+    target_suspended: suspended ?? profile.suspended,
   });
 
   if (error) {

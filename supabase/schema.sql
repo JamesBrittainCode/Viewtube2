@@ -10,6 +10,10 @@ create table if not exists public.profiles (
   banner_url text,
   bio text,
   verified boolean not null default false,
+  suspended boolean not null default false,
+  suspension_reason text,
+  suspended_at timestamptz,
+  moderation_strikes integer not null default 0 check (moderation_strikes >= 0),
   subscribers_count bigint not null default 0,
   created_at timestamptz not null default now()
 );
@@ -18,6 +22,14 @@ alter table public.profiles
 add column if not exists verified boolean not null default false;
 alter table public.profiles
 add column if not exists handle text;
+alter table public.profiles
+add column if not exists suspended boolean not null default false;
+alter table public.profiles
+add column if not exists suspension_reason text;
+alter table public.profiles
+add column if not exists suspended_at timestamptz;
+alter table public.profiles
+add column if not exists moderation_strikes integer not null default 0;
 
 create table if not exists public.videos (
   id uuid primary key default gen_random_uuid(),
@@ -72,6 +84,18 @@ create table if not exists public.notifications (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.moderation_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  reason text not null,
+  title text not null default '',
+  description text not null default '',
+  tags text[] not null default '{}',
+  video_url text,
+  thumbnail_url text,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.creator_spotlights (
   id uuid primary key default gen_random_uuid(),
   video_id uuid not null references public.videos(id) on delete cascade,
@@ -95,6 +119,7 @@ create index if not exists idx_likes_user_id on public.likes using btree(user_id
 create index if not exists idx_subscriptions_subscriber_id on public.subscriptions using btree(subscriber_id);
 create index if not exists idx_subscriptions_creator_id on public.subscriptions using btree(creator_id);
 create index if not exists idx_notifications_user_id on public.notifications using btree(user_id);
+create index if not exists idx_moderation_events_user_id on public.moderation_events using btree(user_id, created_at desc);
 create index if not exists idx_creator_spotlights_scheduled_for on public.creator_spotlights using btree(scheduled_for desc);
 create unique index if not exists idx_creator_spotlights_unique_slot on public.creator_spotlights(scheduled_for);
 
@@ -333,6 +358,80 @@ create trigger profiles_notify_verified_trigger
 after update of verified on public.profiles
 for each row execute function public.notify_verified_status_change();
 
+create or replace function public.record_moderation_violation(
+  target_user_id uuid,
+  violation_reason text,
+  input_title text,
+  input_description text,
+  input_tags text[],
+  input_video_url text,
+  input_thumbnail_url text
+)
+returns table (
+  strikes integer,
+  is_suspended boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  caller_id uuid;
+  next_strikes integer;
+  suspended_now boolean;
+begin
+  caller_id := auth.uid();
+
+  if caller_id is null or caller_id <> target_user_id then
+    raise exception 'Unauthorized';
+  end if;
+
+  insert into public.moderation_events (
+    user_id,
+    reason,
+    title,
+    description,
+    tags,
+    video_url,
+    thumbnail_url
+  ) values (
+    target_user_id,
+    coalesce(violation_reason, 'Policy violation'),
+    coalesce(input_title, ''),
+    coalesce(input_description, ''),
+    coalesce(input_tags, '{}'),
+    input_video_url,
+    input_thumbnail_url
+  );
+
+  update public.profiles
+  set moderation_strikes = moderation_strikes + 1
+  where id = target_user_id
+  returning moderation_strikes into next_strikes;
+
+  if next_strikes >= 5 then
+    update public.profiles
+    set
+      suspended = true,
+      suspension_reason = 'Automatic moderation suspension after 5 removed uploads',
+      suspended_at = coalesce(suspended_at, now())
+    where id = target_user_id;
+    suspended_now := true;
+
+    insert into public.notifications (user_id, type, message)
+    values (
+      target_user_id,
+      'account_suspended',
+      'Your account has been suspended after repeated moderation violations. Contact support@viewtube.heyrivo.com.'
+    );
+  else
+    suspended_now := false;
+  end if;
+
+  return query select next_strikes, suspended_now;
+end;
+$$;
+
 create or replace function public.increment_video_views(video_id uuid)
 returns void
 language sql
@@ -391,6 +490,7 @@ alter table public.comments enable row level security;
 alter table public.likes enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.notifications enable row level security;
+alter table public.moderation_events enable row level security;
 alter table public.creator_spotlights enable row level security;
 
 -- profiles
@@ -407,12 +507,17 @@ with check (
   (select auth.uid()) = id
   and subscribers_count = (select p.subscribers_count from public.profiles p where p.id = (select auth.uid()))
   and verified = (select p.verified from public.profiles p where p.id = (select auth.uid()))
+  and suspended = (select p.suspended from public.profiles p where p.id = (select auth.uid()))
+  and suspension_reason is not distinct from (select p.suspension_reason from public.profiles p where p.id = (select auth.uid()))
+  and suspended_at is not distinct from (select p.suspended_at from public.profiles p where p.id = (select auth.uid()))
+  and moderation_strikes = (select p.moderation_strikes from public.profiles p where p.id = (select auth.uid()))
 );
 
 create or replace function public.admin_update_profile_meta(
   target_profile_id uuid,
   target_subscribers_count bigint,
-  target_verified boolean
+  target_verified boolean,
+  target_suspended boolean
 )
 returns public.profiles
 language plpgsql
@@ -432,7 +537,17 @@ begin
   update public.profiles
   set
     subscribers_count = greatest(0, target_subscribers_count),
-    verified = target_verified
+    verified = target_verified,
+    suspended = target_suspended,
+    suspension_reason = case
+      when target_suspended then coalesce(suspension_reason, 'Suspended by admin')
+      else null
+    end,
+    suspended_at = case
+      when target_suspended and suspended = false then now()
+      when target_suspended then suspended_at
+      else null
+    end
   where id = target_profile_id
   returning * into updated_profile;
 
@@ -527,6 +642,12 @@ on public.notifications for update
 to authenticated
 using ((select auth.uid()) = user_id)
 with check ((select auth.uid()) = user_id);
+
+-- moderation events
+create policy "Users can view own moderation events"
+on public.moderation_events for select
+to authenticated
+using ((select auth.uid()) = user_id);
 
 -- creator spotlights
 create policy "Creator spotlights are viewable by everyone"

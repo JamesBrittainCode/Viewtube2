@@ -10,12 +10,17 @@ export function AdminProfileManager() {
   const [verifyHandle, setVerifyHandle] = useState('@');
   const [subscribersCount, setSubscribersCount] = useState(0);
   const [verified, setVerified] = useState(false);
+  const [suspendHandle, setSuspendHandle] = useState('@');
+  const [suspended, setSuspended] = useState(true);
   const [countLoading, setCountLoading] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
+  const [suspendLoading, setSuspendLoading] = useState(false);
   const [countError, setCountError] = useState<string | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [suspendError, setSuspendError] = useState<string | null>(null);
   const [countMessage, setCountMessage] = useState<string | null>(null);
   const [verifyMessage, setVerifyMessage] = useState<string | null>(null);
+  const [suspendMessage, setSuspendMessage] = useState<string | null>(null);
 
   async function onCountSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,6 +50,37 @@ export function AdminProfileManager() {
       setCountError((err as Error).message);
     } finally {
       setCountLoading(false);
+    }
+  }
+
+  async function onSuspendSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSuspendLoading(true);
+    setSuspendError(null);
+    setSuspendMessage(null);
+
+    try {
+      const res = await fetch('/api/admin/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          handle: normalizeHandle(suspendHandle),
+          suspended,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update suspension status');
+      }
+
+      setSuspendMessage(suspended ? 'User suspended.' : 'User unsuspended.');
+      router.refresh();
+    } catch (err) {
+      setSuspendError((err as Error).message);
+    } finally {
+      setSuspendLoading(false);
     }
   }
 
@@ -146,6 +182,37 @@ export function AdminProfileManager() {
           className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white dark:bg-white dark:text-zinc-900"
         >
           {verifyLoading ? 'Updating...' : 'Save verification status'}
+        </button>
+      </form>
+
+      <form onSubmit={onSuspendSubmit} className="mt-4 space-y-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+        <h3 className="text-sm font-semibold">Account Suspension</h3>
+        <input
+          value={suspendHandle}
+          onChange={(event) => setSuspendHandle(event.target.value)}
+          placeholder="@target_handle"
+          required
+          className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 dark:border-zinc-700 dark:bg-zinc-950"
+        />
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={suspended}
+            onChange={(event) => setSuspended(event.target.checked)}
+          />
+          Suspended
+        </label>
+
+        {suspendError && <p className="text-sm text-red-500">{suspendError}</p>}
+        {suspendMessage && <p className="text-sm text-green-600 dark:text-green-400">{suspendMessage}</p>}
+
+        <button
+          type="submit"
+          disabled={suspendLoading}
+          className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white dark:bg-white dark:text-zinc-900"
+        >
+          {suspendLoading ? 'Updating...' : 'Save suspension status'}
         </button>
       </form>
     </section>

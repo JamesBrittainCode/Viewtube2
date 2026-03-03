@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { THUMBNAIL_BUCKET, VIDEO_BUCKET } from '@/lib/constants';
+import { moderateUploadText } from '@/lib/moderation';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
@@ -10,6 +12,12 @@ function parseTags(raw: string | null): string[] {
     .map((tag) => tag.trim().toLowerCase())
     .filter(Boolean)
     .slice(0, 15);
+}
+
+function extractStoragePath(publicUrl: string, projectUrl: string, bucket: string): string | null {
+  const prefix = `${projectUrl}/storage/v1/object/public/${bucket}/`;
+  if (!publicUrl.startsWith(prefix)) return null;
+  return decodeURIComponent(publicUrl.slice(prefix.length));
 }
 
 export async function POST(request: Request) {
@@ -42,6 +50,22 @@ export async function POST(request: Request) {
   const thumbnailUrl = String(body.thumbnail_url || '').trim();
   const commentsEnabled = body.comments_enabled !== false;
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('suspended')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profile?.suspended) {
+    return NextResponse.json(
+      {
+        error:
+          'Your account is suspended. Contact support@viewtube.heyrivo.com for help.',
+      },
+      { status: 403 },
+    );
+  }
+
   if (!title) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 });
   }
@@ -58,6 +82,50 @@ export async function POST(request: Request) {
   if (!videoUrl.startsWith(publicPrefix) || !thumbnailUrl.startsWith(publicPrefix)) {
     return NextResponse.json(
       { error: 'Invalid storage URLs. Upload to Supabase Storage first.' },
+      { status: 400 },
+    );
+  }
+
+  const moderation = moderateUploadText({ title, description, tags });
+  if (moderation.flagged) {
+    const videoPath = extractStoragePath(videoUrl, projectUrl, VIDEO_BUCKET);
+    const thumbnailPath = extractStoragePath(thumbnailUrl, projectUrl, THUMBNAIL_BUCKET);
+
+    if (videoPath) {
+      await supabase.storage.from(VIDEO_BUCKET).remove([videoPath]);
+    }
+    if (thumbnailPath) {
+      await supabase.storage.from(THUMBNAIL_BUCKET).remove([thumbnailPath]);
+    }
+
+    const { data: violationData } = await supabase.rpc('record_moderation_violation', {
+      target_user_id: user.id,
+      violation_reason: moderation.reason,
+      input_title: title,
+      input_description: description,
+      input_tags: tags,
+      input_video_url: videoUrl,
+      input_thumbnail_url: thumbnailUrl,
+    });
+
+    const violation = Array.isArray(violationData) ? violationData[0] : violationData;
+    const strikes = Number(violation?.strikes || 0);
+    const suspended = Boolean(violation?.is_suspended);
+
+    if (suspended) {
+      return NextResponse.json(
+        {
+          error:
+            'Upload blocked by moderation. Your account is now suspended after 5 violations. Contact support@viewtube.heyrivo.com.',
+        },
+        { status: 403 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        error: `Upload blocked by moderation (${strikes}/5 strikes).`,
+      },
       { status: 400 },
     );
   }

@@ -6,6 +6,10 @@ export type Profile = {
   bio: string | null;
   banner_url: string | null;
   verified: boolean;
+  suspended?: boolean;
+  suspension_reason?: string | null;
+  suspended_at?: string | null;
+  moderation_strikes?: number;
   subscribers_count: number;
   created_at: string;
 };
