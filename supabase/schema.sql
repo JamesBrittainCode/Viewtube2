@@ -282,9 +282,6 @@ end;
 $$;
 
 drop trigger if exists subscriptions_notify_trigger on public.subscriptions;
-create trigger subscriptions_notify_trigger
-after insert on public.subscriptions
-for each row execute function public.notify_new_subscriber();
 
 create or replace function public.notify_video_comment()
 returns trigger
@@ -309,9 +306,6 @@ end;
 $$;
 
 drop trigger if exists comments_notify_trigger on public.comments;
-create trigger comments_notify_trigger
-after insert on public.comments
-for each row execute function public.notify_video_comment();
 
 create or replace function public.notify_new_video_to_subscribers()
 returns trigger
@@ -354,9 +348,6 @@ end;
 $$;
 
 drop trigger if exists profiles_notify_verified_trigger on public.profiles;
-create trigger profiles_notify_verified_trigger
-after update of verified on public.profiles
-for each row execute function public.notify_verified_status_change();
 
 create or replace function public.record_moderation_violation(
   target_user_id uuid,
@@ -431,6 +422,33 @@ begin
   return query select next_strikes, suspended_now;
 end;
 $$;
+
+create or replace function public.push_notification(
+  target_user_id uuid,
+  target_type text,
+  target_message text,
+  target_actor_id uuid default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Unauthorized';
+  end if;
+
+  if target_actor_id is not null and target_actor_id <> auth.uid() then
+    raise exception 'Unauthorized';
+  end if;
+
+  insert into public.notifications (user_id, actor_id, type, message)
+  values (target_user_id, target_actor_id, target_type, target_message);
+end;
+$$;
+
+grant execute on function public.push_notification(uuid, text, text, uuid) to authenticated;
 
 create or replace function public.increment_video_views(video_id uuid)
 returns void

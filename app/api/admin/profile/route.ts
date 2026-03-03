@@ -59,5 +59,14 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  if (verified === true && profile.verified === false) {
+    await supabase.rpc('push_notification', {
+      target_user_id: profile.id,
+      target_type: 'verified',
+      target_message: "You've Been Verified! Congrats! 🎉",
+      target_actor_id: user.id,
+    });
+  }
+
   return NextResponse.json({ profile: data });
 }

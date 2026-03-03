@@ -35,10 +35,20 @@ export async function POST(
     await supabase.from('subscriptions').delete().eq('id', existing.id);
     subscribed = false;
   } else {
-    await supabase
+    const { error: insertError } = await supabase
       .from('subscriptions')
       .insert({ subscriber_id: user.id, creator_id: creatorId });
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 400 });
+    }
     subscribed = true;
+
+    await supabase.rpc('push_notification', {
+      target_user_id: creatorId,
+      target_type: 'new_subscriber',
+      target_message: 'You have a new subscriber',
+      target_actor_id: user.id,
+    });
   }
 
   const { data: profile } = await supabase

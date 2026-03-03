@@ -39,7 +39,7 @@ export async function POST(
 
   const { data: video, error: videoError } = await supabase
     .from('videos')
-    .select('id,comments_enabled')
+    .select('id,user_id,comments_enabled')
     .eq('id', id)
     .maybeSingle();
 
@@ -67,6 +67,15 @@ export async function POST(
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  if (video.user_id !== user.id) {
+    await supabase.rpc('push_notification', {
+      target_user_id: video.user_id,
+      target_type: 'new_comment',
+      target_message: 'Someone commented on your video',
+      target_actor_id: user.id,
+    });
   }
 
   return NextResponse.json({ ok: true });
