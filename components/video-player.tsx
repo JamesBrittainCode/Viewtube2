@@ -39,6 +39,7 @@ export function VideoPlayer({ id, videoUrl }: Props) {
   const [adCountdown, setAdCountdown] = useState(5);
   const [mainPlaybackStarted, setMainPlaybackStarted] = useState(false);
   const [pendingAutoplay, setPendingAutoplay] = useState(false);
+  const [autoplayPrimed, setAutoplayPrimed] = useState(false);
 
   useEffect(() => {
     const key = `viewed:${id}`;
@@ -61,6 +62,7 @@ export function VideoPlayer({ id, videoUrl }: Props) {
     setMainPlaybackStarted(false);
     setIsPlaying(false);
     setPendingAutoplay(false);
+    setAutoplayPrimed(false);
   }, [id, videoUrl]);
 
   async function chooseAdIfEligible() {
@@ -121,6 +123,7 @@ export function VideoPlayer({ id, videoUrl }: Props) {
   }
 
   function onSeek(time: number) {
+    if (mode === 'ad') return;
     const video = videoRef.current;
     if (!video) return;
     video.currentTime = Math.max(0, Math.min(time, duration || 0));
@@ -158,6 +161,21 @@ export function VideoPlayer({ id, videoUrl }: Props) {
             if (pendingAutoplay) {
               setPendingAutoplay(false);
               v.play().catch(() => null);
+              return;
+            }
+
+            if (!autoplayPrimed) {
+              setAutoplayPrimed(true);
+              if (mode === 'main' && !mainPlaybackStarted) {
+                setMainPlaybackStarted(true);
+                void chooseAdIfEligible().then((adLoaded) => {
+                  if (!adLoaded) {
+                    v.play().catch(() => null);
+                  }
+                });
+              } else {
+                v.play().catch(() => null);
+              }
             }
           }}
           onEnded={() => {
@@ -209,6 +227,7 @@ export function VideoPlayer({ id, videoUrl }: Props) {
           step={0.1}
           value={Math.min(currentTime, duration || 0)}
           onChange={(event) => onSeek(Number(event.target.value))}
+          disabled={mode === 'ad'}
           style={{
             background: `linear-gradient(to right, ${
               mode === 'ad' ? '#eab308' : '#ef4444'
@@ -218,7 +237,11 @@ export function VideoPlayer({ id, videoUrl }: Props) {
               duration > 0 ? (Math.min(currentTime, duration) / duration) * 100 : 0
             }%, #3f3f46 100%)`,
           }}
-          className="h-1.5 w-full cursor-pointer appearance-none rounded-full"
+          className={`h-1.5 w-full appearance-none rounded-full [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full ${
+            mode === 'ad'
+              ? 'cursor-not-allowed opacity-90 [&::-moz-range-thumb]:bg-yellow-400 [&::-webkit-slider-thumb]:bg-yellow-400'
+              : 'cursor-pointer [&::-moz-range-thumb]:bg-red-500 [&::-webkit-slider-thumb]:bg-red-500'
+          }`}
         />
 
         <div className="flex items-center justify-between text-xs text-zinc-300">
