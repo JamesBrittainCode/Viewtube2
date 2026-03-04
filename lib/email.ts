@@ -124,3 +124,35 @@ export async function sendAdvertiserReviewEmail(input: {
     `,
   });
 }
+
+export async function sendAdvertiserCampaignLiveEmail(input: {
+  toEmails: string[];
+  adTitle: string;
+  paid: boolean;
+}) {
+  const recipients = Array.from(
+    new Set(
+      input.toEmails
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  );
+  if (!recipients.length) {
+    return;
+  }
+
+  const portalUrl = `${getBaseUrl()}/advertise/portal`;
+  const paymentLine = input.paid
+    ? 'Your payment was confirmed and your campaign is now live.'
+    : 'Your campaign was launched and is now live.';
+
+  await sendEmail({
+    to: recipients,
+    subject: `Your ViewTube Ad Is Live: ${input.adTitle}`,
+    html: `
+      <p>${paymentLine}</p>
+      <p><strong>Ad:</strong> ${input.adTitle}</p>
+      <p><a href="${portalUrl}">Open Advertiser Portal</a></p>
+    `,
+  });
+}

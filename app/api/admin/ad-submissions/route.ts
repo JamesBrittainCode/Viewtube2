@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isAdminEmail } from '@/lib/admin';
+import { sendAdvertiserCampaignLiveEmail } from '@/lib/email';
 import { sendAdvertiserReviewEmail } from '@/lib/email';
 import { createClient } from '@/lib/supabase/server';
 
@@ -139,12 +140,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ submission: data });
   }
 
-  if (submission.status !== 'paid_pending_launch') {
-    return NextResponse.json({ error: 'Submission must be approved and paid before launch' }, { status: 400 });
-  }
-
-  if (!submission.payment_reference && !submission.paypal_transaction_id) {
-    return NextResponse.json({ error: 'No verified payment record found for this submission' }, { status: 400 });
+  if (submission.status !== 'paid_pending_launch' && submission.status !== 'approved_pending_payment') {
+    return NextResponse.json({ error: 'Submission must be approved before launch' }, { status: 400 });
   }
 
   const { data: adRow, error: adError } = await supabase
@@ -193,6 +190,16 @@ export async function PATCH(request: Request) {
 
   if (updateSubmissionError) {
     return NextResponse.json({ error: updateSubmissionError.message }, { status: 400 });
+  }
+
+  try {
+    await sendAdvertiserCampaignLiveEmail({
+      toEmails: [submission.submitter_email, submission.contact_email],
+      adTitle: submission.ad_title,
+      paid: submission.status === 'paid_pending_launch',
+    });
+  } catch (emailError) {
+    console.error('Failed to send advertiser launch email', emailError);
   }
 
   return NextResponse.json({ submission: updatedSubmission, ad: adRow });

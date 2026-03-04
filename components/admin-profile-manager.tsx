@@ -313,7 +313,11 @@ export function AdminProfileManager() {
       if (action === 'approve') {
         setAdMessage('Submission approved. Waiting for advertiser payment.');
       } else if (action === 'launch_paid') {
-        setAdMessage('Paid submission launched.');
+        setAdMessage(
+          submission.status === 'paid_pending_launch'
+            ? 'Paid submission launched.'
+            : 'Submission launched manually before payment.',
+        );
       } else {
         setAdMessage('Submission rejected.');
       }
@@ -668,6 +672,16 @@ export function AdminProfileManager() {
                   <p className="mt-1 text-xs text-zinc-500">
                     Budget: ${Number(item.calculated_price_usd || 0).toFixed(2)}
                   </p>
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={() => void onSubmissionAction(item, 'launch_paid')}
+                      disabled={submissionActionLoading === item.id}
+                      className="rounded-full border border-amber-500 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-900/30 disabled:opacity-60"
+                    >
+                      Launch Without Payment
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
