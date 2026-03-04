@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { normalizeHandle } from '@/lib/handle';
 import { AD_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
+import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
 
 type AdminTab = 'subscribers' | 'verification' | 'suspension' | 'ads';
 
@@ -81,6 +82,7 @@ export function AdminProfileManager() {
   const [ads, setAds] = useState<AdItem[]>([]);
   const [adsLoading, setAdsLoading] = useState(false);
   const [adSubmitting, setAdSubmitting] = useState(false);
+  const [adUploadProgress, setAdUploadProgress] = useState(0);
   const [adError, setAdError] = useState<string | null>(null);
   const [adMessage, setAdMessage] = useState<string | null>(null);
 
@@ -227,6 +229,7 @@ export function AdminProfileManager() {
   async function onAdSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAdSubmitting(true);
+    setAdUploadProgress(0);
     setAdError(null);
     setAdMessage(null);
 
@@ -256,20 +259,23 @@ export function AdminProfileManager() {
       }
 
       const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Session expired. Please sign in again.');
+      }
       const now = Date.now();
       const basePath = `admin/${now}-${Math.random().toString(36).slice(2, 10)}`;
       const videoPath = `${basePath}.${fileExt(adVideoFile.name, 'mp4')}`;
 
-      const { error: videoUploadError } = await supabase.storage
-        .from(AD_BUCKET)
-        .upload(videoPath, adVideoFile, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: adVideoFile.type || 'video/mp4',
-        });
-      if (videoUploadError) {
-        throw new Error(videoUploadError.message);
-      }
+      await uploadResumableToSupabase({
+        file: adVideoFile,
+        bucket: AD_BUCKET,
+        objectPath: videoPath,
+        accessToken: session.access_token,
+        onProgress: setAdUploadProgress,
+      });
 
       const videoPublic = supabase.storage.from(AD_BUCKET).getPublicUrl(videoPath).data.publicUrl;
 
@@ -324,6 +330,7 @@ export function AdminProfileManager() {
       setAdError((err as Error).message);
     } finally {
       setAdSubmitting(false);
+      setAdUploadProgress(0);
     }
   }
 
@@ -493,6 +500,9 @@ export function AdminProfileManager() {
             </div>
             {adError && <p className="text-sm text-red-400">{adError}</p>}
             {adMessage && <p className="text-sm text-green-400">{adMessage}</p>}
+            {adSubmitting && adUploadProgress > 0 && (
+              <p className="text-sm text-zinc-400">Uploading ad video: {adUploadProgress}%</p>
+            )}
             <button
               type="submit"
               disabled={adSubmitting}

@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { FileVideo, Image as ImageIcon, MessageSquareText, Tags, Type } from 'lucide-react';
 import { THUMBNAIL_BUCKET, VIDEO_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
+import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
 
 async function parseApiError(response: Response) {
   const text = await response.text();
@@ -109,6 +110,7 @@ export function UploadForm() {
   const [selectedGeneratedThumbId, setSelectedGeneratedThumbId] = useState<string | null>(null);
   const [generatingThumbs, setGeneratingThumbs] = useState(false);
   const [thumbsVisible, setThumbsVisible] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     return () => {
@@ -178,6 +180,7 @@ export function UploadForm() {
     }
 
     setLoading(true);
+    setUploadProgress(0);
 
     try {
       const supabase = createClient();
@@ -194,13 +197,20 @@ export function UploadForm() {
       const videoPath = `${user.id}/${crypto.randomUUID()}.${videoExt}`;
       const thumbnailPath = `${user.id}/${crypto.randomUUID()}.${thumbExt}`;
 
-      const { error: videoErr } = await supabase.storage
-        .from(VIDEO_BUCKET)
-        .upload(videoPath, video, {
-          contentType: video.type,
-          upsert: false,
-        });
-      if (videoErr) throw new Error(videoErr.message);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Session expired. Please sign in again.');
+      }
+
+      await uploadResumableToSupabase({
+        file: video,
+        bucket: VIDEO_BUCKET,
+        objectPath: videoPath,
+        accessToken: session.access_token,
+        onProgress: setUploadProgress,
+      });
 
       const { error: thumbErr } = await supabase.storage
         .from(THUMBNAIL_BUCKET)
@@ -243,6 +253,7 @@ export function UploadForm() {
       setError((err as Error).message);
     } finally {
       setLoading(false);
+      setUploadProgress(0);
     }
   }
 
@@ -411,6 +422,9 @@ export function UploadForm() {
       </label>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
+      {loading && uploadProgress > 0 && (
+        <p className="text-sm text-zinc-500">Uploading video: {uploadProgress}%</p>
+      )}
 
       <button
         type="submit"
