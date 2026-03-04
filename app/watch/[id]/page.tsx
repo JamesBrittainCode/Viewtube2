@@ -59,7 +59,6 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
         <VideoPlayer
           id={video.id}
           videoUrl={video.video_url}
-          captionSource={`${video.title || ''}. ${video.description || ''}`}
         />
 
         <h1 className="mt-4 text-xl font-bold">{video.title}</h1>

@@ -167,6 +167,8 @@ export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
     return false;
   }
 
+  const captionsAvailable = captionCues.length > 0;
+
   async function startMainVideo() {
     setMode('main');
     setSourceUrl(videoUrl);
@@ -359,9 +361,11 @@ export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
             </button>
             <button
               type="button"
+              disabled={!captionsAvailable}
               onClick={() => setCaptionsEnabled((value) => !value)}
-              className={`rounded p-1 hover:bg-zinc-800 ${
-                captionsEnabled ? 'text-red-400' : 'text-zinc-300'
+              title={captionsAvailable ? 'Toggle captions' : 'Captions unavailable (no speech transcript)'}
+              className={`rounded p-1 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 ${
+                captionsEnabled && captionsAvailable ? 'text-red-400' : 'text-zinc-300'
               }`}
             >
               <Captions className="h-4 w-4" />
