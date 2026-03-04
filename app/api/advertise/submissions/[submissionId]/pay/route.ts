@@ -27,9 +27,9 @@ export async function POST(
 
   const { data: submission, error: submissionError } = await supabase
     .from('ad_submissions')
-    .select('id,status,calculated_price_usd,contact_email')
+    .select('id,status,calculated_price_usd,submitter_email')
     .eq('id', submissionId)
-    .eq('contact_email', user.email.toLowerCase())
+    .eq('submitter_email', user.email.toLowerCase())
     .maybeSingle();
 
   if (submissionError || !submission) {

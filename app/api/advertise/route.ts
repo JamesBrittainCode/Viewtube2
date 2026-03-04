@@ -40,7 +40,8 @@ export async function POST(request: Request) {
   const lastName = String(body.last_name || '').trim();
   const positionTitle = String(body.position_title || '').trim();
   const companyName = String(body.company_name || '').trim();
-  const contactEmail = String(user.email || body.contact_email || '').trim().toLowerCase();
+  const submitterEmail = String(user.email || '').trim().toLowerCase();
+  const contactEmail = String(body.contact_email || '').trim().toLowerCase();
   const adTitle = String(body.ad_title || '').trim();
   const clickUrl = String(body.click_url || '').trim();
   const videoUrl = String(body.video_url || '').trim();
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
     !lastName ||
     !positionTitle ||
     !companyName ||
+    !submitterEmail ||
     !contactEmail ||
     !adTitle ||
     !clickUrl ||
@@ -99,6 +101,7 @@ export async function POST(request: Request) {
       last_name: lastName,
       position_title: positionTitle,
       company_name: companyName,
+      submitter_email: submitterEmail,
       contact_email: contactEmail,
       ad_title: adTitle,
       click_url: clickUrl,

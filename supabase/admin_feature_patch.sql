@@ -224,6 +224,7 @@ create table if not exists public.ad_submissions (
   last_name text not null,
   position_title text not null,
   company_name text not null,
+  submitter_email text not null,
   contact_email text not null,
   ad_title text not null,
   click_url text not null,
@@ -262,9 +263,16 @@ add column if not exists source_submission_id uuid;
 alter table public.ad_submissions
 add column if not exists target_reach integer not null default 10000;
 alter table public.ad_submissions
+add column if not exists submitter_email text;
+alter table public.ad_submissions
 add column if not exists calculated_price_usd numeric(10,2);
 alter table public.ad_submissions
 alter column paypal_transaction_id drop not null;
+update public.ad_submissions
+set submitter_email = lower(contact_email)
+where submitter_email is null;
+alter table public.ad_submissions
+alter column submitter_email set not null;
 
 do $$
 begin
@@ -378,7 +386,7 @@ on public.ad_submissions for insert
 to authenticated
 with check (
   status = 'pending'
-  and lower(contact_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
+  and lower(submitter_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
 );
 
 drop policy if exists "Advertisers can view own ad submissions" on public.ad_submissions;
@@ -386,7 +394,7 @@ create policy "Advertisers can view own ad submissions"
 on public.ad_submissions for select
 to authenticated
 using (
-  lower(contact_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
+  lower(submitter_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
 );
 
 drop policy if exists "Advertisers can update own approved submissions for payment" on public.ad_submissions;
@@ -394,11 +402,11 @@ create policy "Advertisers can update own approved submissions for payment"
 on public.ad_submissions for update
 to authenticated
 using (
-  lower(contact_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
+  lower(submitter_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
   and status in ('approved_pending_payment')
 )
 with check (
-  lower(contact_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
+  lower(submitter_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
   and status in ('approved_pending_payment', 'paid_pending_launch')
 );
 

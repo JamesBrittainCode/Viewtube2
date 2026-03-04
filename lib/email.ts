@@ -1,7 +1,7 @@
 import { ADMIN_EMAIL } from '@/lib/admin';
 
 type SendEmailArgs = {
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
 };
@@ -27,6 +27,7 @@ async function sendEmail({ to, subject, html }: SendEmailArgs) {
     return;
   }
 
+  const toList = Array.isArray(to) ? to : [to];
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -35,7 +36,7 @@ async function sendEmail({ to, subject, html }: SendEmailArgs) {
     },
     body: JSON.stringify({
       from,
-      to: [to],
+      to: toList,
       subject,
       html,
     }),
@@ -81,14 +82,19 @@ export async function sendAdminNewAdRequestEmail(input: {
 }
 
 export async function sendAdvertiserReviewEmail(input: {
-  toEmail: string;
+  toEmails: string[];
   adTitle: string;
   decision: 'approved' | 'rejected';
   reviewNotes?: string | null;
 }) {
-  const normalizedTo = input.toEmail.trim().toLowerCase();
-  const adminAlert = getAdminAlertEmail();
-  if (!normalizedTo || normalizedTo === adminAlert) {
+  const recipients = Array.from(
+    new Set(
+      input.toEmails
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  );
+  if (!recipients.length) {
     return;
   }
 
@@ -104,7 +110,7 @@ export async function sendAdvertiserReviewEmail(input: {
       : 'Your campaign was not approved at this time.';
 
   await sendEmail({
-    to: normalizedTo,
+    to: recipients,
     subject,
     html: `
       <p>${summary}</p>

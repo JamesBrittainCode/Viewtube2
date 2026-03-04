@@ -23,7 +23,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('ad_submissions')
     .select(
-      'id,first_name,last_name,position_title,company_name,contact_email,ad_title,click_url,video_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,starts_at,ends_at,paypal_transaction_id,payment_amount_usd,status,review_notes,reviewed_at,reviewed_by,converted_ad_id,created_at',
+      'id,first_name,last_name,position_title,company_name,submitter_email,contact_email,ad_title,click_url,video_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,starts_at,ends_at,paypal_transaction_id,payment_amount_usd,status,review_notes,reviewed_at,reviewed_by,converted_ad_id,created_at',
     )
     .order('created_at', { ascending: false })
     .limit(200);
@@ -58,7 +58,7 @@ export async function PATCH(request: Request) {
   const { data: submission, error: fetchError } = await supabase
     .from('ad_submissions')
     .select(
-      'id,contact_email,ad_title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,status,starts_at,ends_at,payment_amount_usd,paypal_transaction_id',
+      'id,submitter_email,contact_email,ad_title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,status,starts_at,ends_at,payment_amount_usd,paypal_transaction_id',
     )
     .eq('id', body.id)
     .single();
@@ -92,7 +92,7 @@ export async function PATCH(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     try {
       await sendAdvertiserReviewEmail({
-        toEmail: submission.contact_email,
+        toEmails: [submission.submitter_email, submission.contact_email],
         adTitle: submission.ad_title,
         decision: 'rejected',
         reviewNotes,
@@ -123,7 +123,7 @@ export async function PATCH(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     try {
       await sendAdvertiserReviewEmail({
-        toEmail: submission.contact_email,
+        toEmails: [submission.submitter_email, submission.contact_email],
         adTitle: submission.ad_title,
         decision: 'approved',
         reviewNotes,
