@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { Captions, Maximize2, Minimize2, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type Props = {
   id: string;
   videoUrl: string;
+  captionSource?: string | null;
 };
 
 type AdDecision = {
@@ -26,7 +27,54 @@ function formatTime(seconds: number) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-export function VideoPlayer({ id, videoUrl }: Props) {
+type CaptionCue = {
+  start: number;
+  end: number;
+  text: string;
+};
+
+function buildAutoCaptions(text: string, totalDuration: number): CaptionCue[] {
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+  if (!cleaned || totalDuration <= 0) return [];
+
+  const chunks = cleaned
+    .split(/(?<=[.!?])\s+/)
+    .flatMap((line) => {
+      if (line.length <= 70) return [line];
+      const words = line.split(' ');
+      const out: string[] = [];
+      let current = '';
+      for (const word of words) {
+        const next = current ? `${current} ${word}` : word;
+        if (next.length > 70) {
+          if (current) out.push(current);
+          current = word;
+        } else {
+          current = next;
+        }
+      }
+      if (current) out.push(current);
+      return out;
+    })
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!chunks.length) return [];
+
+  const minCueDuration = 2.2;
+  const maxCues = Math.max(1, Math.floor(totalDuration / minCueDuration));
+  const selected = chunks.slice(0, maxCues);
+  const cueDuration = totalDuration / selected.length;
+
+  return selected.map((line, idx) => ({
+    start: idx * cueDuration,
+    end: idx === selected.length - 1 ? totalDuration : (idx + 1) * cueDuration,
+    text: line,
+  }));
+}
+
+export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [ad, setAd] = useState<AdDecision | null>(null);
   const [sourceUrl, setSourceUrl] = useState(videoUrl);
@@ -40,6 +88,10 @@ export function VideoPlayer({ id, videoUrl }: Props) {
   const [mainPlaybackStarted, setMainPlaybackStarted] = useState(false);
   const [pendingAutoplay, setPendingAutoplay] = useState(false);
   const [autoplayPrimed, setAutoplayPrimed] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [captionsEnabled, setCaptionsEnabled] = useState(true);
+  const [captionCues, setCaptionCues] = useState<CaptionCue[]>([]);
+  const [activeCaption, setActiveCaption] = useState<string | null>(null);
 
   useEffect(() => {
     const key = `viewed:${id}`;
@@ -63,7 +115,33 @@ export function VideoPlayer({ id, videoUrl }: Props) {
     setIsPlaying(false);
     setPendingAutoplay(false);
     setAutoplayPrimed(false);
+    setCaptionCues([]);
+    setActiveCaption(null);
   }, [id, videoUrl]);
+
+  useEffect(() => {
+    function onFullscreenChange() {
+      const container = containerRef.current;
+      setIsFullscreen(Boolean(container && document.fullscreenElement === container));
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    if (mode !== 'main') {
+      setActiveCaption(null);
+      return;
+    }
+    const text = String(captionSource || '').trim();
+    if (!text || !duration || !Number.isFinite(duration)) {
+      setCaptionCues([]);
+      setActiveCaption(null);
+      return;
+    }
+    const cues = buildAutoCaptions(text, duration);
+    setCaptionCues(cues);
+  }, [captionSource, duration, mode]);
 
   async function chooseAdIfEligible() {
     if (adChecked) return;
@@ -130,8 +208,18 @@ export function VideoPlayer({ id, videoUrl }: Props) {
     void startMainVideo();
   }
 
+  async function toggleFullscreen() {
+    const container = containerRef.current;
+    if (!container) return;
+    if (document.fullscreenElement === container) {
+      await document.exitFullscreen().catch(() => null);
+      return;
+    }
+    await container.requestFullscreen().catch(() => null);
+  }
+
   return (
-    <div className="overflow-hidden rounded-xl bg-black">
+    <div ref={containerRef} className="overflow-hidden rounded-xl bg-black">
       <div className="relative aspect-video w-full">
         <video
           ref={videoRef}
@@ -145,6 +233,12 @@ export function VideoPlayer({ id, videoUrl }: Props) {
             const v = videoRef.current;
             if (!v) return;
             setCurrentTime(v.currentTime || 0);
+            if (mode === 'main' && captionCues.length) {
+              const cue = captionCues.find((item) => v.currentTime >= item.start && v.currentTime < item.end);
+              setActiveCaption(cue?.text || null);
+            } else {
+              setActiveCaption(null);
+            }
             if (mode === 'ad' && ad?.skippable) {
               setAdCountdown(Math.max(0, 5 - Math.floor(v.currentTime || 0)));
             }
@@ -180,6 +274,14 @@ export function VideoPlayer({ id, videoUrl }: Props) {
           }}
           onClick={() => void onPlayPause()}
         />
+
+        {mode === 'main' && captionsEnabled && activeCaption && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-14 flex justify-center px-3">
+            <p className="max-w-4xl rounded bg-black/75 px-2 py-1 text-center text-sm font-medium text-white">
+              {activeCaption}
+            </p>
+          </div>
+        )}
 
         {mode === 'ad' && (
           <div className="absolute left-3 top-3 rounded bg-black/70 px-2 py-1 text-xs font-semibold text-yellow-300">
@@ -254,6 +356,18 @@ export function VideoPlayer({ id, videoUrl }: Props) {
               className="rounded p-1 hover:bg-zinc-800"
             >
               {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setCaptionsEnabled((value) => !value)}
+              className={`rounded p-1 hover:bg-zinc-800 ${
+                captionsEnabled ? 'text-red-400' : 'text-zinc-300'
+              }`}
+            >
+              <Captions className="h-4 w-4" />
+            </button>
+            <button type="button" onClick={() => void toggleFullscreen()} className="rounded p-1 hover:bg-zinc-800">
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
           </div>
           <p>

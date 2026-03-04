@@ -56,7 +56,11 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px]">
       <section>
-        <VideoPlayer id={video.id} videoUrl={video.video_url} />
+        <VideoPlayer
+          id={video.id}
+          videoUrl={video.video_url}
+          captionSource={`${video.title || ''}. ${video.description || ''}`}
+        />
 
         <h1 className="mt-4 text-xl font-bold">{video.title}</h1>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">

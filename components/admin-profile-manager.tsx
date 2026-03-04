@@ -306,6 +306,43 @@ export function AdminProfileManager() {
     }
   }
 
+  async function onDeleteSubmission(submissionId: string) {
+    const confirmed = window.confirm('Delete this advertiser submission permanently?');
+    if (!confirmed) return;
+    setSubmissionActionLoading(submissionId);
+    setAdError(null);
+    setAdMessage(null);
+    try {
+      const res = await fetch(`/api/admin/ad-submissions?id=${encodeURIComponent(submissionId)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error(await parseApiError(res));
+      setSubmissions((prev) => prev.filter((item) => item.id !== submissionId));
+      setAdMessage('Submission deleted.');
+    } catch (err) {
+      setAdError((err as Error).message);
+    } finally {
+      setSubmissionActionLoading(null);
+    }
+  }
+
+  async function onDeleteAd(adId: string) {
+    const confirmed = window.confirm('Delete this ad campaign permanently?');
+    if (!confirmed) return;
+    setAdError(null);
+    setAdMessage(null);
+    try {
+      const res = await fetch(`/api/admin/ads?id=${encodeURIComponent(adId)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error(await parseApiError(res));
+      setAds((prev) => prev.filter((item) => item.id !== adId));
+      setAdMessage('Ad campaign deleted.');
+    } catch (err) {
+      setAdError((err as Error).message);
+    }
+  }
+
   async function onAdSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAdSubmitting(true);
@@ -563,6 +600,14 @@ export function AdminProfileManager() {
                     >
                       Reject
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => void onDeleteSubmission(item.id)}
+                      disabled={submissionActionLoading === item.id}
+                      className="rounded-full border border-zinc-600 px-3 py-1 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 disabled:opacity-60"
+                    >
+                      Delete Submission
+                    </button>
                   </div>
                 </div>
               ))}
@@ -600,6 +645,13 @@ export function AdminProfileManager() {
                         className="rounded-full border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800"
                       >
                         {item.approved ? 'Unapprove' : 'Approve'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void onDeleteAd(item.id)}
+                        className="rounded-full border border-red-700 px-3 py-1 text-xs text-red-300 hover:bg-red-950/40"
+                      >
+                        Delete Campaign
                       </button>
                     </div>
                   </div>
