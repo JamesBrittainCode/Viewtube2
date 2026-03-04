@@ -21,7 +21,7 @@ export default async function AdvertiserPortalPage({
   const { data: submissions } = await supabase
     .from('ad_submissions')
     .select(
-      'id,ad_title,company_name,status,calculated_price_usd,payment_amount_usd,starts_at,ends_at,paypal_transaction_id,converted_ad_id,created_at',
+      'id,ad_title,company_name,status,calculated_price_usd,payment_amount_usd,payment_provider,payment_reference,paid_at,starts_at,ends_at,paypal_transaction_id,converted_ad_id,created_at',
     )
     .eq('submitter_email', user.email.toLowerCase())
     .order('created_at', { ascending: false });

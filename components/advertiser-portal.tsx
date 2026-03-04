@@ -1,7 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-
 type Submission = {
   id: string;
   ad_title: string;
@@ -9,6 +7,9 @@ type Submission = {
   status: string;
   calculated_price_usd?: number | null;
   payment_amount_usd?: number | null;
+  payment_provider?: string | null;
+  payment_reference?: string | null;
+  paid_at?: string | null;
   starts_at?: string | null;
   ends_at?: string | null;
   paypal_transaction_id?: string | null;
@@ -21,38 +22,10 @@ type Submission = {
 };
 
 export function AdvertiserPortal({ submissions }: { submissions: Submission[] }) {
-  const paypalCheckoutUrl = process.env.NEXT_PUBLIC_PAYPAL_CHECKOUT_URL || '';
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [txById, setTxById] = useState<Record<string, string>>({});
-
-  async function submitPayment(submissionId: string, amount: number) {
-    const tx = (txById[submissionId] || '').trim();
-    if (!tx) {
-      setError('Transaction ID is required.');
-      return;
-    }
-
-    setSavingId(submissionId);
-    setError(null);
-    try {
-      const res = await fetch(`/api/advertise/submissions/${submissionId}/pay`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paypal_transaction_id: tx,
-          payment_amount_usd: amount,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Payment submission failed');
-      window.location.reload();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setSavingId(null);
-    }
-  }
+  const fourthwallCheckoutUrl = process.env.NEXT_PUBLIC_FOURTHWALL_CHECKOUT_URL || '';
+  const unitPrice = Number(process.env.NEXT_PUBLIC_FOURTHWALL_AD_UNIT_PRICE || '7.50');
+  const error: string | null = null;
+  const unit = Number.isFinite(unitPrice) && unitPrice > 0 ? unitPrice : 7.5;
 
   return (
     <section className="space-y-4">
@@ -116,36 +89,35 @@ export function AdvertiserPortal({ submissions }: { submissions: Submission[] })
           {item.status === 'approved_pending_payment' ? (
             <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
               <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Approved. Payment required before launch.</p>
-              {paypalCheckoutUrl ? (
+              <p className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+                Use the same account email at checkout. In order notes, include: <span className="font-semibold">{item.id}</span>
+              </p>
+              <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
+                Suggested quantity: {Math.max(1, Math.round(Number(item.calculated_price_usd || 0) / unit))} unit(s) @ ${unit.toFixed(2)} each.
+              </p>
+              {fourthwallCheckoutUrl ? (
                 <a
-                  href={paypalCheckoutUrl}
+                  href={fourthwallCheckoutUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-3 inline-flex rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
                 >
-                  Pay with PayPal
+                  Pay with Google Pay (Fourthwall)
                 </a>
               ) : (
                 <p className="mt-2 text-xs text-blue-700 dark:text-blue-300">
-                  PayPal checkout URL is not configured yet.
+                  Fourthwall checkout URL is not configured yet.
                 </p>
               )}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <input
-                  value={txById[item.id] || ''}
-                  onChange={(event) => setTxById((prev) => ({ ...prev, [item.id]: event.target.value }))}
-                  placeholder="PayPal transaction ID"
-                  className="h-10 min-w-[240px] rounded-lg border border-zinc-300 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                />
-                <button
-                  type="button"
-                  disabled={savingId === item.id}
-                  onClick={() => void submitPayment(item.id, Number(item.calculated_price_usd || 0))}
-                  className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-                >
-                  {savingId === item.id ? 'Submitting...' : 'Submit Payment'}
-                </button>
-              </div>
+              <p className="mt-3 text-xs text-blue-700 dark:text-blue-300">
+                Payment is verified automatically by webhook before campaign launch is allowed.
+              </p>
+            </div>
+          ) : null}
+          {item.status === 'paid_pending_launch' ? (
+            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">
+              Payment verified via {item.payment_provider || 'gateway'}{item.paid_at ? ` on ${new Date(item.paid_at).toLocaleString()}` : ''}.
+              {item.payment_reference ? ` Ref: ${item.payment_reference}` : ''}
             </div>
           ) : null}
         </article>

@@ -115,6 +115,9 @@ export async function POST(request: Request) {
       ends_at: endsAt,
       paypal_transaction_id: null,
       payment_amount_usd: null,
+      payment_provider: null,
+      payment_reference: null,
+      paid_at: null,
       status: 'pending',
     })
     .select('id,status,created_at,calculated_price_usd,target_reach')

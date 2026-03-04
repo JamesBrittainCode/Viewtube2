@@ -36,7 +36,7 @@ export default async function AdvertisePage() {
         </div>
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
           <p className="text-sm font-semibold">2. Payment Verification</p>
-          <p className="mt-1 text-xs text-zinc-500">Pay via PayPal and include your transaction ID for verification.</p>
+          <p className="mt-1 text-xs text-zinc-500">Pay through Fourthwall checkout (Google Pay supported). Payment is verified by webhook.</p>
         </div>
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
           <p className="text-sm font-semibold">3. Review & Launch</p>

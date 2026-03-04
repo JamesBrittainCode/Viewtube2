@@ -216,7 +216,7 @@ export function AdvertiserIntakeForm() {
       <div className="mb-6 space-y-2">
         <h2 className="text-2xl font-semibold">Advertiser Campaign Intake</h2>
         <p className="text-sm text-zinc-500">
-          Submit your campaign and payment details. All ads are manually reviewed before going live.
+          Submit your campaign details. Ads are manually reviewed first, then paid through Fourthwall checkout.
         </p>
       </div>
 

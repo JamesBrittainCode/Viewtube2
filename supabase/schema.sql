@@ -140,6 +140,9 @@ create table if not exists public.ad_submissions (
   ends_at timestamptz,
   paypal_transaction_id text,
   payment_amount_usd numeric(10,2),
+  payment_provider text,
+  payment_reference text,
+  paid_at timestamptz,
   status text not null default 'pending',
   review_notes text,
   reviewed_at timestamptz,
@@ -176,6 +179,12 @@ alter table public.ad_submissions
 add column if not exists submitter_email text;
 alter table public.ad_submissions
 add column if not exists calculated_price_usd numeric(10,2);
+alter table public.ad_submissions
+add column if not exists payment_provider text;
+alter table public.ad_submissions
+add column if not exists payment_reference text;
+alter table public.ad_submissions
+add column if not exists paid_at timestamptz;
 alter table public.ad_submissions
 alter column paypal_transaction_id drop not null;
 update public.ad_submissions
@@ -877,12 +886,10 @@ create policy "Advertisers can update own approved submissions for payment"
 on public.ad_submissions for update
 to authenticated
 using (
-  lower(submitter_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
-  and status in ('approved_pending_payment')
+  false
 )
 with check (
-  lower(submitter_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
-  and status in ('approved_pending_payment', 'paid_pending_launch')
+  false
 );
 
 create policy "Only admin can view ad submissions"

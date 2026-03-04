@@ -23,7 +23,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('ad_submissions')
     .select(
-      'id,first_name,last_name,position_title,company_name,submitter_email,contact_email,ad_title,click_url,video_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,starts_at,ends_at,paypal_transaction_id,payment_amount_usd,status,review_notes,reviewed_at,reviewed_by,converted_ad_id,created_at',
+      'id,first_name,last_name,position_title,company_name,submitter_email,contact_email,ad_title,click_url,video_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,starts_at,ends_at,paypal_transaction_id,payment_amount_usd,payment_provider,payment_reference,paid_at,status,review_notes,reviewed_at,reviewed_by,converted_ad_id,created_at',
     )
     .order('created_at', { ascending: false })
     .limit(200);
@@ -58,7 +58,7 @@ export async function PATCH(request: Request) {
   const { data: submission, error: fetchError } = await supabase
     .from('ad_submissions')
     .select(
-      'id,submitter_email,contact_email,ad_title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,status,starts_at,ends_at,payment_amount_usd,paypal_transaction_id',
+      'id,submitter_email,contact_email,ad_title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,status,starts_at,ends_at,payment_amount_usd,paypal_transaction_id,payment_provider,payment_reference,paid_at',
     )
     .eq('id', body.id)
     .single();
@@ -113,10 +113,15 @@ export async function PATCH(request: Request) {
         reviewed_by: user.id,
         starts_at: startsAt,
         ends_at: endsAt,
+        payment_provider: null,
+        payment_reference: null,
+        payment_amount_usd: null,
+        paid_at: null,
+        paypal_transaction_id: null,
       })
       .eq('id', body.id)
       .select(
-        'id,first_name,last_name,company_name,ad_title,status,review_notes,reviewed_at,reviewed_by,starts_at,ends_at,payment_amount_usd,paypal_transaction_id',
+        'id,first_name,last_name,company_name,ad_title,status,review_notes,reviewed_at,reviewed_by,starts_at,ends_at,payment_amount_usd,payment_provider,payment_reference,paid_at',
       )
       .single();
 
@@ -134,12 +139,12 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ submission: data });
   }
 
-  if (submission.status !== 'paid_pending_launch' && submission.status !== 'approved_pending_payment') {
+  if (submission.status !== 'paid_pending_launch') {
     return NextResponse.json({ error: 'Submission must be approved and paid before launch' }, { status: 400 });
   }
 
-  if (!submission.paypal_transaction_id) {
-    return NextResponse.json({ error: 'No payment transaction found for this submission' }, { status: 400 });
+  if (!submission.payment_reference && !submission.paypal_transaction_id) {
+    return NextResponse.json({ error: 'No verified payment record found for this submission' }, { status: 400 });
   }
 
   const { data: adRow, error: adError } = await supabase

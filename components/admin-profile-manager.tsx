@@ -48,8 +48,11 @@ type AdSubmission = {
   skippable: boolean;
   starts_at?: string | null;
   ends_at?: string | null;
-  paypal_transaction_id: string;
+  paypal_transaction_id?: string | null;
   payment_amount_usd?: number | null;
+  payment_provider?: string | null;
+  payment_reference?: string | null;
+  paid_at?: string | null;
   status: 'pending' | 'approved_pending_payment' | 'paid_pending_launch' | 'approved' | 'rejected';
   review_notes?: string | null;
   created_at: string;
@@ -570,7 +573,7 @@ export function AdminProfileManager() {
                     {item.first_name} {item.last_name} • {item.position_title} • {item.company_name}
                   </p>
                   <p className="mt-1 text-xs text-zinc-500">
-                    {item.contact_email} • PayPal TX: {item.paypal_transaction_id}
+                    {item.contact_email} • Payment Ref: {item.payment_reference || item.paypal_transaction_id || 'N/A'}
                   </p>
                   <p className="mt-1 text-xs text-zinc-500">
                     Runtime: {item.runtime_seconds}s • {item.skippable ? 'Skippable' : 'Non-skippable'}
@@ -680,8 +683,12 @@ export function AdminProfileManager() {
                 <div key={item.id} className="rounded-lg border border-zinc-700 p-3">
                   <p className="text-sm font-semibold">{item.ad_title}</p>
                   <p className="text-xs text-zinc-500">
-                    TX: {item.paypal_transaction_id || 'N/A'} • Amount: $
+                    Provider: {item.payment_provider || 'fourthwall'} • Ref:{' '}
+                    {item.payment_reference || item.paypal_transaction_id || 'N/A'} • Amount: $
                     {Number(item.payment_amount_usd || 0).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    Paid at: {item.paid_at ? new Date(item.paid_at).toLocaleString() : 'Pending webhook'}
                   </p>
                   <div className="mt-2">
                     <button
