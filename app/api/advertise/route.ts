@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { calculateAdPricing } from '@/lib/ad-pricing';
+import { sendAdminNewAdRequestEmail } from '@/lib/email';
 import { createClient } from '@/lib/supabase/server';
 
 function toIsoOrNull(value?: string | null) {
@@ -117,5 +118,18 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  try {
+    await sendAdminNewAdRequestEmail({
+      submissionId: data.id,
+      advertiserName: `${firstName} ${lastName}`,
+      companyName,
+      adTitle,
+      estimatedPriceUsd: pricing.estimatedPriceUsd,
+    });
+  } catch (emailError) {
+    console.error('Failed to send admin ad request email', emailError);
+  }
+
   return NextResponse.json({ submission: data });
 }

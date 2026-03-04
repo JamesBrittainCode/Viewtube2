@@ -43,7 +43,7 @@ export function calculateAdPricing(input: AdPricingInput): AdPricingResult {
   const nonSkippableMultiplier = skippable ? 1 : 1.65;
   const reachUnits = targetReach / 1000;
   const raw = reachUnits * baseCpm * runtimeMultiplier * durationMultiplier * nonSkippableMultiplier;
-  const estimatedPriceUsd = round2(Math.max(5, raw));
+  const estimatedPriceUsd = round2(Math.max(5, raw) + 2.5);
 
   return {
     runtimeSeconds,

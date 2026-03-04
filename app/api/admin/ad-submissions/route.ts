@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isAdminEmail } from '@/lib/admin';
+import { sendAdvertiserReviewEmail } from '@/lib/email';
 import { createClient } from '@/lib/supabase/server';
 
 function toIsoOrNull(value?: string | null) {
@@ -57,7 +58,7 @@ export async function PATCH(request: Request) {
   const { data: submission, error: fetchError } = await supabase
     .from('ad_submissions')
     .select(
-      'id,ad_title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,status,starts_at,ends_at,payment_amount_usd,paypal_transaction_id',
+      'id,contact_email,ad_title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,status,starts_at,ends_at,payment_amount_usd,paypal_transaction_id',
     )
     .eq('id', body.id)
     .single();
@@ -89,6 +90,16 @@ export async function PATCH(request: Request) {
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    try {
+      await sendAdvertiserReviewEmail({
+        toEmail: submission.contact_email,
+        adTitle: submission.ad_title,
+        decision: 'rejected',
+        reviewNotes,
+      });
+    } catch (emailError) {
+      console.error('Failed to send advertiser rejection email', emailError);
+    }
     return NextResponse.json({ submission: data });
   }
 
@@ -110,6 +121,16 @@ export async function PATCH(request: Request) {
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    try {
+      await sendAdvertiserReviewEmail({
+        toEmail: submission.contact_email,
+        adTitle: submission.ad_title,
+        decision: 'approved',
+        reviewNotes,
+      });
+    } catch (emailError) {
+      console.error('Failed to send advertiser approval email', emailError);
+    }
     return NextResponse.json({ submission: data });
   }
 
