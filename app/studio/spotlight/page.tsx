@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
-import { AdminProfileManager } from '@/components/admin-profile-manager';
 import { isAdminEmail } from '@/lib/admin';
 import { unwrapRelation } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
@@ -108,12 +107,6 @@ export default async function StudioSpotlightPage() {
           </div>
         )}
       </div>
-
-      {isAdmin && (
-        <section>
-          <AdminProfileManager />
-        </section>
-      )}
     </div>
   );
 }

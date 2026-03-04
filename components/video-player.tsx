@@ -1,13 +1,45 @@
 'use client';
 
-import { useEffect } from 'react';
+import Link from 'next/link';
+import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 type Props = {
   id: string;
   videoUrl: string;
 };
 
+type AdDecision = {
+  id: string;
+  title: string;
+  video_url: string;
+  click_url: string;
+  thumbnail_url?: string | null;
+  skippable: boolean;
+};
+
+function formatTime(seconds: number) {
+  if (!Number.isFinite(seconds)) return '0:00';
+  const sec = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 export function VideoPlayer({ id, videoUrl }: Props) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [ad, setAd] = useState<AdDecision | null>(null);
+  const [sourceUrl, setSourceUrl] = useState(videoUrl);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [mode, setMode] = useState<'main' | 'ad'>('main');
+  const [adChecked, setAdChecked] = useState(false);
+  const [adCountdown, setAdCountdown] = useState(5);
+  const [mainPlaybackStarted, setMainPlaybackStarted] = useState(false);
+  const [pendingAutoplay, setPendingAutoplay] = useState(false);
+
   useEffect(() => {
     const key = `viewed:${id}`;
 
@@ -18,12 +50,199 @@ export function VideoPlayer({ id, videoUrl }: Props) {
       .catch(() => null);
   }, [id]);
 
+  useEffect(() => {
+    setSourceUrl(videoUrl);
+    setMode('main');
+    setAd(null);
+    setAdChecked(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setAdCountdown(5);
+    setMainPlaybackStarted(false);
+    setIsPlaying(false);
+    setPendingAutoplay(false);
+  }, [id, videoUrl]);
+
+  async function chooseAdIfEligible() {
+    if (adChecked) return;
+    const video = videoRef.current;
+    if (!video) return;
+    setAdChecked(true);
+
+    const mainDuration = Number.isFinite(video.duration) ? video.duration : 0;
+    if (mainDuration < 60) return;
+
+    try {
+      const res = await fetch('/api/ads/decision?eligible=1', { cache: 'no-store' });
+      const data = (await res.json()) as { ad?: AdDecision | null };
+      if (!data.ad) return;
+
+      setAd(data.ad);
+      setMode('ad');
+      setSourceUrl(data.ad.video_url);
+      setCurrentTime(0);
+      setDuration(0);
+      setAdCountdown(5);
+      setPendingAutoplay(true);
+      return true;
+    } catch {
+      return false;
+    }
+
+    return false;
+  }
+
+  async function startMainVideo() {
+    setMode('main');
+    setSourceUrl(videoUrl);
+    setCurrentTime(0);
+    setDuration(0);
+    setPendingAutoplay(true);
+  }
+
+  async function onPlayPause() {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (video.paused) {
+      if (mode === 'main' && !mainPlaybackStarted) {
+        setMainPlaybackStarted(true);
+        const adLoaded = await chooseAdIfEligible();
+        if (!adLoaded) {
+          video.play().catch(() => null);
+        }
+        return;
+      }
+
+      video.play().catch(() => null);
+    } else {
+      video.pause();
+    }
+  }
+
+  function onSeek(time: number) {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = Math.max(0, Math.min(time, duration || 0));
+  }
+
+  function onSkipAd() {
+    if (mode !== 'ad') return;
+    if (!ad?.skippable || adCountdown > 0) return;
+    void startMainVideo();
+  }
+
   return (
-    <video
-      src={videoUrl}
-      controls
-      preload="metadata"
-      className="viewtube-player aspect-video w-full rounded-xl bg-black"
-    />
+    <div className="overflow-hidden rounded-xl bg-black">
+      <div className="relative aspect-video w-full">
+        <video
+          ref={videoRef}
+          src={sourceUrl}
+          preload="metadata"
+          muted={isMuted}
+          className="h-full w-full"
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onTimeUpdate={() => {
+            const v = videoRef.current;
+            if (!v) return;
+            setCurrentTime(v.currentTime || 0);
+            if (mode === 'ad' && ad?.skippable) {
+              setAdCountdown(Math.max(0, 5 - Math.floor(v.currentTime || 0)));
+            }
+          }}
+          onLoadedMetadata={() => {
+            const v = videoRef.current;
+            if (!v) return;
+            setDuration(v.duration || 0);
+            if (pendingAutoplay) {
+              setPendingAutoplay(false);
+              v.play().catch(() => null);
+            }
+          }}
+          onEnded={() => {
+            if (mode === 'ad') {
+              void startMainVideo();
+            }
+          }}
+          onClick={() => void onPlayPause()}
+        />
+
+        {mode === 'ad' && (
+          <div className="absolute left-3 top-3 rounded bg-black/70 px-2 py-1 text-xs font-semibold text-yellow-300">
+            Ad
+          </div>
+        )}
+
+        {mode === 'ad' && ad?.click_url && (
+          <Link
+            href={ad.click_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute right-3 top-3 flex items-center gap-2 rounded bg-white/90 px-2 py-1 text-xs font-semibold text-zinc-900"
+          >
+            {ad.thumbnail_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={ad.thumbnail_url} alt="" className="h-7 w-10 rounded object-cover" />
+            ) : null}
+            Visit Sponsor
+          </Link>
+        )}
+
+        {mode === 'ad' && ad?.skippable && (
+          <button
+            type="button"
+            onClick={onSkipAd}
+            disabled={adCountdown > 0}
+            className="absolute bottom-3 right-3 rounded bg-black/70 px-3 py-1 text-xs text-white disabled:opacity-60"
+          >
+            {adCountdown > 0 ? `Skip in ${adCountdown}` : 'Skip Ad'}
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-2 px-3 py-3">
+        <input
+          type="range"
+          min={0}
+          max={Math.max(0.1, duration || 0)}
+          step={0.1}
+          value={Math.min(currentTime, duration || 0)}
+          onChange={(event) => onSeek(Number(event.target.value))}
+          style={{
+            background: `linear-gradient(to right, ${
+              mode === 'ad' ? '#eab308' : '#ef4444'
+            } 0%, ${mode === 'ad' ? '#eab308' : '#ef4444'} ${
+              duration > 0 ? (Math.min(currentTime, duration) / duration) * 100 : 0
+            }%, #3f3f46 ${
+              duration > 0 ? (Math.min(currentTime, duration) / duration) * 100 : 0
+            }%, #3f3f46 100%)`,
+          }}
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full"
+        />
+
+        <div className="flex items-center justify-between text-xs text-zinc-300">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void onPlayPause()}
+              className="rounded p-1 hover:bg-zinc-800"
+            >
+              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsMuted((v) => !v)}
+              className="rounded p-1 hover:bg-zinc-800"
+            >
+              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </button>
+          </div>
+          <p>
+            {formatTime(currentTime)} / {formatTime(duration)}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

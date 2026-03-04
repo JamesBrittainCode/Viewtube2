@@ -11,12 +11,14 @@ import {
   MessageSquareMore,
   Search,
   Settings,
+  Shield,
   Sparkles,
   Video,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { isAdminEmail } from '@/lib/admin';
 
-const navLinks = [
+const baseNavLinks = [
   { href: '/studio', label: 'Dashboard', icon: Compass },
   { href: '/studio/content', label: 'Content', icon: Video },
   { href: '/studio/analytics', label: 'Analytics', icon: BarChart3 },
@@ -39,6 +41,10 @@ export default async function StudioLayout({ children }: { children: React.React
     .select('username,handle,avatar_url')
     .eq('id', user.id)
     .single();
+  const isAdmin = isAdminEmail(user.email);
+  const navLinks = isAdmin
+    ? [...baseNavLinks, { href: '/studio/admin', label: 'Admin', icon: Shield }]
+    : [...baseNavLinks];
 
   return (
     <div className="min-h-screen bg-[#202124] text-zinc-100">

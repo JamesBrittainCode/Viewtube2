@@ -5,6 +5,7 @@ import { Logo } from '@/components/logo';
 import { NotificationMenu } from '@/components/notification-menu';
 import { ProfileMenu } from '@/components/profile-menu';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { isAdminEmail } from '@/lib/admin';
 import { unwrapRelation } from '@/lib/profile';
 
 export async function Navbar() {
@@ -106,7 +107,11 @@ export async function Navbar() {
         )}
 
         {user ? (
-          <ProfileMenu avatarUrl={avatarUrl} handle={handle} />
+          <ProfileMenu
+            avatarUrl={avatarUrl}
+            handle={handle}
+            isAdmin={isAdminEmail(user.email)}
+          />
         ) : (
           <Link
             href="/sign-in"

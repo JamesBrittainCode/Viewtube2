@@ -185,9 +185,23 @@ create table if not exists public.moderation_events (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.ads (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  video_url text not null,
+  click_url text not null,
+  thumbnail_url text,
+  skippable boolean not null default true,
+  is_active boolean not null default true,
+  created_by uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists idx_moderation_events_user_id on public.moderation_events using btree(user_id, created_at desc);
+create index if not exists idx_ads_active_created_at on public.ads using btree(is_active, created_at desc);
 
 alter table public.moderation_events enable row level security;
+alter table public.ads enable row level security;
 alter table public.notifications
 add column if not exists target_url text;
 
@@ -196,6 +210,19 @@ create policy "Users can view own moderation events"
 on public.moderation_events for select
 to authenticated
 using ((select auth.uid()) = user_id);
+
+drop policy if exists "Active ads are viewable by everyone" on public.ads;
+create policy "Active ads are viewable by everyone"
+on public.ads for select
+to anon, authenticated
+using (is_active = true);
+
+drop policy if exists "Only admin can manage ads" on public.ads;
+create policy "Only admin can manage ads"
+on public.ads for all
+to authenticated
+using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com')
+with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
 
 create or replace function public.record_moderation_violation(
   target_user_id uuid,
@@ -451,11 +478,21 @@ insert into storage.buckets (id, name, public)
 values ('banners', 'banners', true)
 on conflict (id) do nothing;
 
+insert into storage.buckets (id, name, public)
+values ('ads', 'ads', true)
+on conflict (id) do nothing;
+
 drop policy if exists "Public read access for banners bucket" on storage.objects;
 create policy "Public read access for banners bucket"
 on storage.objects for select
 to anon, authenticated
 using (bucket_id = 'banners');
+
+drop policy if exists "Public read access for ads bucket" on storage.objects;
+create policy "Public read access for ads bucket"
+on storage.objects for select
+to anon, authenticated
+using (bucket_id = 'ads');
 
 drop policy if exists "Authenticated upload to banners bucket" on storage.objects;
 create policy "Authenticated upload to banners bucket"
@@ -486,4 +523,35 @@ to authenticated
 using (
   bucket_id = 'banners'
   and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+drop policy if exists "Only admin uploads ads bucket objects" on storage.objects;
+create policy "Only admin uploads ads bucket objects"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'ads'
+  and coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com'
+);
+
+drop policy if exists "Only admin updates ads bucket objects" on storage.objects;
+create policy "Only admin updates ads bucket objects"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'ads'
+  and coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com'
+)
+with check (
+  bucket_id = 'ads'
+  and coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com'
+);
+
+drop policy if exists "Only admin deletes ads bucket objects" on storage.objects;
+create policy "Only admin deletes ads bucket objects"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'ads'
+  and coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com'
 );
