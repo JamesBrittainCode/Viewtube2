@@ -47,6 +47,13 @@ async function sendEmail({ to, subject, html }: SendEmailArgs) {
   }
 }
 
+function getAdminAlertEmail() {
+  return (
+    process.env.ADMIN_ALERT_EMAIL?.trim().toLowerCase() ||
+    ADMIN_EMAIL
+  );
+}
+
 export async function sendAdminNewAdRequestEmail(input: {
   submissionId: string;
   advertiserName: string;
@@ -55,8 +62,9 @@ export async function sendAdminNewAdRequestEmail(input: {
   estimatedPriceUsd: number;
 }) {
   const portalUrl = `${getBaseUrl()}/studio/admin`;
+  const adminTo = getAdminAlertEmail();
   await sendEmail({
-    to: ADMIN_EMAIL,
+    to: adminTo,
     subject: `New ViewTube Ad Request: ${input.adTitle}`,
     html: `
       <p>A new ad request was submitted.</p>

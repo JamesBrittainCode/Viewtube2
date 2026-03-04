@@ -134,6 +134,8 @@ export function AdminProfileManager() {
   const [submissionEnd, setSubmissionEnd] = useState<Record<string, string>>({});
   const [adScheduleStart, setAdScheduleStart] = useState<Record<string, string>>({});
   const [adScheduleEnd, setAdScheduleEnd] = useState<Record<string, string>>({});
+  const [previewSubmissionId, setPreviewSubmissionId] = useState<string | null>(null);
+  const [previewAdId, setPreviewAdId] = useState<string | null>(null);
 
   const tabs: { id: AdminTab; label: string }[] = useMemo(
     () => [
@@ -597,6 +599,15 @@ export function AdminProfileManager() {
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
                       type="button"
+                      onClick={() =>
+                        setPreviewSubmissionId((current) => (current === item.id ? null : item.id))
+                      }
+                      className="rounded-full border border-zinc-700 px-3 py-1 text-xs font-semibold text-zinc-200 hover:bg-zinc-800"
+                    >
+                      {previewSubmissionId === item.id ? 'Hide Preview' : 'Preview Ad'}
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => void onSubmissionAction(item, 'approve')}
                       disabled={submissionActionLoading === item.id}
                       className="rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-500 disabled:opacity-60"
@@ -620,6 +631,16 @@ export function AdminProfileManager() {
                       Delete Submission
                     </button>
                   </div>
+                  {previewSubmissionId === item.id && (
+                    <div className="mt-3 overflow-hidden rounded-lg border border-zinc-700 bg-black">
+                      <video
+                        src={item.video_url}
+                        controls
+                        preload="metadata"
+                        className="aspect-video w-full"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -732,6 +753,15 @@ export function AdminProfileManager() {
                     <button
                       type="button"
                       onClick={() =>
+                        setPreviewAdId((current) => (current === item.id ? null : item.id))
+                      }
+                      className="mr-2 rounded-full border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800"
+                    >
+                      {previewAdId === item.id ? 'Hide Preview' : 'Preview Ad'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
                         void onUpdateAd(item, {
                           starts_at: adScheduleStart[item.id] || null,
                           ends_at: adScheduleEnd[item.id] || null,
@@ -742,6 +772,16 @@ export function AdminProfileManager() {
                       Save Schedule
                     </button>
                   </div>
+                  {previewAdId === item.id && (
+                    <div className="mt-3 overflow-hidden rounded-lg border border-zinc-700 bg-black">
+                      <video
+                        src={item.video_url}
+                        controls
+                        preload="metadata"
+                        className="aspect-video w-full"
+                      />
+                    </div>
+                  )}
                   <p className="mt-2 text-xs text-zinc-400">
                     {item.skippable ? 'Skippable' : 'Non-skippable'} •{' '}
                     {item.approved ? 'Approved' : 'Pending approval'} •{' '}

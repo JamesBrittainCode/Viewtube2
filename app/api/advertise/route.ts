@@ -119,6 +119,8 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
+  let emailSent = false;
+  let adminEmailError: string | null = null;
   try {
     await sendAdminNewAdRequestEmail({
       submissionId: data.id,
@@ -127,9 +129,14 @@ export async function POST(request: Request) {
       adTitle,
       estimatedPriceUsd: pricing.estimatedPriceUsd,
     });
-  } catch (emailError) {
-    console.error('Failed to send admin ad request email', emailError);
+    emailSent = true;
+  } catch (err) {
+    console.error('Failed to send admin ad request email', err);
+    adminEmailError =
+      process.env.NODE_ENV === 'production'
+        ? 'Admin email failed'
+        : (err as Error)?.message || 'Admin email failed';
   }
 
-  return NextResponse.json({ submission: data });
+  return NextResponse.json({ submission: data, email_sent: emailSent, email_error: adminEmailError });
 }
