@@ -22,7 +22,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('ads')
     .select(
-      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,skippable,approved,starts_at,ends_at,is_active,source_submission_id,created_at',
+      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,created_at',
     )
     .order('created_at', { ascending: false });
 
@@ -46,6 +46,8 @@ export async function POST(request: Request) {
     click_url?: string;
     thumbnail_url?: string;
     runtime_seconds?: number;
+    target_reach?: number;
+    calculated_price_usd?: number;
     skippable?: boolean;
     is_active?: boolean;
     approved?: boolean;
@@ -58,6 +60,8 @@ export async function POST(request: Request) {
   const clickUrl = String(body.click_url || '').trim();
   const thumbnailUrl = String(body.thumbnail_url || '').trim();
   const runtimeSeconds = Math.max(0, Number(body.runtime_seconds || 0));
+  const targetReach = body.target_reach ? Math.max(0, Number(body.target_reach || 0)) : null;
+  const calculatedPriceUsd = body.calculated_price_usd ? Math.max(0, Number(body.calculated_price_usd || 0)) : null;
   const skippable = body.skippable !== false;
   const isActive = body.is_active !== false;
   const approved = body.approved !== false;
@@ -82,6 +86,8 @@ export async function POST(request: Request) {
       click_url: clickUrl,
       thumbnail_url: thumbnailUrl || null,
       runtime_seconds: runtimeSeconds,
+      target_reach: targetReach,
+      calculated_price_usd: calculatedPriceUsd,
       skippable,
       approved,
       starts_at: startsAt,
@@ -90,7 +96,7 @@ export async function POST(request: Request) {
       created_by: user.id,
     })
     .select(
-      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,skippable,approved,starts_at,ends_at,is_active,source_submission_id,created_at',
+      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,created_at',
     )
     .single();
 
@@ -149,7 +155,7 @@ export async function PATCH(request: Request) {
     .update(patch)
     .eq('id', body.id)
     .select(
-      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,skippable,approved,starts_at,ends_at,is_active,source_submission_id,created_at',
+      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,created_at',
     )
     .single();
 

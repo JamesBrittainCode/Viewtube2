@@ -16,6 +16,8 @@ type AdItem = {
   click_url: string;
   thumbnail_url?: string | null;
   runtime_seconds: number;
+  target_reach?: number | null;
+  calculated_price_usd?: number | null;
   skippable: boolean;
   approved: boolean;
   starts_at?: string | null;
@@ -37,6 +39,8 @@ type AdSubmission = {
   video_url: string;
   thumbnail_url?: string | null;
   runtime_seconds: number;
+  target_reach?: number | null;
+  calculated_price_usd?: number | null;
   skippable: boolean;
   starts_at?: string | null;
   ends_at?: string | null;
@@ -517,6 +521,10 @@ export function AdminProfileManager() {
                   <p className="mt-1 text-xs text-zinc-500">
                     Runtime: {item.runtime_seconds}s • {item.skippable ? 'Skippable' : 'Non-skippable'}
                   </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Reach: {(item.target_reach || 0).toLocaleString()} • Price: $
+                    {Number(item.calculated_price_usd || 0).toFixed(2)}
+                  </p>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     <input
                       type="datetime-local"
@@ -573,6 +581,10 @@ export function AdminProfileManager() {
                       <p className="text-sm font-semibold">{item.title}</p>
                       <p className="text-xs text-zinc-400">{new Date(item.created_at).toLocaleString()}</p>
                       <p className="text-xs text-zinc-500">Runtime: {item.runtime_seconds || 0}s</p>
+                      <p className="text-xs text-zinc-500">
+                        Reach: {(item.target_reach || 0).toLocaleString()} • Price: $
+                        {Number(item.calculated_price_usd || 0).toFixed(2)}
+                      </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button

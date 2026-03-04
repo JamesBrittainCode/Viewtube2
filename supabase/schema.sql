@@ -92,6 +92,8 @@ create table if not exists public.ads (
   click_url text not null,
   thumbnail_url text,
   runtime_seconds integer not null default 0,
+  target_reach integer,
+  calculated_price_usd numeric(10,2),
   skippable boolean not null default true,
   approved boolean not null default false,
   starts_at timestamptz,
@@ -114,6 +116,8 @@ create table if not exists public.ad_submissions (
   video_url text not null,
   thumbnail_url text,
   runtime_seconds integer not null default 0,
+  target_reach integer not null default 10000,
+  calculated_price_usd numeric(10,2),
   skippable boolean not null default true,
   starts_at timestamptz,
   ends_at timestamptz,
@@ -130,6 +134,10 @@ create table if not exists public.ad_submissions (
 alter table public.ads
 add column if not exists runtime_seconds integer not null default 0;
 alter table public.ads
+add column if not exists target_reach integer;
+alter table public.ads
+add column if not exists calculated_price_usd numeric(10,2);
+alter table public.ads
 add column if not exists approved boolean not null default false;
 alter table public.ads
 add column if not exists starts_at timestamptz;
@@ -137,6 +145,10 @@ alter table public.ads
 add column if not exists ends_at timestamptz;
 alter table public.ads
 add column if not exists source_submission_id uuid;
+alter table public.ad_submissions
+add column if not exists target_reach integer not null default 10000;
+alter table public.ad_submissions
+add column if not exists calculated_price_usd numeric(10,2);
 
 do $$
 begin

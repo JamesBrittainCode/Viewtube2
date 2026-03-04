@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import { calculateAdPricing } from '@/lib/ad-pricing';
 import { AD_SUBMISSIONS_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
@@ -50,6 +51,9 @@ export function AdvertiserIntakeForm() {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [runtimeLabel, setRuntimeLabel] = useState<string | null>(null);
   const [runtimeSeconds, setRuntimeSeconds] = useState(0);
+  const [targetReach, setTargetReach] = useState(10000);
+  const [startsAt, setStartsAt] = useState('');
+  const [endsAt, setEndsAt] = useState('');
 
   async function onVideoChange(file: File | null) {
     setVideoFile(file);
@@ -85,6 +89,13 @@ export function AdvertiserIntakeForm() {
 
     const form = event.currentTarget;
     const formData = new FormData(form);
+
+    const pricing = calculateAdPricing({
+      runtimeSeconds: Math.max(1, runtimeSeconds || 1),
+      targetReach,
+      startsAt: startsAt || null,
+      endsAt: endsAt || null,
+    });
 
     try {
       if (!videoFile) throw new Error('Please upload your ad video.');
@@ -154,11 +165,12 @@ export function AdvertiserIntakeForm() {
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl,
         runtime_seconds: runtimeSeconds,
+        target_reach: pricing.targetReach,
         skippable: formData.get('skippable') === 'on',
-        starts_at: String(formData.get('starts_at') || '').trim() || null,
-        ends_at: String(formData.get('ends_at') || '').trim() || null,
+        starts_at: startsAt || null,
+        ends_at: endsAt || null,
         paypal_transaction_id: String(formData.get('paypal_transaction_id') || '').trim(),
-        payment_amount_usd: Number(formData.get('payment_amount_usd') || 0),
+        payment_amount_usd: pricing.estimatedPriceUsd,
       };
 
       const res = await fetch('/api/advertise', {
@@ -177,6 +189,9 @@ export function AdvertiserIntakeForm() {
       setThumbnailFile(null);
       setRuntimeLabel(null);
       setRuntimeSeconds(0);
+      setTargetReach(10000);
+      setStartsAt('');
+      setEndsAt('');
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -184,6 +199,13 @@ export function AdvertiserIntakeForm() {
       setProgress(0);
     }
   }
+
+  const pricing = calculateAdPricing({
+    runtimeSeconds: Math.max(1, runtimeSeconds || 1),
+    targetReach,
+    startsAt: startsAt || null,
+    endsAt: endsAt || null,
+  });
 
   return (
     <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
@@ -226,8 +248,34 @@ export function AdvertiserIntakeForm() {
               className="block w-full text-sm"
             />
           </label>
-          <input name="starts_at" type="datetime-local" className="h-11 rounded-xl border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
-          <input name="ends_at" type="datetime-local" className="h-11 rounded-xl border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+          <input
+            name="target_reach"
+            type="number"
+            min="1000"
+            step="1000"
+            value={targetReach}
+            onChange={(event) => setTargetReach(Math.max(1000, Number(event.target.value) || 1000))}
+            placeholder="Target reach (people)"
+            className="h-11 rounded-xl border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+          />
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950/60">
+            <p className="text-xs text-zinc-500">Estimated campaign days</p>
+            <p className="font-semibold">{pricing.campaignDays} days</p>
+          </div>
+          <input
+            name="starts_at"
+            type="datetime-local"
+            value={startsAt}
+            onChange={(event) => setStartsAt(event.target.value)}
+            className="h-11 rounded-xl border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+          />
+          <input
+            name="ends_at"
+            type="datetime-local"
+            value={endsAt}
+            onChange={(event) => setEndsAt(event.target.value)}
+            className="h-11 rounded-xl border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+          />
           <label className="flex items-center gap-2 rounded-xl border border-zinc-300 px-3 py-3 text-sm dark:border-zinc-700 sm:col-span-2">
             <input name="skippable" type="checkbox" defaultChecked />
             Allow skip button
@@ -237,8 +285,12 @@ export function AdvertiserIntakeForm() {
         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
           <h3 className="text-base font-semibold">Payment (PayPal)</h3>
           <p className="mt-1 text-sm text-zinc-500">
-            Complete payment first, then submit the PayPal transaction ID below for verification.
+            Budget is auto-calculated from ad runtime, target reach, and campaign length.
           </p>
+          <div className="mt-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900">
+            <p className="text-xs text-zinc-500">Required campaign budget</p>
+            <p className="text-xl font-bold">${pricing.estimatedPriceUsd.toFixed(2)} USD</p>
+          </div>
           {paypalCheckoutUrl ? (
             <a
               href={paypalCheckoutUrl}
@@ -256,7 +308,15 @@ export function AdvertiserIntakeForm() {
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <input name="paypal_transaction_id" placeholder="PayPal transaction ID" required className="h-11 rounded-xl border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" />
-            <input name="payment_amount_usd" type="number" step="0.01" min="0" placeholder="Payment amount (USD)" className="h-11 rounded-xl border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" />
+            <input
+              name="payment_amount_usd"
+              type="number"
+              step="0.01"
+              min="0"
+              value={pricing.estimatedPriceUsd}
+              readOnly
+              className="h-11 rounded-xl border border-zinc-300 px-3 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+            />
           </div>
         </div>
 

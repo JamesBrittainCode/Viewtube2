@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { calculateAdPricing } from '@/lib/ad-pricing';
 import { createClient } from '@/lib/supabase/server';
 
 function toIsoOrNull(value?: string | null) {
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
     video_url?: string;
     thumbnail_url?: string | null;
     runtime_seconds?: number;
+    target_reach?: number;
     skippable?: boolean;
     starts_at?: string | null;
     ends_at?: string | null;
@@ -38,11 +40,11 @@ export async function POST(request: Request) {
   const videoUrl = String(body.video_url || '').trim();
   const thumbnailUrl = String(body.thumbnail_url || '').trim() || null;
   const runtimeSeconds = Math.max(0, Math.round(Number(body.runtime_seconds || 0)));
+  const targetReach = Math.max(0, Math.round(Number(body.target_reach || 0)));
   const skippable = body.skippable !== false;
   const startsAt = toIsoOrNull(body.starts_at);
   const endsAt = toIsoOrNull(body.ends_at);
   const paypalTransactionId = String(body.paypal_transaction_id || '').trim();
-  const paymentAmount = Number(body.payment_amount_usd || 0);
 
   if (
     !firstName ||
@@ -71,10 +73,20 @@ export async function POST(request: Request) {
   if (runtimeSeconds <= 0 || runtimeSeconds > 180) {
     return NextResponse.json({ error: 'Ad runtime must be between 1 and 180 seconds' }, { status: 400 });
   }
+  if (targetReach < 1000) {
+    return NextResponse.json({ error: 'Target reach must be at least 1,000 people' }, { status: 400 });
+  }
 
   if (startsAt && endsAt && new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
     return NextResponse.json({ error: 'End date must be after start date' }, { status: 400 });
   }
+
+  const pricing = calculateAdPricing({
+    runtimeSeconds,
+    targetReach,
+    startsAt,
+    endsAt,
+  });
 
   const { data, error } = await supabase
     .from('ad_submissions')
@@ -89,14 +101,16 @@ export async function POST(request: Request) {
       video_url: videoUrl,
       thumbnail_url: thumbnailUrl,
       runtime_seconds: runtimeSeconds,
+      target_reach: pricing.targetReach,
+      calculated_price_usd: pricing.estimatedPriceUsd,
       skippable,
       starts_at: startsAt,
       ends_at: endsAt,
       paypal_transaction_id: paypalTransactionId,
-      payment_amount_usd: Number.isFinite(paymentAmount) ? paymentAmount : null,
+      payment_amount_usd: pricing.estimatedPriceUsd,
       status: 'pending',
     })
-    .select('id,status,created_at')
+    .select('id,status,created_at,calculated_price_usd,target_reach')
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
