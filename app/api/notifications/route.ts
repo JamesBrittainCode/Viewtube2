@@ -13,7 +13,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data, error } = await supabase
+  const primary = await supabase
     .from('notifications')
     .select(
       'id,type,message,target_url,is_read,created_at,actor:profiles!notifications_actor_id_fkey(username,handle,avatar_url)',
@@ -22,11 +22,28 @@ export async function GET() {
     .order('created_at', { ascending: false })
     .limit(50);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  if (!primary.error) {
+    return NextResponse.json({ notifications: primary.data || [] });
   }
 
-  return NextResponse.json({ notifications: data || [] });
+  const fallback = await supabase
+    .from('notifications')
+    .select(
+      'id,type,message,is_read,created_at,actor:profiles!notifications_actor_id_fkey(username,handle,avatar_url)',
+    )
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (fallback.error) {
+    return NextResponse.json({ error: fallback.error.message }, { status: 400 });
+  }
+
+  const notifications = (fallback.data || []).map((item) => ({
+    ...item,
+    target_url: null,
+  }));
+  return NextResponse.json({ notifications });
 }
 
 export async function PATCH() {

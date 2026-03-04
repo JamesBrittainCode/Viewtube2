@@ -13,13 +13,24 @@ export default async function NotificationsPage() {
 
   if (!user) redirect('/sign-in');
 
-  const { data: notifications } = await supabase
+  const primary = await supabase
     .from('notifications')
     .select(
       'id,type,message,target_url,is_read,created_at,actor:profiles!notifications_actor_id_fkey(username,handle,avatar_url)',
     )
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
+  const notifications = primary.error
+    ? (
+        await supabase
+          .from('notifications')
+          .select(
+            'id,type,message,is_read,created_at,actor:profiles!notifications_actor_id_fkey(username,handle,avatar_url)',
+          )
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+      ).data?.map((item) => ({ ...item, target_url: null }))
+    : primary.data;
 
   return (
     <section className="mx-auto max-w-3xl">

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { THUMBNAIL_BUCKET, VIDEO_BUCKET } from '@/lib/constants';
 import { moderateUploadText } from '@/lib/moderation';
+import { sendNotification } from '@/lib/notifications';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
@@ -113,6 +114,13 @@ export async function POST(request: Request) {
     const suspended = Boolean(violation?.is_suspended);
 
     if (suspended) {
+      await sendNotification(supabase, {
+        userId: user.id,
+        type: 'account_suspended',
+        message:
+          'Your account has been suspended after repeated moderation violations. Contact support@viewtube.heyrivo.com.',
+        targetUrl: '/suspended',
+      });
       return NextResponse.json(
         {
           error:

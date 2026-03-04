@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { normalizeHandle } from '@/lib/handle';
 import { isAdminEmail } from '@/lib/admin';
+import { sendNotification } from '@/lib/notifications';
 import { createClient } from '@/lib/supabase/server';
 
 export async function PATCH(request: Request) {
@@ -60,11 +61,32 @@ export async function PATCH(request: Request) {
   }
 
   if (verified === true && profile.verified === false) {
-    await supabase.rpc('push_notification', {
-      target_user_id: profile.id,
-      target_type: 'verified',
-      target_message: "You've Been Verified! Congrats! 🎉",
-      target_actor_id: user.id,
+    await sendNotification(supabase, {
+      userId: profile.id,
+      type: 'verified',
+      message: "You've Been Verified! Congrats! 🎉",
+      actorId: user.id,
+    });
+  }
+
+  if (suspended === true && profile.suspended === false) {
+    await sendNotification(supabase, {
+      userId: profile.id,
+      type: 'account_suspended',
+      message:
+        'Your account has been suspended. Contact support@viewtube.heyrivo.com.',
+      actorId: user.id,
+      targetUrl: '/suspended',
+    });
+  }
+
+  if (suspended === false && profile.suspended === true) {
+    await sendNotification(supabase, {
+      userId: profile.id,
+      type: 'account_unsuspended',
+      message: 'Your account suspension has been lifted.',
+      actorId: user.id,
+      targetUrl: '/',
     });
   }
 

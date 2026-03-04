@@ -27,7 +27,7 @@ export async function Navbar() {
   let unreadCount = 0;
 
   if (user) {
-    const [{ data: profile }, { data: notificationsData }, { count }] = await Promise.all([
+    const [profileRes, notificationsPrimary, countRes] = await Promise.all([
       supabase.from('profiles').select('handle, avatar_url').eq('id', user.id).single(),
       supabase
         .from('notifications')
@@ -44,8 +44,21 @@ export async function Navbar() {
         .eq('is_read', false),
     ]);
 
-    handle = profile?.handle ?? null;
-    avatarUrl = profile?.avatar_url ?? null;
+    const notificationsData = notificationsPrimary.error
+      ? (
+          await supabase
+            .from('notifications')
+            .select(
+              'id,type,message,is_read,created_at,actor:profiles!notifications_actor_id_fkey(username,handle,avatar_url)',
+            )
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(20)
+        ).data?.map((item) => ({ ...item, target_url: null }))
+      : notificationsPrimary.data;
+
+    handle = profileRes.data?.handle ?? null;
+    avatarUrl = profileRes.data?.avatar_url ?? null;
     notifications = (notificationsData || []).map((item) => ({
       id: item.id,
       type: item.type,
@@ -55,7 +68,7 @@ export async function Navbar() {
       created_at: item.created_at,
       actor: unwrapRelation(item.actor),
     }));
-    unreadCount = count || 0;
+    unreadCount = countRes.count || 0;
   }
 
   return (

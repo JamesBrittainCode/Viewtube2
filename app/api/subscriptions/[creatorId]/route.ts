@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { sendNotification } from '@/lib/notifications';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
@@ -49,12 +50,12 @@ export async function POST(
       .eq('id', user.id)
       .maybeSingle();
 
-    await supabase.rpc('push_notification', {
-      target_user_id: creatorId,
-      target_type: 'new_subscriber',
-      target_message: 'You have a new subscriber',
-      target_actor_id: user.id,
-      target_url: actorProfile?.handle ? `/channel/${actorProfile.handle}` : null,
+    await sendNotification(supabase, {
+      userId: creatorId,
+      type: 'new_subscriber',
+      message: 'You have a new subscriber',
+      actorId: user.id,
+      targetUrl: actorProfile?.handle ? `/channel/${actorProfile.handle}` : null,
     });
   }
 

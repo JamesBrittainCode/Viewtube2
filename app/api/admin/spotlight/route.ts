@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isAdminEmail } from '@/lib/admin';
+import { sendNotification } from '@/lib/notifications';
 import { nextMonday1amPst } from '@/lib/spotlight';
 import { createClient } from '@/lib/supabase/server';
 
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
 
   const { data: video } = await supabase
     .from('videos')
-    .select('id')
+    .select('id,user_id,title')
     .eq('id', videoId)
     .maybeSingle();
 
@@ -51,6 +52,17 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+
+  const publishLabel = publishNow
+    ? 'Your video was selected for Creator Spotlight and is now live.'
+    : `Your video was selected for Creator Spotlight (${new Date(data.scheduled_for).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PT).`;
+  await sendNotification(supabase, {
+    userId: video.user_id,
+    type: 'creator_spotlight',
+    message: publishLabel,
+    actorId: user.id,
+    targetUrl: `/watch/${video.id}`,
+  });
 
   return NextResponse.json({
     id: data.id,

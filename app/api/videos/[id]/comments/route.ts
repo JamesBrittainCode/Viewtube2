@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { sendNotification } from '@/lib/notifications';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
@@ -70,12 +71,12 @@ export async function POST(
   }
 
   if (video.user_id !== user.id) {
-    await supabase.rpc('push_notification', {
-      target_user_id: video.user_id,
-      target_type: 'new_comment',
-      target_message: 'Someone commented on your video',
-      target_actor_id: user.id,
-      target_url: `/watch/${id}#comments`,
+    await sendNotification(supabase, {
+      userId: video.user_id,
+      type: 'new_comment',
+      message: 'Someone commented on your video',
+      actorId: user.id,
+      targetUrl: `/watch/${id}#comments`,
     });
   }
 
