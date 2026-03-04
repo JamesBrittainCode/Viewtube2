@@ -9,6 +9,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -26,12 +27,18 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
 
     try {
       if (mode === 'sign-up') {
+        if (!acceptedLegal) {
+          throw new Error('You must agree to the Terms and Privacy Policy to create an account.');
+        }
+
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
               username: username.trim(),
+              terms_accepted: true,
+              terms_accepted_at: new Date().toISOString(),
             },
             emailRedirectTo: `${siteOrigin}/email-confirmed`,
           },
@@ -70,6 +77,11 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   }
 
   async function signInWithGoogle() {
+    if (mode === 'sign-up' && !acceptedLegal) {
+      setError('You must agree to the Terms and Privacy Policy to continue with Google.');
+      return;
+    }
+
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -119,6 +131,28 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
         />
 
+        {mode === 'sign-up' && (
+          <label className="flex items-start gap-2 rounded-lg border border-zinc-200 p-3 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
+            <input
+              type="checkbox"
+              checked={acceptedLegal}
+              onChange={(event) => setAcceptedLegal(event.target.checked)}
+              className="mt-0.5 h-4 w-4"
+            />
+            <span>
+              I agree to the{' '}
+              <Link href="/terms" target="_blank" className="font-medium underline">
+                Terms & Conditions
+              </Link>{' '}
+              and{' '}
+              <Link href="/privacy" target="_blank" className="font-medium underline">
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
+        )}
+
         {error && <p className="text-sm text-red-500">{error}</p>}
 
         <button
@@ -146,6 +180,18 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         >
           {mode === 'sign-in' ? 'Sign up' : 'Sign in'}
         </Link>
+      </p>
+
+      <p className="mt-2 text-xs text-zinc-500">
+        ViewTube legal:{' '}
+        <Link href="/terms" className="underline">
+          Terms
+        </Link>{' '}
+        and{' '}
+        <Link href="/privacy" className="underline">
+          Privacy
+        </Link>
+        .
       </p>
     </div>
   );
