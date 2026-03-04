@@ -1,6 +1,7 @@
 export type AdPricingInput = {
   runtimeSeconds: number;
   targetReach: number;
+  skippable?: boolean;
   startsAt?: string | null;
   endsAt?: string | null;
 };
@@ -34,13 +35,15 @@ export function calculateAdPricing(input: AdPricingInput): AdPricingResult {
   const runtimeSeconds = clamp(Math.round(input.runtimeSeconds || 0), 1, 180);
   const targetReach = clamp(Math.round(input.targetReach || 0), 1000, 50000000);
   const campaignDays = getCampaignDays(input.startsAt, input.endsAt);
+  const skippable = input.skippable !== false;
 
-  const baseCpm = 8;
-  const runtimeMultiplier = clamp(0.85 + (runtimeSeconds / 60) * 0.5, 0.85, 2.3);
-  const durationMultiplier = 1 + Math.log2(campaignDays + 1) * 0.12;
+  const baseCpm = 1.25;
+  const runtimeMultiplier = clamp(0.8 + (runtimeSeconds / 60) * 0.35, 0.8, 1.9);
+  const durationMultiplier = 1 + Math.log2(campaignDays + 1) * 0.08;
+  const nonSkippableMultiplier = skippable ? 1 : 1.65;
   const reachUnits = targetReach / 1000;
-  const raw = reachUnits * baseCpm * runtimeMultiplier * durationMultiplier;
-  const estimatedPriceUsd = round2(Math.max(25, raw));
+  const raw = reachUnits * baseCpm * runtimeMultiplier * durationMultiplier * nonSkippableMultiplier;
+  const estimatedPriceUsd = round2(Math.max(5, raw));
 
   return {
     runtimeSeconds,

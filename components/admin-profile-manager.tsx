@@ -46,7 +46,7 @@ type AdSubmission = {
   ends_at?: string | null;
   paypal_transaction_id: string;
   payment_amount_usd?: number | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved_pending_payment' | 'paid_pending_launch' | 'approved' | 'rejected';
   review_notes?: string | null;
   created_at: string;
 };
@@ -271,7 +271,10 @@ export function AdminProfileManager() {
     }
   }
 
-  async function onSubmissionAction(submission: AdSubmission, action: 'approve' | 'reject') {
+  async function onSubmissionAction(
+    submission: AdSubmission,
+    action: 'approve' | 'reject' | 'launch_paid',
+  ) {
     setSubmissionActionLoading(submission.id);
     setAdError(null);
     setAdMessage(null);
@@ -298,7 +301,13 @@ export function AdminProfileManager() {
       if (payload.ad) {
         setAds((prev) => [payload.ad!, ...prev]);
       }
-      setAdMessage(action === 'approve' ? 'Submission approved and scheduled.' : 'Submission rejected.');
+      if (action === 'approve') {
+        setAdMessage('Submission approved. Waiting for advertiser payment.');
+      } else if (action === 'launch_paid') {
+        setAdMessage('Paid submission launched.');
+      } else {
+        setAdMessage('Submission rejected.');
+      }
     } catch (err) {
       setAdError((err as Error).message);
     } finally {
@@ -445,6 +454,8 @@ export function AdminProfileManager() {
   }
 
   const pendingSubmissions = submissions.filter((item) => item.status === 'pending');
+  const waitingPayment = submissions.filter((item) => item.status === 'approved_pending_payment');
+  const readyToLaunch = submissions.filter((item) => item.status === 'paid_pending_launch');
 
   return (
     <section className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
@@ -590,7 +601,7 @@ export function AdminProfileManager() {
                       disabled={submissionActionLoading === item.id}
                       className="rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-500 disabled:opacity-60"
                     >
-                      Approve & Schedule
+                      Approve (Request Payment)
                     </button>
                     <button
                       type="button"
@@ -607,6 +618,54 @@ export function AdminProfileManager() {
                       className="rounded-full border border-zinc-600 px-3 py-1 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 disabled:opacity-60"
                     >
                       Delete Submission
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-zinc-700 p-4">
+            <h4 className="text-sm font-semibold">Approved, waiting for payment</h4>
+            {!waitingPayment.length ? (
+              <p className="mt-2 text-sm text-zinc-400">No submissions awaiting payment.</p>
+            ) : null}
+            <div className="mt-3 space-y-3">
+              {waitingPayment.map((item) => (
+                <div key={item.id} className="rounded-lg border border-zinc-700 p-3">
+                  <p className="text-sm font-semibold">{item.ad_title}</p>
+                  <p className="text-xs text-zinc-500">
+                    {item.first_name} {item.last_name} • {item.company_name}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Budget: ${Number(item.calculated_price_usd || 0).toFixed(2)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-zinc-700 p-4">
+            <h4 className="text-sm font-semibold">Paid, ready to launch</h4>
+            {!readyToLaunch.length ? (
+              <p className="mt-2 text-sm text-zinc-400">No paid submissions waiting for launch.</p>
+            ) : null}
+            <div className="mt-3 space-y-3">
+              {readyToLaunch.map((item) => (
+                <div key={item.id} className="rounded-lg border border-zinc-700 p-3">
+                  <p className="text-sm font-semibold">{item.ad_title}</p>
+                  <p className="text-xs text-zinc-500">
+                    TX: {item.paypal_transaction_id || 'N/A'} • Amount: $
+                    {Number(item.payment_amount_usd || 0).toFixed(2)}
+                  </p>
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={() => void onSubmissionAction(item, 'launch_paid')}
+                      disabled={submissionActionLoading === item.id}
+                      className="rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-500 disabled:opacity-60"
+                    >
+                      Launch Campaign
                     </button>
                   </div>
                 </div>

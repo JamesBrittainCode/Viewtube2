@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { calculateAdPricing } from '@/lib/ad-pricing';
 import { AD_SUBMISSIONS_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
@@ -41,7 +42,7 @@ async function parseApiError(response: Response) {
 }
 
 export function AdvertiserIntakeForm() {
-  const paypalCheckoutUrl = process.env.NEXT_PUBLIC_PAYPAL_CHECKOUT_URL || '';
+  const router = useRouter();
 
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -54,6 +55,7 @@ export function AdvertiserIntakeForm() {
   const [targetReach, setTargetReach] = useState(10000);
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
+  const [skippable, setSkippable] = useState(true);
 
   async function onVideoChange(file: File | null) {
     setVideoFile(file);
@@ -93,6 +95,7 @@ export function AdvertiserIntakeForm() {
     const pricing = calculateAdPricing({
       runtimeSeconds: Math.max(1, runtimeSeconds || 1),
       targetReach,
+      skippable,
       startsAt: startsAt || null,
       endsAt: endsAt || null,
     });
@@ -166,11 +169,9 @@ export function AdvertiserIntakeForm() {
         thumbnail_url: thumbnailUrl,
         runtime_seconds: runtimeSeconds,
         target_reach: pricing.targetReach,
-        skippable: formData.get('skippable') === 'on',
+        skippable,
         starts_at: startsAt || null,
         ends_at: endsAt || null,
-        paypal_transaction_id: String(formData.get('paypal_transaction_id') || '').trim(),
-        payment_amount_usd: pricing.estimatedPriceUsd,
       };
 
       const res = await fetch('/api/advertise', {
@@ -183,7 +184,7 @@ export function AdvertiserIntakeForm() {
         throw new Error(await parseApiError(res));
       }
 
-      setMessage('Ad campaign submitted. Our team will review and approve before publishing.');
+      setMessage('Ad campaign submitted for review.');
       form.reset();
       setVideoFile(null);
       setThumbnailFile(null);
@@ -192,6 +193,8 @@ export function AdvertiserIntakeForm() {
       setTargetReach(10000);
       setStartsAt('');
       setEndsAt('');
+      setSkippable(true);
+      router.push('/advertise/portal?submitted=1');
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -203,6 +206,7 @@ export function AdvertiserIntakeForm() {
   const pricing = calculateAdPricing({
     runtimeSeconds: Math.max(1, runtimeSeconds || 1),
     targetReach,
+    skippable,
     startsAt: startsAt || null,
     endsAt: endsAt || null,
   });
@@ -277,47 +281,28 @@ export function AdvertiserIntakeForm() {
             className="h-11 rounded-xl border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950"
           />
           <label className="flex items-center gap-2 rounded-xl border border-zinc-300 px-3 py-3 text-sm dark:border-zinc-700 sm:col-span-2">
-            <input name="skippable" type="checkbox" defaultChecked />
+            <input
+              name="skippable"
+              type="checkbox"
+              checked={skippable}
+              onChange={(event) => setSkippable(event.target.checked)}
+            />
             Allow skip button
           </label>
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
-          <h3 className="text-base font-semibold">Payment (PayPal)</h3>
+          <h3 className="text-base font-semibold">Budget Estimate</h3>
           <p className="mt-1 text-sm text-zinc-500">
-            Budget is auto-calculated from ad runtime, target reach, and campaign length.
+            Budget is auto-calculated from ad runtime, target reach, campaign length, and skip mode.
           </p>
           <div className="mt-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900">
             <p className="text-xs text-zinc-500">Required campaign budget</p>
             <p className="text-xl font-bold">${pricing.estimatedPriceUsd.toFixed(2)} USD</p>
           </div>
-          {paypalCheckoutUrl ? (
-            <a
-              href={paypalCheckoutUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
-            >
-              Pay with PayPal
-            </a>
-          ) : (
-            <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
-              PayPal checkout URL is not configured yet. Ask ViewTube admin to set `NEXT_PUBLIC_PAYPAL_CHECKOUT_URL`.
-            </p>
-          )}
-
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <input name="paypal_transaction_id" placeholder="PayPal transaction ID" required className="h-11 rounded-xl border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" />
-            <input
-              name="payment_amount_usd"
-              type="number"
-              step="0.01"
-              min="0"
-              value={pricing.estimatedPriceUsd}
-              readOnly
-              className="h-11 rounded-xl border border-zinc-300 px-3 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
-            />
-          </div>
+          <p className="mt-3 text-xs text-zinc-500">
+            Payment happens only after your campaign is approved.
+          </p>
         </div>
 
         {error ? <p className="text-sm text-red-500">{error}</p> : null}

@@ -43,7 +43,7 @@ export async function PATCH(request: Request) {
 
   const body = (await request.json()) as {
     id?: string;
-    action?: 'approve' | 'reject';
+    action?: 'approve' | 'reject' | 'launch_paid';
     review_notes?: string;
     starts_at?: string | null;
     ends_at?: string | null;
@@ -57,7 +57,7 @@ export async function PATCH(request: Request) {
   const { data: submission, error: fetchError } = await supabase
     .from('ad_submissions')
     .select(
-      'id,ad_title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,status,starts_at,ends_at',
+      'id,ad_title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,status,starts_at,ends_at,payment_amount_usd,paypal_transaction_id',
     )
     .eq('id', body.id)
     .single();
@@ -90,6 +90,35 @@ export async function PATCH(request: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ submission: data });
+  }
+
+  if (body.action === 'approve') {
+    const { data, error } = await supabase
+      .from('ad_submissions')
+      .update({
+        status: 'approved_pending_payment',
+        review_notes: reviewNotes,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: user.id,
+        starts_at: startsAt,
+        ends_at: endsAt,
+      })
+      .eq('id', body.id)
+      .select(
+        'id,first_name,last_name,company_name,ad_title,status,review_notes,reviewed_at,reviewed_by,starts_at,ends_at,payment_amount_usd,paypal_transaction_id',
+      )
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ submission: data });
+  }
+
+  if (submission.status !== 'paid_pending_launch' && submission.status !== 'approved_pending_payment') {
+    return NextResponse.json({ error: 'Submission must be approved and paid before launch' }, { status: 400 });
+  }
+
+  if (!submission.paypal_transaction_id) {
+    return NextResponse.json({ error: 'No payment transaction found for this submission' }, { status: 400 });
   }
 
   const { data: adRow, error: adError } = await supabase

@@ -235,7 +235,7 @@ create table if not exists public.ad_submissions (
   skippable boolean not null default true,
   starts_at timestamptz,
   ends_at timestamptz,
-  paypal_transaction_id text not null,
+  paypal_transaction_id text,
   payment_amount_usd numeric(10,2),
   status text not null default 'pending',
   review_notes text,
@@ -263,6 +263,8 @@ alter table public.ad_submissions
 add column if not exists target_reach integer not null default 10000;
 alter table public.ad_submissions
 add column if not exists calculated_price_usd numeric(10,2);
+alter table public.ad_submissions
+alter column paypal_transaction_id drop not null;
 
 do $$
 begin
@@ -373,8 +375,32 @@ with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.co
 drop policy if exists "Advertisers can create ad submissions" on public.ad_submissions;
 create policy "Advertisers can create ad submissions"
 on public.ad_submissions for insert
-to anon, authenticated
-with check (status = 'pending');
+to authenticated
+with check (
+  status = 'pending'
+  and lower(contact_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
+);
+
+drop policy if exists "Advertisers can view own ad submissions" on public.ad_submissions;
+create policy "Advertisers can view own ad submissions"
+on public.ad_submissions for select
+to authenticated
+using (
+  lower(contact_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
+);
+
+drop policy if exists "Advertisers can update own approved submissions for payment" on public.ad_submissions;
+create policy "Advertisers can update own approved submissions for payment"
+on public.ad_submissions for update
+to authenticated
+using (
+  lower(contact_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
+  and status in ('approved_pending_payment')
+)
+with check (
+  lower(contact_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
+  and status in ('approved_pending_payment', 'paid_pending_launch')
+);
 
 drop policy if exists "Only admin can view ad submissions" on public.ad_submissions;
 create policy "Only admin can view ad submissions"

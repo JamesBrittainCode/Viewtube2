@@ -1,11 +1,23 @@
 import { AdvertiserIntakeForm } from '@/components/advertiser-intake-form';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 
 export const metadata = {
   title: 'Advertise on ViewTube',
   description: 'Launch a professionally reviewed ad campaign on ViewTube.',
 };
 
-export default function AdvertisePage() {
+export default async function AdvertisePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/sign-in?next=%2Fadvertise');
+  }
+
   return (
     <main className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:py-10">
       <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-700 p-8 text-white shadow-sm dark:border-zinc-700">
@@ -31,6 +43,15 @@ export default function AdvertisePage() {
           <p className="mt-1 text-xs text-zinc-500">ViewTube admin reviews, approves, and schedules your campaign.</p>
         </div>
       </section>
+
+      <div className="flex justify-end">
+        <Link
+          href="/advertise/portal"
+          className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+        >
+          Open Advertiser Portal
+        </Link>
+      </div>
 
       <AdvertiserIntakeForm />
     </main>

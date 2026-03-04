@@ -11,6 +11,13 @@ function toIsoOrNull(value?: string | null) {
 
 export async function POST(request: Request) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const body = (await request.json()) as {
     first_name?: string;
     last_name?: string;
@@ -26,15 +33,13 @@ export async function POST(request: Request) {
     skippable?: boolean;
     starts_at?: string | null;
     ends_at?: string | null;
-    paypal_transaction_id?: string;
-    payment_amount_usd?: number;
   };
 
   const firstName = String(body.first_name || '').trim();
   const lastName = String(body.last_name || '').trim();
   const positionTitle = String(body.position_title || '').trim();
   const companyName = String(body.company_name || '').trim();
-  const contactEmail = String(body.contact_email || '').trim();
+  const contactEmail = String(user.email || body.contact_email || '').trim().toLowerCase();
   const adTitle = String(body.ad_title || '').trim();
   const clickUrl = String(body.click_url || '').trim();
   const videoUrl = String(body.video_url || '').trim();
@@ -44,7 +49,6 @@ export async function POST(request: Request) {
   const skippable = body.skippable !== false;
   const startsAt = toIsoOrNull(body.starts_at);
   const endsAt = toIsoOrNull(body.ends_at);
-  const paypalTransactionId = String(body.paypal_transaction_id || '').trim();
 
   if (
     !firstName ||
@@ -54,8 +58,7 @@ export async function POST(request: Request) {
     !contactEmail ||
     !adTitle ||
     !clickUrl ||
-    !videoUrl ||
-    !paypalTransactionId
+    !videoUrl
   ) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
@@ -106,8 +109,8 @@ export async function POST(request: Request) {
       skippable,
       starts_at: startsAt,
       ends_at: endsAt,
-      paypal_transaction_id: paypalTransactionId,
-      payment_amount_usd: pricing.estimatedPriceUsd,
+      paypal_transaction_id: null,
+      payment_amount_usd: null,
       status: 'pending',
     })
     .select('id,status,created_at,calculated_price_usd,target_reach')
