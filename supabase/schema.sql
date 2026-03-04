@@ -91,11 +91,69 @@ create table if not exists public.ads (
   video_url text not null,
   click_url text not null,
   thumbnail_url text,
+  runtime_seconds integer not null default 0,
   skippable boolean not null default true,
+  approved boolean not null default false,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  source_submission_id uuid,
   is_active boolean not null default true,
   created_by uuid not null references public.profiles(id) on delete cascade,
   created_at timestamptz not null default now()
 );
+
+create table if not exists public.ad_submissions (
+  id uuid primary key default gen_random_uuid(),
+  first_name text not null,
+  last_name text not null,
+  position_title text not null,
+  company_name text not null,
+  contact_email text not null,
+  ad_title text not null,
+  click_url text not null,
+  video_url text not null,
+  thumbnail_url text,
+  runtime_seconds integer not null default 0,
+  skippable boolean not null default true,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  paypal_transaction_id text not null,
+  payment_amount_usd numeric(10,2),
+  status text not null default 'pending',
+  review_notes text,
+  reviewed_at timestamptz,
+  reviewed_by uuid references public.profiles(id) on delete set null,
+  converted_ad_id uuid references public.ads(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.ads
+add column if not exists runtime_seconds integer not null default 0;
+alter table public.ads
+add column if not exists approved boolean not null default false;
+alter table public.ads
+add column if not exists starts_at timestamptz;
+alter table public.ads
+add column if not exists ends_at timestamptz;
+alter table public.ads
+add column if not exists source_submission_id uuid;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'ads_source_submission_id_fkey'
+      and conrelid = 'public.ads'::regclass
+  ) then
+    alter table public.ads
+    add constraint ads_source_submission_id_fkey
+    foreign key (source_submission_id)
+    references public.ad_submissions(id)
+    on delete set null;
+  end if;
+end;
+$$;
 
 alter table public.notifications
 add column if not exists target_url text;
@@ -136,6 +194,8 @@ create index if not exists idx_subscriptions_subscriber_id on public.subscriptio
 create index if not exists idx_subscriptions_creator_id on public.subscriptions using btree(creator_id);
 create index if not exists idx_notifications_user_id on public.notifications using btree(user_id);
 create index if not exists idx_ads_active_created_at on public.ads using btree(is_active, created_at desc);
+create index if not exists idx_ads_schedule on public.ads using btree(approved, is_active, starts_at, ends_at);
+create index if not exists idx_ad_submissions_status_created_at on public.ad_submissions using btree(status, created_at desc);
 create index if not exists idx_moderation_events_user_id on public.moderation_events using btree(user_id, created_at desc);
 create index if not exists idx_creator_spotlights_scheduled_for on public.creator_spotlights using btree(scheduled_for desc);
 create unique index if not exists idx_creator_spotlights_unique_slot on public.creator_spotlights(scheduled_for);
@@ -527,6 +587,7 @@ alter table public.likes enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.notifications enable row level security;
 alter table public.ads enable row level security;
+alter table public.ad_submissions enable row level security;
 alter table public.moderation_events enable row level security;
 alter table public.creator_spotlights enable row level security;
 
@@ -684,10 +745,31 @@ with check ((select auth.uid()) = user_id);
 create policy "Active ads are viewable by everyone"
 on public.ads for select
 to anon, authenticated
-using (is_active = true);
+using (
+  is_active = true
+  and approved = true
+  and (starts_at is null or starts_at <= now())
+  and (ends_at is null or ends_at > now())
+);
 
 create policy "Only admin can manage ads"
 on public.ads for all
+to authenticated
+using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com')
+with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
+
+create policy "Advertisers can create ad submissions"
+on public.ad_submissions for insert
+to anon, authenticated
+with check (status = 'pending');
+
+create policy "Only admin can view ad submissions"
+on public.ad_submissions for select
+to authenticated
+using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
+
+create policy "Only admin can manage ad submissions"
+on public.ad_submissions for update
 to authenticated
 using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com')
 with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
@@ -729,6 +811,10 @@ on conflict (id) do nothing;
 
 insert into storage.buckets (id, name, public)
 values ('ads', 'ads', true)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('ad-submissions', 'ad-submissions', true)
 on conflict (id) do nothing;
 
 create policy "Public read access for videos bucket"
@@ -840,6 +926,11 @@ on storage.objects for select
 to anon, authenticated
 using (bucket_id = 'ads');
 
+create policy "Public read access for ad submissions bucket"
+on storage.objects for select
+to anon, authenticated
+using (bucket_id = 'ad-submissions');
+
 create policy "Authenticated upload to banners bucket"
 on storage.objects for insert
 to authenticated
@@ -893,5 +984,30 @@ on storage.objects for delete
 to authenticated
 using (
   bucket_id = 'ads'
+  and coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com'
+);
+
+create policy "Public upload to ad submissions bucket"
+on storage.objects for insert
+to anon, authenticated
+with check (bucket_id = 'ad-submissions');
+
+create policy "Only admin updates ad submissions bucket objects"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'ad-submissions'
+  and coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com'
+)
+with check (
+  bucket_id = 'ad-submissions'
+  and coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com'
+);
+
+create policy "Only admin deletes ad submissions bucket objects"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'ad-submissions'
   and coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com'
 );

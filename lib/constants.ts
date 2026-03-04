@@ -4,3 +4,4 @@ export const THUMBNAIL_BUCKET = 'thumbnails';
 export const AVATAR_BUCKET = 'avatars';
 export const BANNER_BUCKET = 'banners';
 export const AD_BUCKET = 'ads';
+export const AD_SUBMISSIONS_BUCKET = 'ad-submissions';

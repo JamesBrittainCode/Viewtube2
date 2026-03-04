@@ -15,15 +15,29 @@ export async function GET(request: Request) {
   const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('ads')
-    .select('id,title,video_url,click_url,thumbnail_url,skippable')
+    .select('id,title,video_url,click_url,thumbnail_url,skippable,starts_at,ends_at')
     .eq('is_active', true)
+    .eq('approved', true)
     .order('created_at', { ascending: false })
-    .limit(20);
+    .limit(50);
 
   if (error || !data?.length) {
     return NextResponse.json({ ad: null });
   }
 
-  const ad = data[Math.floor(Math.random() * data.length)];
+  const now = Date.now();
+  const eligibleAds = data.filter((item) => {
+    const starts = item.starts_at ? new Date(item.starts_at).getTime() : null;
+    const ends = item.ends_at ? new Date(item.ends_at).getTime() : null;
+    if (starts && now < starts) return false;
+    if (ends && now >= ends) return false;
+    return true;
+  });
+
+  if (!eligibleAds.length) {
+    return NextResponse.json({ ad: null });
+  }
+
+  const ad = eligibleAds[Math.floor(Math.random() * eligibleAds.length)];
   return NextResponse.json({ ad });
 }

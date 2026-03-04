@@ -15,8 +15,35 @@ type AdItem = {
   video_url: string;
   click_url: string;
   thumbnail_url?: string | null;
+  runtime_seconds: number;
   skippable: boolean;
+  approved: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
   is_active: boolean;
+  source_submission_id?: string | null;
+  created_at: string;
+};
+
+type AdSubmission = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  position_title: string;
+  company_name: string;
+  contact_email: string;
+  ad_title: string;
+  click_url: string;
+  video_url: string;
+  thumbnail_url?: string | null;
+  runtime_seconds: number;
+  skippable: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  paypal_transaction_id: string;
+  payment_amount_usd?: number | null;
+  status: 'pending' | 'approved' | 'rejected';
+  review_notes?: string | null;
   created_at: string;
 };
 
@@ -34,6 +61,14 @@ function fileExt(name: string, fallback: string) {
   const last = name.split('.').pop()?.toLowerCase() || '';
   const safe = last.replace(/[^a-z0-9]/g, '');
   return safe || fallback;
+}
+
+function toLocalDateTimeInput(value?: string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
 }
 
 async function getVideoDurationSeconds(file: File): Promise<number> {
@@ -77,14 +112,24 @@ export function AdminProfileManager() {
   const [adClickUrl, setAdClickUrl] = useState('');
   const [adSkippable, setAdSkippable] = useState(true);
   const [adActive, setAdActive] = useState(true);
+  const [adApproved, setAdApproved] = useState(true);
+  const [adStartsAt, setAdStartsAt] = useState('');
+  const [adEndsAt, setAdEndsAt] = useState('');
   const [adVideoFile, setAdVideoFile] = useState<File | null>(null);
   const [adImageFile, setAdImageFile] = useState<File | null>(null);
   const [ads, setAds] = useState<AdItem[]>([]);
+  const [submissions, setSubmissions] = useState<AdSubmission[]>([]);
   const [adsLoading, setAdsLoading] = useState(false);
   const [adSubmitting, setAdSubmitting] = useState(false);
   const [adUploadProgress, setAdUploadProgress] = useState(0);
   const [adError, setAdError] = useState<string | null>(null);
   const [adMessage, setAdMessage] = useState<string | null>(null);
+  const [submissionActionLoading, setSubmissionActionLoading] = useState<string | null>(null);
+  const [submissionNote, setSubmissionNote] = useState<Record<string, string>>({});
+  const [submissionStart, setSubmissionStart] = useState<Record<string, string>>({});
+  const [submissionEnd, setSubmissionEnd] = useState<Record<string, string>>({});
+  const [adScheduleStart, setAdScheduleStart] = useState<Record<string, string>>({});
+  const [adScheduleEnd, setAdScheduleEnd] = useState<Record<string, string>>({});
 
   const tabs: { id: AdminTab; label: string }[] = useMemo(
     () => [
@@ -97,15 +142,20 @@ export function AdminProfileManager() {
   );
 
   useEffect(() => {
-    async function loadAds() {
+    async function loadAdData() {
       setAdsLoading(true);
+      setAdError(null);
       try {
-        const res = await fetch('/api/admin/ads', { cache: 'no-store' });
-        if (!res.ok) {
-          throw new Error(await parseApiError(res));
-        }
-        const data = (await res.json()) as { ads?: AdItem[] };
-        setAds(data.ads || []);
+        const [adsRes, submissionsRes] = await Promise.all([
+          fetch('/api/admin/ads', { cache: 'no-store' }),
+          fetch('/api/admin/ad-submissions', { cache: 'no-store' }),
+        ]);
+        if (!adsRes.ok) throw new Error(await parseApiError(adsRes));
+        if (!submissionsRes.ok) throw new Error(await parseApiError(submissionsRes));
+        const adsData = (await adsRes.json()) as { ads?: AdItem[] };
+        const submissionsData = (await submissionsRes.json()) as { submissions?: AdSubmission[] };
+        setAds(adsData.ads || []);
+        setSubmissions(submissionsData.submissions || []);
       } catch (err) {
         setAdError((err as Error).message);
       } finally {
@@ -113,7 +163,7 @@ export function AdminProfileManager() {
       }
     }
 
-    void loadAds();
+    void loadAdData();
   }, []);
 
   async function onCountSubmit(event: FormEvent<HTMLFormElement>) {
@@ -132,10 +182,7 @@ export function AdminProfileManager() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error(await parseApiError(res));
-      }
-
+      if (!res.ok) throw new Error(await parseApiError(res));
       setCountMessage('Subscriber count updated.');
       router.refresh();
     } catch (err) {
@@ -161,10 +208,7 @@ export function AdminProfileManager() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error(await parseApiError(res));
-      }
-
+      if (!res.ok) throw new Error(await parseApiError(res));
       setSuspendMessage(suspended ? 'User suspended.' : 'User unsuspended.');
       router.refresh();
     } catch (err) {
@@ -190,10 +234,7 @@ export function AdminProfileManager() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error(await parseApiError(res));
-      }
-
+      if (!res.ok) throw new Error(await parseApiError(res));
       setVerifyMessage('Verification status updated.');
       router.refresh();
     } catch (err) {
@@ -203,26 +244,61 @@ export function AdminProfileManager() {
     }
   }
 
-  async function onToggleAdActive(id: string, nextActive: boolean) {
+  async function onUpdateAd(item: AdItem, patch: Partial<AdItem>) {
     setAdError(null);
     setAdMessage(null);
     try {
       const res = await fetch('/api/admin/ads', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, is_active: nextActive }),
+        body: JSON.stringify({
+          id: item.id,
+          ...patch,
+        }),
       });
-
-      if (!res.ok) {
-        throw new Error(await parseApiError(res));
+      if (!res.ok) throw new Error(await parseApiError(res));
+      const data = (await res.json()) as { ad?: AdItem };
+      if (data.ad) {
+        setAds((prev) => prev.map((ad) => (ad.id === item.id ? data.ad! : ad)));
       }
-
-      setAds((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, is_active: nextActive } : item)),
-      );
-      setAdMessage(nextActive ? 'Ad activated.' : 'Ad paused.');
+      setAdMessage('Ad updated.');
     } catch (err) {
       setAdError((err as Error).message);
+    }
+  }
+
+  async function onSubmissionAction(submission: AdSubmission, action: 'approve' | 'reject') {
+    setSubmissionActionLoading(submission.id);
+    setAdError(null);
+    setAdMessage(null);
+
+    try {
+      const res = await fetch('/api/admin/ad-submissions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: submission.id,
+          action,
+          review_notes: submissionNote[submission.id] || '',
+          starts_at: submissionStart[submission.id] || submission.starts_at || null,
+          ends_at: submissionEnd[submission.id] || submission.ends_at || null,
+          force_active: true,
+        }),
+      });
+      if (!res.ok) throw new Error(await parseApiError(res));
+
+      const payload = (await res.json()) as { submission?: AdSubmission; ad?: AdItem };
+      if (payload.submission) {
+        setSubmissions((prev) => prev.map((row) => (row.id === submission.id ? { ...row, ...payload.submission! } : row)));
+      }
+      if (payload.ad) {
+        setAds((prev) => [payload.ad!, ...prev]);
+      }
+      setAdMessage(action === 'approve' ? 'Submission approved and scheduled.' : 'Submission rejected.');
+    } catch (err) {
+      setAdError((err as Error).message);
+    } finally {
+      setSubmissionActionLoading(null);
     }
   }
 
@@ -244,10 +320,7 @@ export function AdminProfileManager() {
       if (adDurationSeconds > 180) {
         throw new Error('Ad video must be 3 minutes (180 seconds) or less.');
       }
-      if (
-        adImageFile &&
-        !['image/png', 'image/jpeg'].includes(adImageFile.type)
-      ) {
+      if (adImageFile && !['image/png', 'image/jpeg'].includes(adImageFile.type)) {
         throw new Error('Link image must be PNG or JPEG.');
       }
 
@@ -282,18 +355,12 @@ export function AdminProfileManager() {
       let imagePublic: string | null = null;
       if (adImageFile) {
         const imagePath = `${basePath}-link.${fileExt(adImageFile.name, 'jpg')}`;
-        const { error: imageUploadError } = await supabase.storage
-          .from(AD_BUCKET)
-          .upload(imagePath, adImageFile, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType: adImageFile.type || 'image/jpeg',
-          });
-
-        if (imageUploadError) {
-          throw new Error(imageUploadError.message);
-        }
-
+        const { error: imageUploadError } = await supabase.storage.from(AD_BUCKET).upload(imagePath, adImageFile, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: adImageFile.type || 'image/jpeg',
+        });
+        if (imageUploadError) throw new Error(imageUploadError.message);
         imagePublic = supabase.storage.from(AD_BUCKET).getPublicUrl(imagePath).data.publicUrl;
       }
 
@@ -305,19 +372,18 @@ export function AdminProfileManager() {
           video_url: videoPublic,
           click_url: parsedClick.toString(),
           thumbnail_url: imagePublic,
+          runtime_seconds: Math.round(adDurationSeconds),
           skippable: adSkippable,
+          approved: adApproved,
+          starts_at: adStartsAt || null,
+          ends_at: adEndsAt || null,
           is_active: adActive,
         }),
       });
 
-      if (!res.ok) {
-        throw new Error(await parseApiError(res));
-      }
-
+      if (!res.ok) throw new Error(await parseApiError(res));
       const data = (await res.json()) as { ad?: AdItem };
-      if (data.ad) {
-        setAds((prev) => [data.ad as AdItem, ...prev]);
-      }
+      if (data.ad) setAds((prev) => [data.ad!, ...prev]);
 
       setAdTitle('');
       setAdClickUrl('');
@@ -325,6 +391,9 @@ export function AdminProfileManager() {
       setAdImageFile(null);
       setAdSkippable(true);
       setAdActive(true);
+      setAdApproved(true);
+      setAdStartsAt('');
+      setAdEndsAt('');
       setAdMessage('Ad uploaded and saved.');
     } catch (err) {
       setAdError((err as Error).message);
@@ -333,6 +402,8 @@ export function AdminProfileManager() {
       setAdUploadProgress(0);
     }
   }
+
+  const pendingSubmissions = submissions.filter((item) => item.status === 'pending');
 
   return (
     <section className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
@@ -359,165 +430,141 @@ export function AdminProfileManager() {
       {activeTab === 'subscribers' && (
         <form onSubmit={onCountSubmit} className="mt-5 space-y-3 rounded-xl border border-zinc-700 p-4">
           <h3 className="text-sm font-semibold">Subscriber Count</h3>
-          <input
-            value={countHandle}
-            onChange={(event) => setCountHandle(event.target.value)}
-            placeholder="@target_handle"
-            required
-            className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3"
-          />
-          <input
-            type="number"
-            min={0}
-            value={subscribersCount}
-            onChange={(event) => setSubscribersCount(Number(event.target.value) || 0)}
-            placeholder="Subscriber count"
-            required
-            className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3"
-          />
+          <input value={countHandle} onChange={(event) => setCountHandle(event.target.value)} placeholder="@target_handle" required className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3" />
+          <input type="number" min={0} value={subscribersCount} onChange={(event) => setSubscribersCount(Number(event.target.value) || 0)} placeholder="Subscriber count" required className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3" />
           {countError && <p className="text-sm text-red-400">{countError}</p>}
           {countMessage && <p className="text-sm text-green-400">{countMessage}</p>}
-          <button
-            type="submit"
-            disabled={countLoading}
-            className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60"
-          >
-            {countLoading ? 'Updating...' : 'Save subscriber count'}
-          </button>
+          <button type="submit" disabled={countLoading} className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60">{countLoading ? 'Updating...' : 'Save subscriber count'}</button>
         </form>
       )}
 
       {activeTab === 'verification' && (
         <form onSubmit={onVerifySubmit} className="mt-5 space-y-3 rounded-xl border border-zinc-700 p-4">
           <h3 className="text-sm font-semibold">Channel Verification</h3>
-          <input
-            value={verifyHandle}
-            onChange={(event) => setVerifyHandle(event.target.value)}
-            placeholder="@target_handle"
-            required
-            className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3"
-          />
+          <input value={verifyHandle} onChange={(event) => setVerifyHandle(event.target.value)} placeholder="@target_handle" required className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3" />
           <label className="flex items-center gap-2 text-sm text-zinc-200">
-            <input
-              type="checkbox"
-              checked={verified}
-              onChange={(event) => setVerified(event.target.checked)}
-            />
+            <input type="checkbox" checked={verified} onChange={(event) => setVerified(event.target.checked)} />
             Verified channel
           </label>
           {verifyError && <p className="text-sm text-red-400">{verifyError}</p>}
           {verifyMessage && <p className="text-sm text-green-400">{verifyMessage}</p>}
-          <button
-            type="submit"
-            disabled={verifyLoading}
-            className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60"
-          >
-            {verifyLoading ? 'Updating...' : 'Save verification status'}
-          </button>
+          <button type="submit" disabled={verifyLoading} className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60">{verifyLoading ? 'Updating...' : 'Save verification status'}</button>
         </form>
       )}
 
       {activeTab === 'suspension' && (
         <form onSubmit={onSuspendSubmit} className="mt-5 space-y-3 rounded-xl border border-zinc-700 p-4">
           <h3 className="text-sm font-semibold">Account Suspension</h3>
-          <input
-            value={suspendHandle}
-            onChange={(event) => setSuspendHandle(event.target.value)}
-            placeholder="@target_handle"
-            required
-            className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3"
-          />
+          <input value={suspendHandle} onChange={(event) => setSuspendHandle(event.target.value)} placeholder="@target_handle" required className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3" />
           <label className="flex items-center gap-2 text-sm text-zinc-200">
-            <input
-              type="checkbox"
-              checked={suspended}
-              onChange={(event) => setSuspended(event.target.checked)}
-            />
+            <input type="checkbox" checked={suspended} onChange={(event) => setSuspended(event.target.checked)} />
             Suspended
           </label>
           {suspendError && <p className="text-sm text-red-400">{suspendError}</p>}
           {suspendMessage && <p className="text-sm text-green-400">{suspendMessage}</p>}
-          <button
-            type="submit"
-            disabled={suspendLoading}
-            className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60"
-          >
-            {suspendLoading ? 'Updating...' : 'Save suspension status'}
-          </button>
+          <button type="submit" disabled={suspendLoading} className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60">{suspendLoading ? 'Updating...' : 'Save suspension status'}</button>
         </form>
       )}
 
       {activeTab === 'ads' && (
         <div className="mt-5 space-y-4">
           <form onSubmit={onAdSubmit} className="space-y-3 rounded-xl border border-zinc-700 p-4">
-            <h3 className="text-sm font-semibold">Upload Ad</h3>
-            <input
-              value={adTitle}
-              onChange={(event) => setAdTitle(event.target.value)}
-              placeholder="Ad title"
-              required
-              className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3"
-            />
-            <input
-              value={adClickUrl}
-              onChange={(event) => setAdClickUrl(event.target.value)}
-              placeholder="https://example.com"
-              required
-              className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3"
-            />
-            <label className="block text-sm text-zinc-400">Ad video</label>
-            <input
-              type="file"
-              accept="video/*"
-              required
-              onChange={(event) => setAdVideoFile(event.target.files?.[0] || null)}
-              className="block w-full text-sm text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-zinc-900"
-            />
-            <label className="block text-sm text-zinc-400">Link image (optional PNG/JPEG)</label>
-            <input
-              type="file"
-              accept="image/png,image/jpeg"
-              onChange={(event) => setAdImageFile(event.target.files?.[0] || null)}
-              className="block w-full text-sm text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-zinc-900"
-            />
+            <h3 className="text-sm font-semibold">Upload and Schedule Ad</h3>
+            <input value={adTitle} onChange={(event) => setAdTitle(event.target.value)} placeholder="Ad title" required className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3" />
+            <input value={adClickUrl} onChange={(event) => setAdClickUrl(event.target.value)} placeholder="https://example.com" required className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3" />
             <div className="grid gap-3 sm:grid-cols-2">
+              <input type="datetime-local" value={adStartsAt} onChange={(event) => setAdStartsAt(event.target.value)} className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3" />
+              <input type="datetime-local" value={adEndsAt} onChange={(event) => setAdEndsAt(event.target.value)} className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3" />
+            </div>
+            <label className="block text-sm text-zinc-400">Ad video</label>
+            <input type="file" accept="video/*" required onChange={(event) => setAdVideoFile(event.target.files?.[0] || null)} className="block w-full text-sm text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-zinc-900" />
+            <label className="block text-sm text-zinc-400">Link image (optional PNG/JPEG)</label>
+            <input type="file" accept="image/png,image/jpeg" onChange={(event) => setAdImageFile(event.target.files?.[0] || null)} className="block w-full text-sm text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-zinc-900" />
+            <div className="grid gap-3 sm:grid-cols-3">
               <label className="flex items-center gap-2 text-sm text-zinc-200">
-                <input
-                  type="checkbox"
-                  checked={adSkippable}
-                  onChange={(event) => setAdSkippable(event.target.checked)}
-                />
+                <input type="checkbox" checked={adSkippable} onChange={(event) => setAdSkippable(event.target.checked)} />
                 Skippable
               </label>
               <label className="flex items-center gap-2 text-sm text-zinc-200">
-                <input
-                  type="checkbox"
-                  checked={adActive}
-                  onChange={(event) => setAdActive(event.target.checked)}
-                />
-                Active immediately
+                <input type="checkbox" checked={adApproved} onChange={(event) => setAdApproved(event.target.checked)} />
+                Approved
+              </label>
+              <label className="flex items-center gap-2 text-sm text-zinc-200">
+                <input type="checkbox" checked={adActive} onChange={(event) => setAdActive(event.target.checked)} />
+                Active
               </label>
             </div>
             {adError && <p className="text-sm text-red-400">{adError}</p>}
             {adMessage && <p className="text-sm text-green-400">{adMessage}</p>}
-            {adSubmitting && adUploadProgress > 0 && (
-              <p className="text-sm text-zinc-400">Uploading ad video: {adUploadProgress}%</p>
-            )}
-            <button
-              type="submit"
-              disabled={adSubmitting}
-              className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60"
-            >
-              {adSubmitting ? 'Uploading...' : 'Save ad'}
-            </button>
+            {adSubmitting && adUploadProgress > 0 && <p className="text-sm text-zinc-400">Uploading ad video: {adUploadProgress}%</p>}
+            <button type="submit" disabled={adSubmitting} className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60">{adSubmitting ? 'Uploading...' : 'Save ad'}</button>
           </form>
+
+          <div className="rounded-xl border border-zinc-700 p-4">
+            <h4 className="text-sm font-semibold">Pending advertiser submissions</h4>
+            {adsLoading ? <p className="mt-2 text-sm text-zinc-400">Loading submissions...</p> : null}
+            {!adsLoading && !pendingSubmissions.length ? <p className="mt-2 text-sm text-zinc-400">No pending submissions.</p> : null}
+            <div className="mt-3 space-y-3">
+              {pendingSubmissions.map((item) => (
+                <div key={item.id} className="rounded-lg border border-zinc-700 p-3">
+                  <p className="text-sm font-semibold">{item.ad_title}</p>
+                  <p className="text-xs text-zinc-400">
+                    {item.first_name} {item.last_name} • {item.position_title} • {item.company_name}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {item.contact_email} • PayPal TX: {item.paypal_transaction_id}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Runtime: {item.runtime_seconds}s • {item.skippable ? 'Skippable' : 'Non-skippable'}
+                  </p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <input
+                      type="datetime-local"
+                      value={submissionStart[item.id] ?? toLocalDateTimeInput(item.starts_at)}
+                      onChange={(event) => setSubmissionStart((prev) => ({ ...prev, [item.id]: event.target.value }))}
+                      className="h-10 rounded-lg border border-zinc-700 bg-zinc-950 px-3 text-xs"
+                    />
+                    <input
+                      type="datetime-local"
+                      value={submissionEnd[item.id] ?? toLocalDateTimeInput(item.ends_at)}
+                      onChange={(event) => setSubmissionEnd((prev) => ({ ...prev, [item.id]: event.target.value }))}
+                      className="h-10 rounded-lg border border-zinc-700 bg-zinc-950 px-3 text-xs"
+                    />
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={submissionNote[item.id] || ''}
+                    onChange={(event) => setSubmissionNote((prev) => ({ ...prev, [item.id]: event.target.value }))}
+                    placeholder="Review notes"
+                    className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 p-2 text-xs"
+                  />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void onSubmissionAction(item, 'approve')}
+                      disabled={submissionActionLoading === item.id}
+                      className="rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-500 disabled:opacity-60"
+                    >
+                      Approve & Schedule
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onSubmissionAction(item, 'reject')}
+                      disabled={submissionActionLoading === item.id}
+                      className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           <div className="rounded-xl border border-zinc-700 p-4">
             <h4 className="text-sm font-semibold">Existing ads</h4>
             {adsLoading ? <p className="mt-2 text-sm text-zinc-400">Loading ads...</p> : null}
-            {!adsLoading && !ads.length ? (
-              <p className="mt-2 text-sm text-zinc-400">No ads uploaded yet.</p>
-            ) : null}
+            {!adsLoading && !ads.length ? <p className="mt-2 text-sm text-zinc-400">No ads uploaded yet.</p> : null}
             <div className="mt-3 space-y-2">
               {ads.map((item) => (
                 <div key={item.id} className="rounded-lg border border-zinc-700 p-3">
@@ -525,17 +572,56 @@ export function AdminProfileManager() {
                     <div>
                       <p className="text-sm font-semibold">{item.title}</p>
                       <p className="text-xs text-zinc-400">{new Date(item.created_at).toLocaleString()}</p>
+                      <p className="text-xs text-zinc-500">Runtime: {item.runtime_seconds || 0}s</p>
                     </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void onUpdateAd(item, { is_active: !item.is_active })}
+                        className="rounded-full border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800"
+                      >
+                        {item.is_active ? 'Pause' : 'Activate'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void onUpdateAd(item, { approved: !item.approved })}
+                        className="rounded-full border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800"
+                      >
+                        {item.approved ? 'Unapprove' : 'Approve'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <input
+                      type="datetime-local"
+                      value={adScheduleStart[item.id] ?? toLocalDateTimeInput(item.starts_at)}
+                      onChange={(event) => setAdScheduleStart((prev) => ({ ...prev, [item.id]: event.target.value }))}
+                      className="h-10 rounded-lg border border-zinc-700 bg-zinc-950 px-3 text-xs"
+                    />
+                    <input
+                      type="datetime-local"
+                      value={adScheduleEnd[item.id] ?? toLocalDateTimeInput(item.ends_at)}
+                      onChange={(event) => setAdScheduleEnd((prev) => ({ ...prev, [item.id]: event.target.value }))}
+                      className="h-10 rounded-lg border border-zinc-700 bg-zinc-950 px-3 text-xs"
+                    />
+                  </div>
+                  <div className="mt-2">
                     <button
                       type="button"
-                      onClick={() => void onToggleAdActive(item.id, !item.is_active)}
+                      onClick={() =>
+                        void onUpdateAd(item, {
+                          starts_at: adScheduleStart[item.id] || null,
+                          ends_at: adScheduleEnd[item.id] || null,
+                        })
+                      }
                       className="rounded-full border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800"
                     >
-                      {item.is_active ? 'Pause' : 'Activate'}
+                      Save Schedule
                     </button>
                   </div>
                   <p className="mt-2 text-xs text-zinc-400">
                     {item.skippable ? 'Skippable' : 'Non-skippable'} •{' '}
+                    {item.approved ? 'Approved' : 'Pending approval'} •{' '}
                     {item.is_active ? 'Active' : 'Inactive'}
                   </p>
                 </div>

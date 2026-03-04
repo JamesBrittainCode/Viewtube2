@@ -89,6 +89,13 @@ export async function Navbar() {
           <ThemeToggle />
         </div>
 
+        <Link
+          href="/advertise"
+          className="hidden rounded-full border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 md:inline-flex dark:border-zinc-700 dark:hover:bg-zinc-800"
+        >
+          Advertise
+        </Link>
+
         {user && (
           <NotificationMenu
             initialNotifications={notifications}
