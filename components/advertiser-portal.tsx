@@ -102,16 +102,13 @@ export function AdvertiserPortal({ submissions }: { submissions: Submission[] })
                   rel="noopener noreferrer"
                   className="mt-3 inline-flex rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
                 >
-                  Pay with Google Pay (Fourthwall)
+                  Pay Now
                 </a>
               ) : (
                 <p className="mt-2 text-xs text-blue-700 dark:text-blue-300">
-                  Fourthwall checkout URL is not configured yet.
+                  Checkout URL is not configured yet.
                 </p>
               )}
-              <p className="mt-3 text-xs text-blue-700 dark:text-blue-300">
-                Payment is verified automatically by webhook before campaign launch is allowed.
-              </p>
             </div>
           ) : null}
           {item.status === 'paid_pending_launch' ? (
