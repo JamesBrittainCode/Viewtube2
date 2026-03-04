@@ -1,6 +1,4 @@
 'use client';
-
-import Link from 'next/link';
 import { Captions, Maximize2, Minimize2, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -210,6 +208,18 @@ export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
     void startMainVideo();
   }
 
+  async function trackAdCompletion(adId: string) {
+    try {
+      await fetch('/api/ads/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adId }),
+      });
+    } catch {
+      // Best effort only.
+    }
+  }
+
   async function toggleFullscreen() {
     const container = containerRef.current;
     if (!container) return;
@@ -271,6 +281,9 @@ export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
           }}
           onEnded={() => {
             if (mode === 'ad') {
+              if (ad?.id) {
+                void trackAdCompletion(ad.id);
+              }
               void startMainVideo();
             }
           }}
@@ -292,8 +305,8 @@ export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
         )}
 
         {mode === 'ad' && ad?.click_url && (
-          <Link
-            href={ad.click_url}
+          <a
+            href={`/api/ads/click?ad=${encodeURIComponent(ad.id)}&to=${encodeURIComponent(ad.click_url)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="absolute right-3 top-3 flex items-center gap-2 rounded bg-white/90 px-2 py-1 text-xs font-semibold text-zinc-900"
@@ -303,7 +316,7 @@ export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
               <img src={ad.thumbnail_url} alt="" className="h-7 w-10 rounded object-cover" />
             ) : null}
             Visit Sponsor
-          </Link>
+          </a>
         )}
 
         {mode === 'ad' && ad?.skippable && (
@@ -315,6 +328,11 @@ export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
           >
             {adCountdown > 0 ? `Skip in ${adCountdown}` : 'Skip Ad'}
           </button>
+        )}
+        {mode === 'ad' && !ad?.skippable && (
+          <div className="absolute bottom-3 right-3 rounded bg-black/70 px-3 py-1 text-xs font-medium text-white">
+            Video will play after ad
+          </div>
         )}
       </div>
 

@@ -21,10 +21,46 @@ export default async function AdvertiserPortalPage({
   const { data: submissions } = await supabase
     .from('ad_submissions')
     .select(
-      'id,ad_title,company_name,status,calculated_price_usd,payment_amount_usd,starts_at,ends_at,paypal_transaction_id,created_at',
+      'id,ad_title,company_name,status,calculated_price_usd,payment_amount_usd,starts_at,ends_at,paypal_transaction_id,converted_ad_id,created_at',
     )
     .eq('submitter_email', user.email.toLowerCase())
     .order('created_at', { ascending: false });
+
+  const launchedAdIds = (submissions || [])
+    .map((item) => item.converted_ad_id)
+    .filter((value): value is string => Boolean(value));
+
+  const adMetricsById = new Map<
+    string,
+    { is_active: boolean; impressions_count: number; clicks_count: number; completions_count: number }
+  >();
+
+  if (launchedAdIds.length) {
+    const { data: ads } = await supabase
+      .from('ads')
+      .select('id,is_active,impressions_count,clicks_count,completions_count')
+      .in('id', launchedAdIds);
+
+    for (const ad of ads || []) {
+      adMetricsById.set(ad.id, {
+        is_active: ad.is_active ?? false,
+        impressions_count: ad.impressions_count ?? 0,
+        clicks_count: ad.clicks_count ?? 0,
+        completions_count: ad.completions_count ?? 0,
+      });
+    }
+  }
+
+  const enrichedSubmissions = (submissions || []).map((item) => {
+    const metrics = item.converted_ad_id ? adMetricsById.get(item.converted_ad_id) : undefined;
+    return {
+      ...item,
+      ad_is_active: metrics?.is_active ?? false,
+      ad_impressions_count: metrics?.impressions_count ?? 0,
+      ad_clicks_count: metrics?.clicks_count ?? 0,
+      ad_completions_count: metrics?.completions_count ?? 0,
+    };
+  });
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:py-10">
@@ -49,7 +85,7 @@ export default async function AdvertiserPortalPage({
         </p>
       ) : null}
 
-      <AdvertiserPortal submissions={submissions || []} />
+      <AdvertiserPortal submissions={enrichedSubmissions} />
     </main>
   );
 }

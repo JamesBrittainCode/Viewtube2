@@ -107,6 +107,10 @@ create table if not exists public.ads (
   target_reach integer,
   calculated_price_usd numeric(10,2),
   skippable boolean not null default true,
+  impressions_count integer not null default 0,
+  clicks_count integer not null default 0,
+  completions_count integer not null default 0,
+  last_served_at timestamptz,
   approved boolean not null default false,
   starts_at timestamptz,
   ends_at timestamptz,
@@ -152,6 +156,14 @@ alter table public.ads
 add column if not exists calculated_price_usd numeric(10,2);
 alter table public.ads
 add column if not exists approved boolean not null default false;
+alter table public.ads
+add column if not exists impressions_count integer not null default 0;
+alter table public.ads
+add column if not exists clicks_count integer not null default 0;
+alter table public.ads
+add column if not exists completions_count integer not null default 0;
+alter table public.ads
+add column if not exists last_served_at timestamptz;
 alter table public.ads
 add column if not exists starts_at timestamptz;
 alter table public.ads
@@ -825,6 +837,19 @@ using (
   and approved = true
   and (starts_at is null or starts_at <= now())
   and (ends_at is null or ends_at > now())
+);
+
+drop policy if exists "Advertisers can view own launched ads" on public.ads;
+create policy "Advertisers can view own launched ads"
+on public.ads for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.ad_submissions s
+    where s.converted_ad_id = id
+      and lower(s.submitter_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
+  )
 );
 
 create policy "Only admin can manage ads"

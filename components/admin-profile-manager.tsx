@@ -24,6 +24,10 @@ type AdItem = {
   ends_at?: string | null;
   is_active: boolean;
   source_submission_id?: string | null;
+  impressions_count?: number | null;
+  clicks_count?: number | null;
+  completions_count?: number | null;
+  last_served_at?: string | null;
   created_at: string;
 };
 
@@ -782,6 +786,19 @@ export function AdminProfileManager() {
                       />
                     </div>
                   )}
+                  <p className="mt-2 text-xs text-zinc-500">
+                    Impressions: {(item.impressions_count || 0).toLocaleString()} • Clicks:{' '}
+                    {(item.clicks_count || 0).toLocaleString()} • Completions:{' '}
+                    {(item.completions_count || 0).toLocaleString()}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    CTR:{' '}
+                    {item.impressions_count
+                      ? `${(((item.clicks_count || 0) / item.impressions_count) * 100).toFixed(2)}%`
+                      : '0.00%'}{' '}
+                    • Last served:{' '}
+                    {item.last_served_at ? new Date(item.last_served_at).toLocaleString() : 'Never'}
+                  </p>
                   <p className="mt-2 text-xs text-zinc-400">
                     {item.skippable ? 'Skippable' : 'Non-skippable'} •{' '}
                     {item.approved ? 'Approved' : 'Pending approval'} •{' '}

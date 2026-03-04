@@ -22,7 +22,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('ads')
     .select(
-      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,created_at',
+      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,impressions_count,clicks_count,completions_count,last_served_at,created_at',
     )
     .order('created_at', { ascending: false });
 
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
       created_by: user.id,
     })
     .select(
-      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,created_at',
+      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,impressions_count,clicks_count,completions_count,last_served_at,created_at',
     )
     .single();
 
@@ -155,7 +155,7 @@ export async function PATCH(request: Request) {
     .update(patch)
     .eq('id', body.id)
     .select(
-      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,created_at',
+      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,impressions_count,clicks_count,completions_count,last_served_at,created_at',
     )
     .single();
 

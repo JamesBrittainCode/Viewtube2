@@ -12,6 +12,11 @@ type Submission = {
   starts_at?: string | null;
   ends_at?: string | null;
   paypal_transaction_id?: string | null;
+  converted_ad_id?: string | null;
+  ad_is_active?: boolean;
+  ad_impressions_count?: number;
+  ad_clicks_count?: number;
+  ad_completions_count?: number;
   created_at: string;
 };
 
@@ -86,6 +91,27 @@ export function AdvertiserPortal({ submissions }: { submissions: Submission[] })
               <p className="text-sm">{item.ends_at ? new Date(item.ends_at).toLocaleString() : 'Not set'}</p>
             </div>
           </div>
+
+          {item.converted_ad_id ? (
+            <div className="mt-3 grid gap-3 sm:grid-cols-4">
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+                <p className="text-xs text-zinc-500">Ad status</p>
+                <p className="text-sm font-semibold">{item.ad_is_active ? 'Running' : 'Ended'}</p>
+              </div>
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+                <p className="text-xs text-zinc-500">Impressions</p>
+                <p className="text-sm font-semibold">{(item.ad_impressions_count || 0).toLocaleString()}</p>
+              </div>
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+                <p className="text-xs text-zinc-500">Clicks</p>
+                <p className="text-sm font-semibold">{(item.ad_clicks_count || 0).toLocaleString()}</p>
+              </div>
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+                <p className="text-xs text-zinc-500">Completions</p>
+                <p className="text-sm font-semibold">{(item.ad_completions_count || 0).toLocaleString()}</p>
+              </div>
+            </div>
+          ) : null}
 
           {item.status === 'approved_pending_payment' ? (
             <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
