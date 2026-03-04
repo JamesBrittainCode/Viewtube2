@@ -67,12 +67,7 @@ export function VideoPlayer({ id, videoUrl }: Props) {
 
   async function chooseAdIfEligible() {
     if (adChecked) return;
-    const video = videoRef.current;
-    if (!video) return;
     setAdChecked(true);
-
-    const mainDuration = Number.isFinite(video.duration) ? video.duration : 0;
-    if (mainDuration < 60) return;
 
     try {
       const res = await fetch('/api/ads/decision?eligible=1', { cache: 'no-store' });
