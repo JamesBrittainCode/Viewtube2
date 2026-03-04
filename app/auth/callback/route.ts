@@ -1,14 +1,42 @@
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const requestUrl = new URL(request.url);
+  const { searchParams, origin } = requestUrl;
   const code = searchParams.get('code');
+  const next = searchParams.get('next') || '/';
+
+  const response = NextResponse.redirect(new URL(next, origin));
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          const cookie = request.headers.get('cookie') || '';
+          const match = cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+          return match ? decodeURIComponent(match[1]) : undefined;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          response.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          response.cookies.set({ name, value: '', ...options });
+        },
+      },
+    },
+  );
 
   if (code) {
-    const supabase = await createClient();
-    await supabase.auth.exchangeCodeForSession(code);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      return NextResponse.redirect(
+        new URL(`/sign-in?error=${encodeURIComponent(error.message)}`, origin),
+      );
+    }
   }
 
-  return NextResponse.redirect(`${origin}/`);
+  return response;
 }

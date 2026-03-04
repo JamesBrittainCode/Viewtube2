@@ -19,6 +19,10 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     setLoading(true);
 
     const supabase = createClient();
+    const siteOrigin =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_SITE_URL || '';
 
     try {
       if (mode === 'sign-up') {
@@ -29,7 +33,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             data: {
               username: username.trim(),
             },
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${siteOrigin}/email-confirmed`,
           },
         });
 
