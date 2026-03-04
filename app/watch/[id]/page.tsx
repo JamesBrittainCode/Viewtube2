@@ -100,6 +100,8 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
         <CommentSection
           videoId={video.id}
           commentsEnabled={video.comments_enabled !== false}
+          currentUserId={user?.id || null}
+          videoOwnerId={video.user_id}
         />
       </section>
 

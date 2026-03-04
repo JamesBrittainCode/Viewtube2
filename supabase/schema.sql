@@ -54,7 +54,19 @@ create table if not exists public.comments (
   user_id uuid not null references public.profiles(id) on delete cascade,
   parent_id uuid references public.comments(id) on delete cascade,
   content text not null check (char_length(trim(content)) > 0),
+  pinned boolean not null default false,
   created_at timestamptz not null default now()
+);
+
+alter table public.comments
+add column if not exists pinned boolean not null default false;
+
+create table if not exists public.comment_likes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  comment_id uuid not null references public.comments(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (user_id, comment_id)
 );
 
 create table if not exists public.likes (
@@ -200,6 +212,9 @@ create index if not exists idx_videos_tags on public.videos using gin(tags);
 create index if not exists idx_videos_search_vector on public.videos using gin(search_vector);
 create index if not exists idx_comments_video_id on public.comments using btree(video_id);
 create index if not exists idx_comments_parent_id on public.comments using btree(parent_id);
+create index if not exists idx_comments_video_pinned_created on public.comments using btree(video_id, pinned desc, created_at asc);
+create index if not exists idx_comment_likes_comment_id on public.comment_likes using btree(comment_id);
+create index if not exists idx_comment_likes_user_id on public.comment_likes using btree(user_id);
 create index if not exists idx_likes_video_id on public.likes using btree(video_id);
 create index if not exists idx_likes_user_id on public.likes using btree(user_id);
 create index if not exists idx_subscriptions_subscriber_id on public.subscriptions using btree(subscriber_id);
@@ -595,6 +610,7 @@ $$;
 alter table public.profiles enable row level security;
 alter table public.videos enable row level security;
 alter table public.comments enable row level security;
+alter table public.comment_likes enable row level security;
 alter table public.likes enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.notifications enable row level security;
@@ -708,10 +724,47 @@ to authenticated
 using ((select auth.uid()) = user_id)
 with check ((select auth.uid()) = user_id);
 
+create policy "Video owners can update comments on own videos"
+on public.comments for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.videos v
+    where v.id = video_id
+      and v.user_id = (select auth.uid())
+  )
+)
+with check (true);
+
 create policy "Users can delete own comments"
 on public.comments for delete
 to authenticated
 using ((select auth.uid()) = user_id);
+
+create policy "Video owners can delete comments on own videos"
+on public.comments for delete
+to authenticated
+using (
+  exists (
+    select 1
+    from public.videos v
+    where v.id = video_id
+      and v.user_id = (select auth.uid())
+  )
+);
+
+-- comment likes
+create policy "Comment likes are viewable by everyone"
+on public.comment_likes for select
+to anon, authenticated
+using (true);
+
+create policy "Users can manage own comment likes"
+on public.comment_likes for all
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
 
 -- likes
 create policy "Likes are viewable by everyone"

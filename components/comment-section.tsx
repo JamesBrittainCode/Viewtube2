@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { MessageCircle, Reply } from 'lucide-react';
+import { MessageCircle, Pin, Reply, ThumbsUp, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { VerifiedBadge } from '@/components/verified-badge';
 import type { Comment } from '@/lib/types';
@@ -44,20 +44,35 @@ function nestComments(comments: FlatComment[]): Comment[] {
     }
   });
 
+  roots.sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
   return roots;
 }
 
 function CommentItem({
   item,
+  currentUserId,
+  videoOwnerId,
+  commentsEnabled,
   onReply,
-  canReply,
+  onDelete,
+  onTogglePin,
+  onToggleLike,
 }: {
   item: Comment;
+  currentUserId: string | null;
+  videoOwnerId: string;
+  commentsEnabled: boolean;
   onReply: (parentId: string, content: string) => Promise<void>;
-  canReply: boolean;
+  onDelete: (commentId: string) => Promise<void>;
+  onTogglePin: (commentId: string, pinned: boolean) => Promise<void>;
+  onToggleLike: (commentId: string) => Promise<void>;
 }) {
   const [showReply, setShowReply] = useState(false);
   const [value, setValue] = useState('');
+
+  const canReply = commentsEnabled;
+  const canDelete = Boolean(currentUserId && (currentUserId === item.user_id || currentUserId === videoOwnerId));
+  const canPin = Boolean(currentUserId && currentUserId === videoOwnerId && !item.parent_id);
 
   async function submitReply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,7 +83,7 @@ function CommentItem({
   }
 
   return (
-    <article className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <article className={`rounded-2xl border bg-white p-3 shadow-sm dark:bg-zinc-900 ${item.pinned ? 'border-red-300 dark:border-red-800' : 'border-zinc-200 dark:border-zinc-800'}`}>
       <div className="flex gap-3">
         <Image
           src={item.profile?.avatar_url || '/avatar-placeholder.svg'}
@@ -86,18 +101,58 @@ function CommentItem({
               {item.profile?.verified && <VerifiedBadge className="h-3.5 w-3.5" />}
             </span>{' '}
             • {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+            {item.pinned ? (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                <Pin className="h-3 w-3" />
+                Pinned
+              </span>
+            ) : null}
           </div>
           <p className="mt-1.5 text-sm leading-relaxed">{item.content}</p>
-          {canReply && (
+
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-zinc-500">
             <button
               type="button"
-              onClick={() => setShowReply((state) => !state)}
-              className="mt-2 inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              onClick={() => void onToggleLike(item.id)}
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 ${item.liked_by_me ? 'text-red-500' : ''}`}
             >
-              <Reply className="h-3.5 w-3.5" />
-              Reply
+              <ThumbsUp className="h-3.5 w-3.5" />
+              {item.likes_count || 0}
             </button>
-          )}
+
+            {canReply && (
+              <button
+                type="button"
+                onClick={() => setShowReply((state) => !state)}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                <Reply className="h-3.5 w-3.5" />
+                Reply
+              </button>
+            )}
+
+            {canPin && (
+              <button
+                type="button"
+                onClick={() => void onTogglePin(item.id, !item.pinned)}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                <Pin className="h-3.5 w-3.5" />
+                {item.pinned ? 'Unpin' : 'Pin'}
+              </button>
+            )}
+
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => void onDelete(item.id)}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
+            )}
+          </div>
 
           {showReply && (
             <form onSubmit={submitReply} className="mt-2 flex gap-2">
@@ -119,8 +174,13 @@ function CommentItem({
                 <CommentItem
                   key={reply.id}
                   item={reply}
+                  currentUserId={currentUserId}
+                  videoOwnerId={videoOwnerId}
+                  commentsEnabled={commentsEnabled}
                   onReply={onReply}
-                  canReply={canReply}
+                  onDelete={onDelete}
+                  onTogglePin={onTogglePin}
+                  onToggleLike={onToggleLike}
                 />
               ))}
             </div>
@@ -134,9 +194,13 @@ function CommentItem({
 export function CommentSection({
   videoId,
   commentsEnabled,
+  currentUserId,
+  videoOwnerId,
 }: {
   videoId: string;
   commentsEnabled: boolean;
+  currentUserId: string | null;
+  videoOwnerId: string;
 }) {
   const [comments, setComments] = useState<FlatComment[]>([]);
   const [value, setValue] = useState('');
@@ -150,7 +214,7 @@ export function CommentSection({
   }
 
   useEffect(() => {
-    loadComments();
+    void loadComments();
 
     const supabase = createClient();
     const channel = supabase
@@ -164,7 +228,7 @@ export function CommentSection({
           filter: `video_id=eq.${videoId}`,
         },
         () => {
-          loadComments();
+          void loadComments();
         },
       )
       .subscribe();
@@ -187,6 +251,33 @@ export function CommentSection({
     }
   }
 
+  async function deleteComment(commentId: string) {
+    const confirmed = window.confirm('Delete this comment?');
+    if (!confirmed) return;
+    const res = await fetch(`/api/videos/${videoId}/comments`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commentId }),
+    });
+    if (res.ok) await loadComments();
+  }
+
+  async function togglePin(commentId: string, pinned: boolean) {
+    const res = await fetch(`/api/videos/${videoId}/comments`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commentId, pinned }),
+    });
+    if (res.ok) await loadComments();
+  }
+
+  async function toggleLike(commentId: string) {
+    const res = await fetch(`/api/videos/${videoId}/comments/${commentId}/like`, {
+      method: 'POST',
+    });
+    if (res.ok) await loadComments();
+  }
+
   const tree = useMemo(() => nestComments(comments), [comments]);
 
   return (
@@ -201,7 +292,7 @@ export function CommentSection({
           onSubmit={(event) => {
             event.preventDefault();
             if (!value.trim()) return;
-            postComment(null, value.trim());
+            void postComment(null, value.trim());
           }}
           className="mt-4 flex gap-2"
         >
@@ -229,8 +320,13 @@ export function CommentSection({
             <CommentItem
               key={comment.id}
               item={comment}
+              currentUserId={currentUserId}
+              videoOwnerId={videoOwnerId}
+              commentsEnabled={commentsEnabled}
               onReply={(parentId, content) => postComment(parentId, content)}
-              canReply={commentsEnabled}
+              onDelete={deleteComment}
+              onTogglePin={togglePin}
+              onToggleLike={toggleLike}
             />
           ))
         ) : (

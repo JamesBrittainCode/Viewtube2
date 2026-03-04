@@ -34,6 +34,9 @@ export type Comment = {
   user_id: string;
   parent_id: string | null;
   content: string;
+  pinned?: boolean;
+  likes_count?: number;
+  liked_by_me?: boolean;
   created_at: string;
   profile?: Pick<Profile, 'username' | 'handle' | 'avatar_url' | 'verified'>;
   replies?: Comment[];

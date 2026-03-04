@@ -14,6 +14,20 @@ alter table public.profiles
 add column if not exists moderation_strikes integer not null default 0;
 alter table public.videos
 add column if not exists comments_enabled boolean not null default true;
+alter table public.comments
+add column if not exists pinned boolean not null default false;
+
+create table if not exists public.comment_likes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  comment_id uuid not null references public.comments(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (user_id, comment_id)
+);
+
+create index if not exists idx_comments_video_pinned_created on public.comments using btree(video_id, pinned desc, created_at asc);
+create index if not exists idx_comment_likes_comment_id on public.comment_likes using btree(comment_id);
+create index if not exists idx_comment_likes_user_id on public.comment_likes using btree(user_id);
 
 create or replace function public.normalize_handle(input_text text)
 returns text
@@ -275,6 +289,7 @@ create index if not exists idx_ad_submissions_status_created_at on public.ad_sub
 alter table public.moderation_events enable row level security;
 alter table public.ads enable row level security;
 alter table public.ad_submissions enable row level security;
+alter table public.comment_likes enable row level security;
 alter table public.notifications
 add column if not exists target_url text;
 
@@ -283,6 +298,59 @@ create policy "Users can view own moderation events"
 on public.moderation_events for select
 to authenticated
 using ((select auth.uid()) = user_id);
+
+drop policy if exists "Users can update own comments" on public.comments;
+create policy "Users can update own comments"
+on public.comments for update
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
+drop policy if exists "Video owners can update comments on own videos" on public.comments;
+create policy "Video owners can update comments on own videos"
+on public.comments for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.videos v
+    where v.id = video_id
+      and v.user_id = (select auth.uid())
+  )
+)
+with check (true);
+
+drop policy if exists "Users can delete own comments" on public.comments;
+create policy "Users can delete own comments"
+on public.comments for delete
+to authenticated
+using ((select auth.uid()) = user_id);
+
+drop policy if exists "Video owners can delete comments on own videos" on public.comments;
+create policy "Video owners can delete comments on own videos"
+on public.comments for delete
+to authenticated
+using (
+  exists (
+    select 1
+    from public.videos v
+    where v.id = video_id
+      and v.user_id = (select auth.uid())
+  )
+);
+
+drop policy if exists "Comment likes are viewable by everyone" on public.comment_likes;
+create policy "Comment likes are viewable by everyone"
+on public.comment_likes for select
+to anon, authenticated
+using (true);
+
+drop policy if exists "Users can manage own comment likes" on public.comment_likes;
+create policy "Users can manage own comment likes"
+on public.comment_likes for all
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
 
 drop policy if exists "Active ads are viewable by everyone" on public.ads;
 create policy "Active ads are viewable by everyone"
