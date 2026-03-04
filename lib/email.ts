@@ -86,6 +86,12 @@ export async function sendAdvertiserReviewEmail(input: {
   decision: 'approved' | 'rejected';
   reviewNotes?: string | null;
 }) {
+  const normalizedTo = input.toEmail.trim().toLowerCase();
+  const adminAlert = getAdminAlertEmail();
+  if (!normalizedTo || normalizedTo === adminAlert) {
+    return;
+  }
+
   const portalUrl = `${getBaseUrl()}/advertise/portal`;
   const subject =
     input.decision === 'approved'
@@ -98,7 +104,7 @@ export async function sendAdvertiserReviewEmail(input: {
       : 'Your campaign was not approved at this time.';
 
   await sendEmail({
-    to: input.toEmail,
+    to: normalizedTo,
     subject,
     html: `
       <p>${summary}</p>
