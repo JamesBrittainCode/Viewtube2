@@ -22,7 +22,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'fixed left-0 top-16 hidden h-[calc(100vh-4rem)] border-r border-zinc-200 bg-zinc-50 p-3 transition-all duration-300 ease-out lg:block dark:border-zinc-800 dark:bg-zinc-900/60',
+        'fixed left-0 top-16 hidden h-[calc(100vh-4rem)] border-r border-zinc-200 bg-zinc-50 p-3 lg:block dark:border-zinc-800 dark:bg-zinc-900/60',
         collapsed ? 'w-20' : 'w-64',
       )}
     >
@@ -45,7 +45,7 @@ export function Sidebar({
               key={link.href}
               href={link.href}
               className={cn(
-                'flex items-center rounded-xl px-3 py-2 text-sm font-medium transition hover:bg-zinc-200 dark:hover:bg-zinc-800',
+                'flex items-center rounded-xl px-3 py-2 text-sm font-medium hover:bg-zinc-200 dark:hover:bg-zinc-800',
                 collapsed ? 'justify-center gap-0' : 'gap-3',
               )}
               title={collapsed ? link.label : undefined}
@@ -53,7 +53,7 @@ export function Sidebar({
               <Icon className="h-4 w-4 shrink-0" />
               <span
                 className={cn(
-                  'transition-all duration-200',
+                  '',
                   collapsed ? 'w-0 overflow-hidden opacity-0' : 'w-auto opacity-100',
                 )}
               >

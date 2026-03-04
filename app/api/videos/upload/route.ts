@@ -15,6 +15,11 @@ function parseTags(raw: string | null): string[] {
     .slice(0, 15);
 }
 
+function hasAllowedThumbnailExtension(url: string) {
+  const path = url.split('?')[0].toLowerCase();
+  return path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png');
+}
+
 function extractStoragePath(publicUrl: string, projectUrl: string, bucket: string): string | null {
   const prefix = `${projectUrl}/storage/v1/object/public/${bucket}/`;
   if (!publicUrl.startsWith(prefix)) return null;
@@ -83,6 +88,13 @@ export async function POST(request: Request) {
   if (!videoUrl.startsWith(publicPrefix) || !thumbnailUrl.startsWith(publicPrefix)) {
     return NextResponse.json(
       { error: 'Invalid storage URLs. Upload to Supabase Storage first.' },
+      { status: 400 },
+    );
+  }
+
+  if (!hasAllowedThumbnailExtension(thumbnailUrl)) {
+    return NextResponse.json(
+      { error: 'Thumbnail must be a PNG or JPEG image.' },
       { status: 400 },
     );
   }

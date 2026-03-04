@@ -23,6 +23,8 @@ type GeneratedThumb = {
   url: string;
 };
 
+const ALLOWED_THUMBNAIL_TYPES = new Set(['image/jpeg', 'image/png']);
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -170,8 +172,8 @@ export function UploadForm() {
       return;
     }
 
-    if (!thumbnail || !thumbnail.type.startsWith('image/')) {
-      setError('Choose an auto-generated thumbnail or upload your own image.');
+    if (!thumbnail || !ALLOWED_THUMBNAIL_TYPES.has(thumbnail.type)) {
+      setError('Thumbnail must be a PNG or JPEG image.');
       return;
     }
 
@@ -322,11 +324,11 @@ export function UploadForm() {
           <input
             name="thumbnail"
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg"
             onChange={(event) => {
               const file = event.target.files?.[0] || null;
-              if (file && !file.type.startsWith('image/')) {
-                setError('Please upload a valid image thumbnail.');
+              if (file && !ALLOWED_THUMBNAIL_TYPES.has(file.type)) {
+                setError('Thumbnail must be a PNG or JPEG image.');
                 return;
               }
               setCustomThumbnailFile(file);
@@ -335,7 +337,7 @@ export function UploadForm() {
             className="mt-2 block w-full text-sm"
           />
           <p className="mt-2 text-xs text-zinc-500">
-            Upload your own image to override auto-generated options.
+            Upload a PNG/JPEG image to override auto-generated options.
           </p>
         </label>
       </div>

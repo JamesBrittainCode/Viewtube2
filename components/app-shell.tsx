@@ -29,7 +29,7 @@ export function AppShell({
       <MobileBottomNav />
       <main
         className={cn(
-          'mx-auto max-w-[1600px] px-4 py-4 pb-24 transition-[margin-left] duration-300 ease-out sm:py-6 lg:px-6 lg:pb-6',
+          'mx-auto max-w-[1600px] px-4 py-4 pb-24 sm:py-6 lg:px-6 lg:pb-6',
           collapsed ? 'lg:ml-20' : 'lg:ml-64',
         )}
       >
