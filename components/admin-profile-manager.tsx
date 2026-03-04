@@ -35,6 +35,23 @@ function fileExt(name: string, fallback: string) {
   return safe || fallback;
 }
 
+async function getVideoDurationSeconds(file: File): Promise<number> {
+  const objectUrl = URL.createObjectURL(file);
+  const video = document.createElement('video');
+  video.preload = 'metadata';
+  video.src = objectUrl;
+
+  try {
+    const duration = await new Promise<number>((resolve, reject) => {
+      video.onloadedmetadata = () => resolve(video.duration || 0);
+      video.onerror = () => reject(new Error('Could not read ad video metadata.'));
+    });
+    return duration;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export function AdminProfileManager() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<AdminTab>('subscribers');
@@ -216,6 +233,13 @@ export function AdminProfileManager() {
     try {
       if (!adVideoFile || !adVideoFile.type.startsWith('video/')) {
         throw new Error('Please choose a valid ad video file.');
+      }
+      const adDurationSeconds = await getVideoDurationSeconds(adVideoFile);
+      if (!Number.isFinite(adDurationSeconds) || adDurationSeconds <= 0) {
+        throw new Error('Could not determine ad video duration.');
+      }
+      if (adDurationSeconds > 180) {
+        throw new Error('Ad video must be 3 minutes (180 seconds) or less.');
       }
       if (
         adImageFile &&
