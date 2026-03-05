@@ -23,9 +23,9 @@ type Submission = {
 
 export function AdvertiserPortal({ submissions }: { submissions: Submission[] }) {
   const fourthwallCheckoutUrl = process.env.NEXT_PUBLIC_FOURTHWALL_CHECKOUT_URL || '';
-  const unitPrice = Number(process.env.NEXT_PUBLIC_FOURTHWALL_AD_UNIT_PRICE || '7.50');
+  const unitPrice = Number(process.env.NEXT_PUBLIC_FOURTHWALL_AD_UNIT_PRICE || '1.00');
   const error: string | null = null;
-  const unit = Number.isFinite(unitPrice) && unitPrice > 0 ? unitPrice : 7.5;
+  const unit = Number.isFinite(unitPrice) && unitPrice > 0 ? unitPrice : 1;
 
   return (
     <section className="space-y-4">
@@ -93,7 +93,7 @@ export function AdvertiserPortal({ submissions }: { submissions: Submission[] })
                 Use the same account email at checkout. In order notes, include: <span className="font-semibold">{item.id}</span>
               </p>
               <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
-                Suggested quantity: {Math.max(1, Math.round(Number(item.calculated_price_usd || 0) / unit))} unit(s) @ ${unit.toFixed(2)} each.
+                Suggested quantity: {Math.max(1, Math.ceil(Number(item.calculated_price_usd || 0) / unit))} unit(s) @ ${unit.toFixed(2)} each.
               </p>
               {fourthwallCheckoutUrl ? (
                 <a

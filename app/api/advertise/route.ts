@@ -79,8 +79,8 @@ export async function POST(request: Request) {
   if (runtimeSeconds <= 0 || runtimeSeconds > 180) {
     return NextResponse.json({ error: 'Ad runtime must be between 1 and 180 seconds' }, { status: 400 });
   }
-  if (targetReach < 1000) {
-    return NextResponse.json({ error: 'Target reach must be at least 1,000 people' }, { status: 400 });
+  if (targetReach < 100) {
+    return NextResponse.json({ error: 'Target reach must be at least 100 people' }, { status: 400 });
   }
 
   if (startsAt && endsAt && new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {

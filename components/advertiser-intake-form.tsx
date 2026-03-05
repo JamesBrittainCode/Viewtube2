@@ -255,10 +255,10 @@ export function AdvertiserIntakeForm() {
           <input
             name="target_reach"
             type="number"
-            min="1000"
-            step="1000"
+            min="100"
+            step="100"
             value={targetReach}
-            onChange={(event) => setTargetReach(Math.max(1000, Number(event.target.value) || 1000))}
+            onChange={(event) => setTargetReach(Math.max(100, Number(event.target.value) || 100))}
             placeholder="Target reach (people)"
             className="h-11 rounded-xl border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950"
           />
