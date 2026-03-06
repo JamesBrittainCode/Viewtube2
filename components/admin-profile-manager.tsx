@@ -7,7 +7,7 @@ import { AD_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
 
-type AdminTab = 'subscribers' | 'verification' | 'suspension' | 'earn' | 'reported' | 'ads';
+type AdminTab = 'subscribers' | 'verification' | 'suspension' | 'earn' | 'reported' | 'videos' | 'ads';
 
 type AdItem = {
   id: string;
@@ -101,6 +101,24 @@ type VideoReport = {
   } | null;
 };
 
+type AdminVideoItem = {
+  id: string;
+  user_id: string;
+  title: string;
+  thumbnail_url?: string | null;
+  video_url: string;
+  views: number;
+  is_removed?: boolean;
+  removed_reason?: string | null;
+  removed_at?: string | null;
+  created_at: string;
+  profile?: {
+    id: string;
+    username?: string | null;
+    handle?: string | null;
+  } | null;
+};
+
 async function parseApiError(response: Response) {
   const text = await response.text();
   try {
@@ -178,6 +196,12 @@ export function AdminProfileManager() {
   const [earnActionLoading, setEarnActionLoading] = useState<string | null>(null);
   const [earnNote, setEarnNote] = useState<Record<string, string>>({});
   const [reports, setReports] = useState<VideoReport[]>([]);
+  const [videos, setVideos] = useState<AdminVideoItem[]>([]);
+  const [videosLoading, setVideosLoading] = useState(false);
+  const [videoActionLoading, setVideoActionLoading] = useState<string | null>(null);
+  const [videoReason, setVideoReason] = useState<Record<string, string>>({});
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [videoMessage, setVideoMessage] = useState<string | null>(null);
   const [reportActionLoading, setReportActionLoading] = useState<string | null>(null);
   const [reportNote, setReportNote] = useState<Record<string, string>>({});
   const [takedownMessage, setTakedownMessage] = useState<Record<string, string>>({});
@@ -202,6 +226,7 @@ export function AdminProfileManager() {
       { id: 'suspension', label: 'Suspension' },
       { id: 'earn', label: 'Earn Applications' },
       { id: 'reported', label: 'Reported' },
+      { id: 'videos', label: 'Video Takedown' },
       { id: 'ads', label: 'Ads' },
     ],
     [],
@@ -211,31 +236,39 @@ export function AdminProfileManager() {
     async function loadAdminData() {
       setAdsLoading(true);
       setEarnLoading(true);
+      setVideosLoading(true);
       setAdError(null);
+      setVideoError(null);
       try {
-        const [adsRes, submissionsRes, earnRes, reportsRes] = await Promise.all([
+        const [adsRes, submissionsRes, earnRes, reportsRes, videosRes] = await Promise.all([
           fetch('/api/admin/ads', { cache: 'no-store' }),
           fetch('/api/admin/ad-submissions', { cache: 'no-store' }),
           fetch('/api/admin/earn-applications', { cache: 'no-store' }),
           fetch('/api/admin/video-reports', { cache: 'no-store' }),
+          fetch('/api/admin/videos', { cache: 'no-store' }),
         ]);
         if (!adsRes.ok) throw new Error(await parseApiError(adsRes));
         if (!submissionsRes.ok) throw new Error(await parseApiError(submissionsRes));
         if (!earnRes.ok) throw new Error(await parseApiError(earnRes));
         if (!reportsRes.ok) throw new Error(await parseApiError(reportsRes));
+        if (!videosRes.ok) throw new Error(await parseApiError(videosRes));
         const adsData = (await adsRes.json()) as { ads?: AdItem[] };
         const submissionsData = (await submissionsRes.json()) as { submissions?: AdSubmission[] };
         const earnData = (await earnRes.json()) as { applications?: EarnApplication[] };
         const reportData = (await reportsRes.json()) as { reports?: VideoReport[] };
+        const videosData = (await videosRes.json()) as { videos?: AdminVideoItem[] };
         setAds(adsData.ads || []);
         setSubmissions(submissionsData.submissions || []);
         setEarnApplications(earnData.applications || []);
         setReports(reportData.reports || []);
+        setVideos(videosData.videos || []);
       } catch (err) {
         setAdError((err as Error).message);
+        setVideoError((err as Error).message);
       } finally {
         setAdsLoading(false);
         setEarnLoading(false);
+        setVideosLoading(false);
       }
     }
 
@@ -515,6 +548,50 @@ export function AdminProfileManager() {
       setAdError((err as Error).message);
     } finally {
       setReportActionLoading(null);
+    }
+  }
+
+  async function onVideoAction(item: AdminVideoItem, action: 'takedown' | 'restore') {
+    const reason = (videoReason[item.id] || '').trim();
+    if (action === 'takedown' && !reason) {
+      setVideoError('Reason is required before taking down a video.');
+      setVideoMessage(null);
+      return;
+    }
+
+    setVideoActionLoading(item.id);
+    setVideoError(null);
+    setVideoMessage(null);
+    try {
+      const res = await fetch('/api/admin/videos', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: item.id,
+          action,
+          reason,
+        }),
+      });
+      if (!res.ok) throw new Error(await parseApiError(res));
+
+      const nowIso = new Date().toISOString();
+      setVideos((prev) =>
+        prev.map((row) =>
+          row.id === item.id
+            ? {
+                ...row,
+                is_removed: action === 'takedown',
+                removed_reason: action === 'takedown' ? reason : null,
+                removed_at: action === 'takedown' ? nowIso : null,
+              }
+            : row,
+        ),
+      );
+      setVideoMessage(action === 'takedown' ? 'Video taken down and creator notified.' : 'Video restored.');
+    } catch (err) {
+      setVideoError((err as Error).message);
+    } finally {
+      setVideoActionLoading(null);
     }
   }
 
@@ -809,6 +886,74 @@ export function AdminProfileManager() {
                   Reported {new Date(item.created_at).toLocaleString()}
                   {item.video?.is_removed ? ` • Removed: ${item.video.removed_reason || 'No reason provided'}` : ''}
                 </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'videos' && (
+        <div className="mt-5 space-y-4 rounded-xl border border-zinc-700 p-4">
+          <h3 className="text-sm font-semibold">Admin Video Takedown</h3>
+          <p className="text-xs text-zinc-500">
+            Remove or restore any video. Takedown reason is sent to the creator as an alert notification.
+          </p>
+          {videoError && <p className="text-sm text-red-400">{videoError}</p>}
+          {videoMessage && <p className="text-sm text-green-400">{videoMessage}</p>}
+          {videosLoading ? <p className="text-sm text-zinc-400">Loading videos...</p> : null}
+          {!videosLoading && !videos.length ? (
+            <p className="text-sm text-zinc-400">No videos found.</p>
+          ) : null}
+          <div className="space-y-3">
+            {videos.map((item) => (
+              <article key={item.id} className="rounded-lg border border-zinc-700 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold">{item.title}</p>
+                    <p className="text-xs text-zinc-500">
+                      Creator: {item.profile?.username || 'Unknown'} {item.profile?.handle ? `(${item.profile.handle})` : ''}
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      Views: {Number(item.views || 0).toLocaleString()} • Uploaded:{' '}
+                      {new Date(item.created_at).toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-400">
+                      Status: {item.is_removed ? `Removed (${item.removed_reason || 'No reason'})` : 'Live'}
+                    </p>
+                  </div>
+                </div>
+                {item.video_url ? (
+                  <div className="mt-3 overflow-hidden rounded-lg border border-zinc-700 bg-black">
+                    <video src={item.video_url} controls preload="metadata" className="aspect-video w-full" />
+                  </div>
+                ) : null}
+                <input
+                  value={videoReason[item.id] ?? item.removed_reason ?? ''}
+                  onChange={(event) => setVideoReason((prev) => ({ ...prev, [item.id]: event.target.value }))}
+                  placeholder="Reason shown to creator when removed"
+                  className="mt-3 h-10 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 text-xs"
+                />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {!item.is_removed ? (
+                    <button
+                      type="button"
+                      onClick={() => void onVideoAction(item, 'takedown')}
+                      disabled={videoActionLoading === item.id}
+                      className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                    >
+                      Take Down Video
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void onVideoAction(item, 'restore')}
+                      disabled={videoActionLoading === item.id}
+                      className="rounded-full border border-zinc-600 px-3 py-1 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 disabled:opacity-60"
+                    >
+                      Restore Video
+                    </button>
+                  )}
+                </div>
               </article>
             ))}
           </div>
