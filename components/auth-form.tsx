@@ -76,21 +76,6 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     }
   }
 
-  async function signInWithGoogle() {
-    if (mode === 'sign-up' && !acceptedLegal) {
-      setError('You must agree to the Terms and Privacy Policy to continue with Google.');
-      return;
-    }
-
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-  }
-
   return (
     <div className="mx-auto mt-16 w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <h1 className="text-2xl font-bold">
@@ -166,10 +151,14 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
 
       <button
         type="button"
-        onClick={signInWithGoogle}
-        className="mt-3 h-11 w-full rounded-xl border border-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+        disabled
+        aria-disabled="true"
+        className="mt-3 flex h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-zinc-100 text-sm font-medium text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400"
       >
-        Continue with Google
+        <span>Continue with Google</span>
+        <span className="rounded-full border border-zinc-400 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:border-zinc-500 dark:text-zinc-300">
+          Deprecated
+        </span>
       </button>
 
       <p className="mt-4 text-sm text-zinc-500">
