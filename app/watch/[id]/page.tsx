@@ -13,6 +13,7 @@ import { getRecommendations, getVideoById } from '@/lib/data';
 import { unwrapRelation } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
 import { ReportVideoButton } from '@/components/report-video-button';
+import { AdminVideoTakedownButton } from '@/components/admin-video-takedown-button';
 
 export const runtime = 'edge';
 
@@ -85,6 +86,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
             />
             {user && <ReportVideoButton videoId={video.id} />}
             {isAdmin && <SetSpotlightButton videoId={video.id} />}
+            {isAdmin && <AdminVideoTakedownButton videoId={video.id} />}
             {user && user.id !== video.user_id && (
               <SubscribeButton
                 creatorId={video.user_id}
