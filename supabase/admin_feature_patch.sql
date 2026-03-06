@@ -824,3 +824,42 @@ using (
   bucket_id = 'ad-submissions'
   and coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com'
 );
+
+create table if not exists public.studio_feedback (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  subject text not null default '',
+  message text not null,
+  status text not null default 'new',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_studio_feedback_user_created on public.studio_feedback using btree(user_id, created_at desc);
+create index if not exists idx_studio_feedback_status_created on public.studio_feedback using btree(status, created_at desc);
+
+alter table public.studio_feedback enable row level security;
+
+drop policy if exists "Users can create own studio feedback" on public.studio_feedback;
+create policy "Users can create own studio feedback"
+on public.studio_feedback for insert
+to authenticated
+with check ((select auth.uid()) = user_id);
+
+drop policy if exists "Users can view own studio feedback" on public.studio_feedback;
+create policy "Users can view own studio feedback"
+on public.studio_feedback for select
+to authenticated
+using ((select auth.uid()) = user_id);
+
+drop policy if exists "Only admin can view studio feedback" on public.studio_feedback;
+create policy "Only admin can view studio feedback"
+on public.studio_feedback for select
+to authenticated
+using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
+
+drop policy if exists "Only admin can update studio feedback" on public.studio_feedback;
+create policy "Only admin can update studio feedback"
+on public.studio_feedback for update
+to authenticated
+using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com')
+with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
