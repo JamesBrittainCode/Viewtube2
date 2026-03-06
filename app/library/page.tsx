@@ -17,6 +17,7 @@ export default async function LibraryPage() {
       'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified)'
     )
     .eq('user_id', user.id)
+    .eq('is_removed', false)
     .order('created_at', { ascending: false });
 
   return (

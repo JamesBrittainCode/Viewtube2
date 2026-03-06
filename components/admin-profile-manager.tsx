@@ -7,7 +7,7 @@ import { AD_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
 
-type AdminTab = 'subscribers' | 'verification' | 'suspension' | 'ads';
+type AdminTab = 'subscribers' | 'verification' | 'suspension' | 'earn' | 'reported' | 'ads';
 
 type AdItem = {
   id: string;
@@ -56,6 +56,49 @@ type AdSubmission = {
   status: 'pending' | 'approved_pending_payment' | 'paid_pending_launch' | 'approved' | 'rejected';
   review_notes?: string | null;
   created_at: string;
+};
+
+type EarnApplication = {
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  channel_focus: string;
+  why_join: string;
+  status: 'pending' | 'approved' | 'rejected';
+  admin_notes?: string | null;
+  created_at: string;
+  reviewed_at?: string | null;
+  profile?: {
+    username?: string | null;
+    handle?: string | null;
+    subscribers_count?: number | null;
+  } | null;
+};
+
+type VideoReport = {
+  id: string;
+  video_id: string;
+  reporter_id: string;
+  reason: string;
+  details: string;
+  status: 'open' | 'acknowledged' | 'dismissed' | 'resolved_takedown';
+  admin_note?: string | null;
+  resolution_action?: string | null;
+  resolved_at?: string | null;
+  created_at: string;
+  video?: {
+    id: string;
+    title: string;
+    video_url: string;
+    thumbnail_url?: string | null;
+    is_removed?: boolean;
+    removed_reason?: string | null;
+  } | null;
+  reporter?: {
+    username?: string | null;
+    handle?: string | null;
+  } | null;
 };
 
 async function parseApiError(response: Response) {
@@ -130,6 +173,14 @@ export function AdminProfileManager() {
   const [adImageFile, setAdImageFile] = useState<File | null>(null);
   const [ads, setAds] = useState<AdItem[]>([]);
   const [submissions, setSubmissions] = useState<AdSubmission[]>([]);
+  const [earnApplications, setEarnApplications] = useState<EarnApplication[]>([]);
+  const [earnLoading, setEarnLoading] = useState(false);
+  const [earnActionLoading, setEarnActionLoading] = useState<string | null>(null);
+  const [earnNote, setEarnNote] = useState<Record<string, string>>({});
+  const [reports, setReports] = useState<VideoReport[]>([]);
+  const [reportActionLoading, setReportActionLoading] = useState<string | null>(null);
+  const [reportNote, setReportNote] = useState<Record<string, string>>({});
+  const [takedownMessage, setTakedownMessage] = useState<Record<string, string>>({});
   const [adsLoading, setAdsLoading] = useState(false);
   const [adSubmitting, setAdSubmitting] = useState(false);
   const [adUploadProgress, setAdUploadProgress] = useState(0);
@@ -149,34 +200,46 @@ export function AdminProfileManager() {
       { id: 'subscribers', label: 'Subscriber Count' },
       { id: 'verification', label: 'Verification' },
       { id: 'suspension', label: 'Suspension' },
+      { id: 'earn', label: 'Earn Applications' },
+      { id: 'reported', label: 'Reported' },
       { id: 'ads', label: 'Ads' },
     ],
     [],
   );
 
   useEffect(() => {
-    async function loadAdData() {
+    async function loadAdminData() {
       setAdsLoading(true);
+      setEarnLoading(true);
       setAdError(null);
       try {
-        const [adsRes, submissionsRes] = await Promise.all([
+        const [adsRes, submissionsRes, earnRes, reportsRes] = await Promise.all([
           fetch('/api/admin/ads', { cache: 'no-store' }),
           fetch('/api/admin/ad-submissions', { cache: 'no-store' }),
+          fetch('/api/admin/earn-applications', { cache: 'no-store' }),
+          fetch('/api/admin/video-reports', { cache: 'no-store' }),
         ]);
         if (!adsRes.ok) throw new Error(await parseApiError(adsRes));
         if (!submissionsRes.ok) throw new Error(await parseApiError(submissionsRes));
+        if (!earnRes.ok) throw new Error(await parseApiError(earnRes));
+        if (!reportsRes.ok) throw new Error(await parseApiError(reportsRes));
         const adsData = (await adsRes.json()) as { ads?: AdItem[] };
         const submissionsData = (await submissionsRes.json()) as { submissions?: AdSubmission[] };
+        const earnData = (await earnRes.json()) as { applications?: EarnApplication[] };
+        const reportData = (await reportsRes.json()) as { reports?: VideoReport[] };
         setAds(adsData.ads || []);
         setSubmissions(submissionsData.submissions || []);
+        setEarnApplications(earnData.applications || []);
+        setReports(reportData.reports || []);
       } catch (err) {
         setAdError((err as Error).message);
       } finally {
         setAdsLoading(false);
+        setEarnLoading(false);
       }
     }
 
-    void loadAdData();
+    void loadAdminData();
   }, []);
 
   async function onCountSubmit(event: FormEvent<HTMLFormElement>) {
@@ -365,6 +428,96 @@ export function AdminProfileManager() {
     }
   }
 
+  async function onEarnDecision(item: EarnApplication, status: 'approved' | 'rejected') {
+    setEarnActionLoading(item.id);
+    setAdError(null);
+    setAdMessage(null);
+    try {
+      const res = await fetch('/api/admin/earn-applications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: item.id,
+          status,
+          admin_notes: earnNote[item.id] || '',
+        }),
+      });
+      if (!res.ok) throw new Error(await parseApiError(res));
+      const data = (await res.json()) as { application?: EarnApplication };
+      if (data.application) {
+        setEarnApplications((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...data.application! } : row)));
+      }
+      setAdMessage(status === 'approved' ? 'Earn application approved.' : 'Earn application rejected.');
+    } catch (err) {
+      setAdError((err as Error).message);
+    } finally {
+      setEarnActionLoading(null);
+    }
+  }
+
+  async function onReportAction(item: VideoReport, action: 'acknowledge' | 'dismiss' | 'takedown') {
+    setReportActionLoading(item.id);
+    setAdError(null);
+    setAdMessage(null);
+    try {
+      const res = await fetch('/api/admin/video-reports', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: item.id,
+          action,
+          admin_note: reportNote[item.id] || '',
+          takedown_message: takedownMessage[item.id] || '',
+        }),
+      });
+      if (!res.ok) throw new Error(await parseApiError(res));
+
+      setReports((prev) =>
+        prev.map((row) =>
+          row.id === item.id
+            ? {
+                ...row,
+                status:
+                  action === 'acknowledge'
+                    ? 'acknowledged'
+                    : action === 'dismiss'
+                      ? 'dismissed'
+                      : 'resolved_takedown',
+                admin_note: reportNote[item.id] || row.admin_note || null,
+                resolution_action: action,
+                resolved_at: new Date().toISOString(),
+                video:
+                  action === 'takedown' && row.video
+                    ? {
+                        id: row.video.id,
+                        title: row.video.title,
+                        video_url: row.video.video_url,
+                        thumbnail_url: row.video.thumbnail_url ?? null,
+                        is_removed: true,
+                        removed_reason:
+                          (takedownMessage[item.id] || reportNote[item.id] || '').trim() ||
+                          row.video.removed_reason ||
+                          null,
+                      }
+                    : row.video,
+              }
+            : row,
+        ),
+      );
+      setAdMessage(
+        action === 'takedown'
+          ? 'Video taken down and report resolved.'
+          : action === 'dismiss'
+            ? 'Report dismissed.'
+            : 'Report acknowledged.',
+      );
+    } catch (err) {
+      setAdError((err as Error).message);
+    } finally {
+      setReportActionLoading(null);
+    }
+  }
+
   async function onAdSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAdSubmitting(true);
@@ -529,6 +682,137 @@ export function AdminProfileManager() {
           {suspendMessage && <p className="text-sm text-green-400">{suspendMessage}</p>}
           <button type="submit" disabled={suspendLoading} className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60">{suspendLoading ? 'Updating...' : 'Save suspension status'}</button>
         </form>
+      )}
+
+      {activeTab === 'earn' && (
+        <div className="mt-5 space-y-4 rounded-xl border border-zinc-700 p-4">
+          <h3 className="text-sm font-semibold">Earn Applications</h3>
+          {earnLoading ? <p className="text-sm text-zinc-400">Loading applications...</p> : null}
+          {!earnLoading && !earnApplications.length ? (
+            <p className="text-sm text-zinc-400">No earn applications yet.</p>
+          ) : null}
+          <div className="space-y-3">
+            {earnApplications.map((item) => (
+              <article key={item.id} className="rounded-lg border border-zinc-700 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold">{item.full_name}</p>
+                    <p className="text-xs text-zinc-500">
+                      {item.email} • {(item.profile?.username || 'User')} {item.profile?.handle ? `(${item.profile.handle})` : ''}
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      Subscribers: {Number(item.profile?.subscribers_count || 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <p className="text-xs uppercase tracking-wide text-zinc-400">Status: {item.status}</p>
+                </div>
+                {item.channel_focus ? (
+                  <p className="mt-2 text-xs text-zinc-400">Channel focus: {item.channel_focus}</p>
+                ) : null}
+                <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">{item.why_join}</p>
+                <textarea
+                  rows={2}
+                  value={earnNote[item.id] ?? item.admin_notes ?? ''}
+                  onChange={(event) => setEarnNote((prev) => ({ ...prev, [item.id]: event.target.value }))}
+                  placeholder="Admin notes"
+                  className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 p-2 text-xs"
+                />
+                {item.status === 'pending' ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void onEarnDecision(item, 'approved')}
+                      disabled={earnActionLoading === item.id}
+                      className="rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-500 disabled:opacity-60"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onEarnDecision(item, 'rejected')}
+                      disabled={earnActionLoading === item.id}
+                      className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'reported' && (
+        <div className="mt-5 space-y-4 rounded-xl border border-zinc-700 p-4">
+          <h3 className="text-sm font-semibold">Reported Videos</h3>
+          {!reports.length ? <p className="text-sm text-zinc-400">No reports yet.</p> : null}
+          <div className="space-y-3">
+            {reports.map((item) => (
+              <article key={item.id} className="rounded-lg border border-zinc-700 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold">{item.video?.title || 'Video unavailable'}</p>
+                    <p className="text-xs text-zinc-500">
+                      Reporter: {(item.reporter?.username || 'User')} {item.reporter?.handle ? `(${item.reporter.handle})` : ''}
+                    </p>
+                  </div>
+                  <p className="text-xs uppercase tracking-wide text-zinc-400">Status: {item.status}</p>
+                </div>
+                <p className="mt-2 text-xs text-zinc-400">Reason: {item.reason}</p>
+                {item.details ? <p className="mt-1 whitespace-pre-wrap text-xs text-zinc-500">{item.details}</p> : null}
+                {item.video?.video_url ? (
+                  <div className="mt-3 overflow-hidden rounded-lg border border-zinc-700 bg-black">
+                    <video src={item.video.video_url} controls preload="metadata" className="aspect-video w-full" />
+                  </div>
+                ) : null}
+                <textarea
+                  rows={2}
+                  value={reportNote[item.id] ?? item.admin_note ?? ''}
+                  onChange={(event) => setReportNote((prev) => ({ ...prev, [item.id]: event.target.value }))}
+                  placeholder="Admin note"
+                  className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 p-2 text-xs"
+                />
+                <input
+                  value={takedownMessage[item.id] ?? ''}
+                  onChange={(event) => setTakedownMessage((prev) => ({ ...prev, [item.id]: event.target.value }))}
+                  placeholder="Takedown message to creator (used only for takedown)"
+                  className="mt-2 h-10 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 text-xs"
+                />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void onReportAction(item, 'acknowledge')}
+                    disabled={reportActionLoading === item.id}
+                    className="rounded-full border border-zinc-600 px-3 py-1 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 disabled:opacity-60"
+                  >
+                    Acknowledge
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void onReportAction(item, 'dismiss')}
+                    disabled={reportActionLoading === item.id}
+                    className="rounded-full border border-zinc-600 px-3 py-1 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 disabled:opacity-60"
+                  >
+                    Not a Violation
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void onReportAction(item, 'takedown')}
+                    disabled={reportActionLoading === item.id}
+                    className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                  >
+                    Take Down Video
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-zinc-500">
+                  Reported {new Date(item.created_at).toLocaleString()}
+                  {item.video?.is_removed ? ` • Removed: ${item.video.removed_reason || 'No reason provided'}` : ''}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
       )}
 
       {activeTab === 'ads' && (

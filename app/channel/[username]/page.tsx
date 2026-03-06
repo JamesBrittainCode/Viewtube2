@@ -45,6 +45,7 @@ export default async function ChannelPage({
       'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified)'
     )
     .eq('user_id', channel.id)
+    .eq('is_removed', false)
     .order('created_at', { ascending: false });
 
   const supabase = await createClient();

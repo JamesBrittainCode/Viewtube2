@@ -863,3 +863,108 @@ on public.studio_feedback for update
 to authenticated
 using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com')
 with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
+
+create table if not exists public.earn_applications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references public.profiles(id) on delete cascade,
+  full_name text not null,
+  email text not null,
+  channel_focus text not null default '',
+  why_join text not null,
+  status text not null default 'pending',
+  admin_notes text,
+  created_at timestamptz not null default now(),
+  reviewed_at timestamptz,
+  reviewed_by uuid references public.profiles(id) on delete set null
+);
+
+create index if not exists idx_earn_applications_status_created on public.earn_applications using btree(status, created_at desc);
+alter table public.earn_applications enable row level security;
+
+drop policy if exists "Users can create own earn applications" on public.earn_applications;
+create policy "Users can create own earn applications"
+on public.earn_applications for insert
+to authenticated
+with check ((select auth.uid()) = user_id);
+
+drop policy if exists "Users can view own earn applications" on public.earn_applications;
+create policy "Users can view own earn applications"
+on public.earn_applications for select
+to authenticated
+using ((select auth.uid()) = user_id);
+
+drop policy if exists "Users can update own pending earn applications" on public.earn_applications;
+create policy "Users can update own pending earn applications"
+on public.earn_applications for update
+to authenticated
+using ((select auth.uid()) = user_id and status = 'pending')
+with check ((select auth.uid()) = user_id and status = 'pending');
+
+drop policy if exists "Only admin can view earn applications" on public.earn_applications;
+create policy "Only admin can view earn applications"
+on public.earn_applications for select
+to authenticated
+using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
+
+drop policy if exists "Only admin can manage earn applications" on public.earn_applications;
+create policy "Only admin can manage earn applications"
+on public.earn_applications for update
+to authenticated
+using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com')
+with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
+
+alter table public.videos
+add column if not exists is_removed boolean not null default false;
+alter table public.videos
+add column if not exists removed_reason text;
+alter table public.videos
+add column if not exists removed_at timestamptz;
+alter table public.videos
+add column if not exists removed_by uuid references public.profiles(id) on delete set null;
+
+create index if not exists idx_videos_removed on public.videos using btree(is_removed, created_at desc);
+
+create table if not exists public.video_reports (
+  id uuid primary key default gen_random_uuid(),
+  video_id uuid not null references public.videos(id) on delete cascade,
+  reporter_id uuid not null references public.profiles(id) on delete cascade,
+  reason text not null,
+  details text not null default '',
+  status text not null default 'open',
+  admin_note text,
+  resolution_action text,
+  resolved_at timestamptz,
+  resolved_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (video_id, reporter_id)
+);
+
+create index if not exists idx_video_reports_status_created on public.video_reports using btree(status, created_at desc);
+create index if not exists idx_video_reports_video_id on public.video_reports using btree(video_id);
+
+alter table public.video_reports enable row level security;
+
+drop policy if exists "Users can report videos" on public.video_reports;
+create policy "Users can report videos"
+on public.video_reports for insert
+to authenticated
+with check ((select auth.uid()) = reporter_id);
+
+drop policy if exists "Users can view own reports" on public.video_reports;
+create policy "Users can view own reports"
+on public.video_reports for select
+to authenticated
+using ((select auth.uid()) = reporter_id);
+
+drop policy if exists "Only admin can view reports" on public.video_reports;
+create policy "Only admin can view reports"
+on public.video_reports for select
+to authenticated
+using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
+
+drop policy if exists "Only admin can manage reports" on public.video_reports;
+create policy "Only admin can manage reports"
+on public.video_reports for update
+to authenticated
+using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com')
+with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');

@@ -32,6 +32,7 @@ export const getHomeVideos = unstable_cache(
     const { data, error, count } = await supabase
       .from('videos')
       .select(baseVideoSelect, { count: 'exact' })
+      .eq('is_removed', false)
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -53,6 +54,7 @@ export async function getVideoById(id: string) {
     .from('videos')
     .select(baseVideoSelect)
     .eq('id', id)
+    .eq('is_removed', false)
     .single();
 
   if (error) throw error;
@@ -68,6 +70,7 @@ export async function getRecommendations(videoId: string, tags: string[]) {
     .from('videos')
     .select(baseVideoSelect)
     .neq('id', videoId)
+    .eq('is_removed', false)
     .overlaps('tags', tags)
     .order('views', { ascending: false })
     .limit(10);
@@ -83,6 +86,7 @@ export async function getTrendingVideos() {
   const { data, error } = await supabase
     .from('videos')
     .select(baseVideoSelect)
+    .eq('is_removed', false)
     .gte('created_at', since)
     .order('views', { ascending: false })
     .limit(24);

@@ -20,12 +20,13 @@ export default async function SubscriptionsPage() {
   const creatorIds = (subs || []).map((s) => s.creator_id);
 
   const { data: videos } = creatorIds.length
-    ? await supabase
+      ? await supabase
         .from('videos')
         .select(
           'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified)'
         )
         .in('user_id', creatorIds)
+        .eq('is_removed', false)
         .order('created_at', { ascending: false })
     : { data: [] };
 

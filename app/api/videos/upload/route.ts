@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { THUMBNAIL_BUCKET, VIDEO_BUCKET } from '@/lib/constants';
+import { moderateUploadedMedia } from '@/lib/media-moderation';
 import { moderateUploadText } from '@/lib/moderation';
 import { sendNotification } from '@/lib/notifications';
 import { createClient } from '@/lib/supabase/server';
@@ -100,7 +101,15 @@ export async function POST(request: Request) {
   }
 
   const moderation = moderateUploadText({ title, description, tags });
-  if (moderation.flagged) {
+  let mediaModeration: { flagged: boolean; reason?: string } = { flagged: false };
+  if (!moderation.flagged) {
+    mediaModeration = await moderateUploadedMedia({
+      videoUrl,
+      thumbnailUrl,
+    });
+  }
+
+  if (moderation.flagged || mediaModeration.flagged) {
     const videoPath = extractStoragePath(videoUrl, projectUrl, VIDEO_BUCKET);
     const thumbnailPath = extractStoragePath(thumbnailUrl, projectUrl, THUMBNAIL_BUCKET);
 
@@ -113,7 +122,7 @@ export async function POST(request: Request) {
 
     const { data: violationData } = await supabase.rpc('record_moderation_violation', {
       target_user_id: user.id,
-      violation_reason: moderation.reason,
+      violation_reason: moderation.flagged ? moderation.reason : mediaModeration.reason,
       input_title: title,
       input_description: description,
       input_tags: tags,
@@ -144,7 +153,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        error: `Upload blocked by moderation (${strikes}/5 strikes).`,
+        error: `Upload blocked by moderation (${strikes}/5 strikes). ${
+          moderation.flagged ? moderation.reason : mediaModeration.reason
+        }`,
       },
       { status: 400 },
     );
