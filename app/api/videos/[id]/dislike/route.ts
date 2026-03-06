@@ -19,27 +19,27 @@ export async function POST(
   }
 
   const { data: existing } = await supabase
-    .from('likes')
+    .from('dislikes')
     .select('id')
     .eq('video_id', id)
     .eq('user_id', user.id)
     .maybeSingle();
 
-  let liked = false;
+  let disliked = false;
 
   if (existing) {
-    await supabase.from('likes').delete().eq('id', existing.id);
-    liked = false;
+    await supabase.from('dislikes').delete().eq('id', existing.id);
+    disliked = false;
   } else {
-    await supabase.from('dislikes').delete().eq('video_id', id).eq('user_id', user.id);
-    await supabase.from('likes').insert({ video_id: id, user_id: user.id });
-    liked = true;
+    await supabase.from('likes').delete().eq('video_id', id).eq('user_id', user.id);
+    await supabase.from('dislikes').insert({ video_id: id, user_id: user.id });
+    disliked = true;
   }
 
   const { count } = await supabase
-    .from('likes')
+    .from('dislikes')
     .select('*', { count: 'exact', head: true })
     .eq('video_id', id);
 
-  return NextResponse.json({ liked, count: count || 0 });
+  return NextResponse.json({ disliked, count: count || 0 });
 }

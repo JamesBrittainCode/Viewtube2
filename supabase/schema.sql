@@ -89,6 +89,14 @@ create table if not exists public.likes (
   unique (user_id, video_id)
 );
 
+create table if not exists public.dislikes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  video_id uuid not null references public.videos(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (user_id, video_id)
+);
+
 create table if not exists public.subscriptions (
   id uuid primary key default gen_random_uuid(),
   subscriber_id uuid not null references public.profiles(id) on delete cascade,
@@ -299,6 +307,8 @@ create index if not exists idx_comment_likes_comment_id on public.comment_likes 
 create index if not exists idx_comment_likes_user_id on public.comment_likes using btree(user_id);
 create index if not exists idx_likes_video_id on public.likes using btree(video_id);
 create index if not exists idx_likes_user_id on public.likes using btree(user_id);
+create index if not exists idx_dislikes_video_id on public.dislikes using btree(video_id);
+create index if not exists idx_dislikes_user_id on public.dislikes using btree(user_id);
 create index if not exists idx_subscriptions_subscriber_id on public.subscriptions using btree(subscriber_id);
 create index if not exists idx_subscriptions_creator_id on public.subscriptions using btree(creator_id);
 create index if not exists idx_notifications_user_id on public.notifications using btree(user_id);
@@ -699,6 +709,7 @@ alter table public.videos enable row level security;
 alter table public.comments enable row level security;
 alter table public.comment_likes enable row level security;
 alter table public.likes enable row level security;
+alter table public.dislikes enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.notifications enable row level security;
 alter table public.video_reports enable row level security;
@@ -864,6 +875,18 @@ using (true);
 
 create policy "Users can manage own likes"
 on public.likes for all
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
+-- dislikes
+create policy "Dislikes are viewable by everyone"
+on public.dislikes for select
+to anon, authenticated
+using (true);
+
+create policy "Users can manage own dislikes"
+on public.dislikes for all
 to authenticated
 using ((select auth.uid()) = user_id)
 with check ((select auth.uid()) = user_id);

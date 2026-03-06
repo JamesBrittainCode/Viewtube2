@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { CommentSection } from '@/components/comment-section';
+import { DislikeButton } from '@/components/dislike-button';
 import { LikeButton } from '@/components/like-button';
 import { SubscribeButton } from '@/components/subscribe-button';
 import { VideoGrid } from '@/components/video-grid';
@@ -31,11 +32,20 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
   } = await supabase.auth.getUser();
   const isAdmin = isAdminEmail(user?.email);
 
-  const [{ count: likeCount }, likedRes, subscribedRes] = await Promise.all([
+  const [{ count: likeCount }, { count: dislikeCount }, likedRes, dislikedRes, subscribedRes] = await Promise.all([
     supabase.from('likes').select('*', { count: 'exact', head: true }).eq('video_id', video.id),
+    supabase.from('dislikes').select('*', { count: 'exact', head: true }).eq('video_id', video.id),
     user
       ? supabase
           .from('likes')
+          .select('id')
+          .eq('video_id', video.id)
+          .eq('user_id', user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    user
+      ? supabase
+          .from('dislikes')
           .select('id')
           .eq('video_id', video.id)
           .eq('user_id', user.id)
@@ -83,6 +93,11 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
               videoId={video.id}
               initiallyLiked={Boolean(likedRes?.data)}
               initialCount={likeCount || 0}
+            />
+            <DislikeButton
+              videoId={video.id}
+              initiallyDisliked={Boolean(dislikedRes?.data)}
+              initialCount={dislikeCount || 0}
             />
             {user && <ReportVideoButton videoId={video.id} />}
             {isAdmin && <SetSpotlightButton videoId={video.id} />}
