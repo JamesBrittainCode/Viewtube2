@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { getHomeVideos } from '@/lib/data';
+import { getHomeVideos, getPersonalizedHomeVideos } from '@/lib/data';
 import { VideoGrid } from '@/components/video-grid';
+import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
 
@@ -10,7 +11,14 @@ export default async function Home({
   searchParams: Promise<{ page?: string }>;
 }) {
   const page = Number((await searchParams).page || '1');
-  const { videos, hasMore } = await getHomeVideos(page);
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { videos, hasMore } = user?.id
+    ? await getPersonalizedHomeVideos(page, user.id)
+    : await getHomeVideos(page);
 
   return (
     <section>
