@@ -226,7 +226,7 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
       isAdmin
         ? [
             { id: 'subscribers', label: 'Subscriber Count' },
-            { id: 'verification', label: 'Verification' },
+            { id: 'verification', label: 'Creator Access' },
             { id: 'suspension', label: 'Suspension' },
             { id: 'earn', label: 'Earn Applications' },
             { id: 'reported', label: 'Reported' },
@@ -762,7 +762,10 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
 
       {activeTab === 'verification' && (
         <form onSubmit={onVerifySubmit} className="mt-5 space-y-3 rounded-xl border border-zinc-700 p-4">
-          <h3 className="text-sm font-semibold">Channel Verification</h3>
+          <h3 className="text-sm font-semibold">Creator Access Controls</h3>
+          <p className="text-xs text-zinc-500">
+            Manage channel verification, live streaming access, and moderation access for an exact `@handle`.
+          </p>
           <input value={verifyHandle} onChange={(event) => setVerifyHandle(event.target.value)} placeholder="@target_handle" required className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3" />
           <label className="flex items-center gap-2 text-sm text-zinc-200">
             <input type="checkbox" checked={verified} onChange={(event) => setVerified(event.target.checked)} />
