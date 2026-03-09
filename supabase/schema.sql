@@ -11,6 +11,7 @@ create table if not exists public.profiles (
   bio text,
   verified boolean not null default false,
   can_stream_live boolean not null default false,
+  can_moderate boolean not null default false,
   suspended boolean not null default false,
   suspension_reason text,
   suspended_at timestamptz,
@@ -23,6 +24,8 @@ alter table public.profiles
 add column if not exists verified boolean not null default false;
 alter table public.profiles
 add column if not exists can_stream_live boolean not null default false;
+alter table public.profiles
+add column if not exists can_moderate boolean not null default false;
 alter table public.profiles
 add column if not exists handle text;
 alter table public.profiles
@@ -335,6 +338,7 @@ create index if not exists idx_profiles_username on public.profiles using btree(
 create unique index if not exists idx_profiles_username_lower_unique on public.profiles (lower(username));
 create unique index if not exists idx_profiles_handle_unique on public.profiles (handle);
 create index if not exists idx_profiles_can_stream_live on public.profiles using btree(can_stream_live);
+create index if not exists idx_profiles_can_moderate on public.profiles using btree(can_moderate);
 create index if not exists idx_videos_user_id on public.videos using btree(user_id);
 create index if not exists idx_videos_created_at on public.videos using btree(created_at desc);
 create index if not exists idx_videos_removed on public.videos using btree(is_removed, created_at desc);
@@ -788,6 +792,8 @@ with check (
   and suspended = (select p.suspended from public.profiles p where p.id = (select auth.uid()))
   and suspension_reason is not distinct from (select p.suspension_reason from public.profiles p where p.id = (select auth.uid()))
   and suspended_at is not distinct from (select p.suspended_at from public.profiles p where p.id = (select auth.uid()))
+  and can_stream_live = (select p.can_stream_live from public.profiles p where p.id = (select auth.uid()))
+  and can_moderate = (select p.can_moderate from public.profiles p where p.id = (select auth.uid()))
   and moderation_strikes = (select p.moderation_strikes from public.profiles p where p.id = (select auth.uid()))
 );
 

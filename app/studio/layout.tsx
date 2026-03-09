@@ -40,12 +40,13 @@ export default async function StudioLayout({ children }: { children: React.React
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username,handle,avatar_url')
+    .select('username,handle,avatar_url,can_moderate')
     .eq('id', user.id)
     .single();
   const isAdmin = isAdminEmail(user.email);
-  const navLinks = isAdmin
-    ? [...baseNavLinks, { href: '/studio/admin', label: 'Admin', icon: Shield }]
+  const canModerate = isAdmin || Boolean(profile?.can_moderate);
+  const navLinks = canModerate
+    ? [...baseNavLinks, { href: '/studio/admin', label: isAdmin ? 'Admin' : 'Moderation', icon: Shield }]
     : [...baseNavLinks];
 
   return (

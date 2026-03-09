@@ -21,6 +21,7 @@ export async function PATCH(request: Request) {
     verified?: boolean;
     suspended?: boolean;
     can_stream_live?: boolean;
+    can_moderate?: boolean;
   };
 
   const rawHandle = (body.handle || '').trim();
@@ -34,6 +35,8 @@ export async function PATCH(request: Request) {
     typeof body.suspended === 'boolean' ? body.suspended : undefined;
   const canStreamLive =
     typeof body.can_stream_live === 'boolean' ? body.can_stream_live : undefined;
+  const canModerate =
+    typeof body.can_moderate === 'boolean' ? body.can_moderate : undefined;
 
   if (!body.handle || normalizedRaw.length < 3) {
     return NextResponse.json({ error: 'Valid handle is required' }, { status: 400 });
@@ -41,7 +44,7 @@ export async function PATCH(request: Request) {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, subscribers_count, verified, suspended, can_stream_live')
+    .select('id, subscribers_count, verified, suspended, can_stream_live, can_moderate')
     .eq('handle', handle)
     .single();
 
@@ -53,7 +56,8 @@ export async function PATCH(request: Request) {
     subscribersCount === undefined &&
     verified === undefined &&
     suspended === undefined &&
-    canStreamLive === undefined
+    canStreamLive === undefined &&
+    canModerate === undefined
   ) {
     return NextResponse.json({ error: 'No admin changes provided' }, { status: 400 });
   }
@@ -80,12 +84,26 @@ export async function PATCH(request: Request) {
       .from('profiles')
       .update({ can_stream_live: canStreamLive })
       .eq('id', profile.id)
-      .select('id, subscribers_count, verified, suspended, can_stream_live')
+      .select('id, subscribers_count, verified, suspended, can_stream_live, can_moderate')
       .single();
     if (liveError) {
       return NextResponse.json({ error: liveError.message }, { status: 400 });
     }
     data = updatedLive;
+  }
+
+  if (canModerate !== undefined) {
+    const adminClient = createAdminClient();
+    const { data: updatedModeration, error: moderationError } = await adminClient
+      .from('profiles')
+      .update({ can_moderate: canModerate })
+      .eq('id', profile.id)
+      .select('id, subscribers_count, verified, suspended, can_stream_live, can_moderate')
+      .single();
+    if (moderationError) {
+      return NextResponse.json({ error: moderationError.message }, { status: 400 });
+    }
+    data = updatedModeration;
   }
 
   if (verified === true && profile.verified === false) {

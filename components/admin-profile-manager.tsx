@@ -160,15 +160,16 @@ async function getVideoDurationSeconds(file: File): Promise<number> {
   }
 }
 
-export function AdminProfileManager() {
+export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<AdminTab>('subscribers');
+  const [activeTab, setActiveTab] = useState<AdminTab>(isAdmin ? 'subscribers' : 'reported');
 
   const [countHandle, setCountHandle] = useState('@');
   const [verifyHandle, setVerifyHandle] = useState('@');
   const [subscribersCount, setSubscribersCount] = useState(0);
   const [verified, setVerified] = useState(false);
   const [canStreamLive, setCanStreamLive] = useState(false);
+  const [canModerate, setCanModerate] = useState(false);
   const [suspendHandle, setSuspendHandle] = useState('@');
   const [suspended, setSuspended] = useState(true);
   const [countLoading, setCountLoading] = useState(false);
@@ -221,16 +222,22 @@ export function AdminProfileManager() {
   const [previewAdId, setPreviewAdId] = useState<string | null>(null);
 
   const tabs: { id: AdminTab; label: string }[] = useMemo(
-    () => [
-      { id: 'subscribers', label: 'Subscriber Count' },
-      { id: 'verification', label: 'Verification' },
-      { id: 'suspension', label: 'Suspension' },
-      { id: 'earn', label: 'Earn Applications' },
-      { id: 'reported', label: 'Reported' },
-      { id: 'videos', label: 'Video Takedown' },
-      { id: 'ads', label: 'Ads' },
-    ],
-    [],
+    () =>
+      isAdmin
+        ? [
+            { id: 'subscribers', label: 'Subscriber Count' },
+            { id: 'verification', label: 'Verification' },
+            { id: 'suspension', label: 'Suspension' },
+            { id: 'earn', label: 'Earn Applications' },
+            { id: 'reported', label: 'Reported' },
+            { id: 'videos', label: 'Video Takedown' },
+            { id: 'ads', label: 'Ads' },
+          ]
+        : [
+            { id: 'reported', label: 'Reported' },
+            { id: 'videos', label: 'Video Takedown' },
+          ],
+    [isAdmin],
   );
 
   useEffect(() => {
@@ -241,28 +248,41 @@ export function AdminProfileManager() {
       setAdError(null);
       setVideoError(null);
       try {
-        const [adsRes, submissionsRes, earnRes, reportsRes, videosRes] = await Promise.all([
-          fetch('/api/admin/ads', { cache: 'no-store' }),
-          fetch('/api/admin/ad-submissions', { cache: 'no-store' }),
-          fetch('/api/admin/earn-applications', { cache: 'no-store' }),
-          fetch('/api/admin/video-reports', { cache: 'no-store' }),
-          fetch('/api/admin/videos', { cache: 'no-store' }),
-        ]);
-        if (!adsRes.ok) throw new Error(await parseApiError(adsRes));
-        if (!submissionsRes.ok) throw new Error(await parseApiError(submissionsRes));
-        if (!earnRes.ok) throw new Error(await parseApiError(earnRes));
-        if (!reportsRes.ok) throw new Error(await parseApiError(reportsRes));
-        if (!videosRes.ok) throw new Error(await parseApiError(videosRes));
-        const adsData = (await adsRes.json()) as { ads?: AdItem[] };
-        const submissionsData = (await submissionsRes.json()) as { submissions?: AdSubmission[] };
-        const earnData = (await earnRes.json()) as { applications?: EarnApplication[] };
-        const reportData = (await reportsRes.json()) as { reports?: VideoReport[] };
-        const videosData = (await videosRes.json()) as { videos?: AdminVideoItem[] };
-        setAds(adsData.ads || []);
-        setSubmissions(submissionsData.submissions || []);
-        setEarnApplications(earnData.applications || []);
-        setReports(reportData.reports || []);
-        setVideos(videosData.videos || []);
+        if (isAdmin) {
+          const [adsRes, submissionsRes, earnRes, reportsRes, videosRes] = await Promise.all([
+            fetch('/api/admin/ads', { cache: 'no-store' }),
+            fetch('/api/admin/ad-submissions', { cache: 'no-store' }),
+            fetch('/api/admin/earn-applications', { cache: 'no-store' }),
+            fetch('/api/admin/video-reports', { cache: 'no-store' }),
+            fetch('/api/admin/videos', { cache: 'no-store' }),
+          ]);
+          if (!adsRes.ok) throw new Error(await parseApiError(adsRes));
+          if (!submissionsRes.ok) throw new Error(await parseApiError(submissionsRes));
+          if (!earnRes.ok) throw new Error(await parseApiError(earnRes));
+          if (!reportsRes.ok) throw new Error(await parseApiError(reportsRes));
+          if (!videosRes.ok) throw new Error(await parseApiError(videosRes));
+          const adsData = (await adsRes.json()) as { ads?: AdItem[] };
+          const submissionsData = (await submissionsRes.json()) as { submissions?: AdSubmission[] };
+          const earnData = (await earnRes.json()) as { applications?: EarnApplication[] };
+          const reportData = (await reportsRes.json()) as { reports?: VideoReport[] };
+          const videosData = (await videosRes.json()) as { videos?: AdminVideoItem[] };
+          setAds(adsData.ads || []);
+          setSubmissions(submissionsData.submissions || []);
+          setEarnApplications(earnData.applications || []);
+          setReports(reportData.reports || []);
+          setVideos(videosData.videos || []);
+        } else {
+          const [reportsRes, videosRes] = await Promise.all([
+            fetch('/api/admin/video-reports', { cache: 'no-store' }),
+            fetch('/api/admin/videos', { cache: 'no-store' }),
+          ]);
+          if (!reportsRes.ok) throw new Error(await parseApiError(reportsRes));
+          if (!videosRes.ok) throw new Error(await parseApiError(videosRes));
+          const reportData = (await reportsRes.json()) as { reports?: VideoReport[] };
+          const videosData = (await videosRes.json()) as { videos?: AdminVideoItem[] };
+          setReports(reportData.reports || []);
+          setVideos(videosData.videos || []);
+        }
       } catch (err) {
         setAdError((err as Error).message);
         setVideoError((err as Error).message);
@@ -274,7 +294,7 @@ export function AdminProfileManager() {
     }
 
     void loadAdminData();
-  }, []);
+  }, [isAdmin]);
 
   async function onCountSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -342,6 +362,7 @@ export function AdminProfileManager() {
           handle: normalizeHandle(verifyHandle),
           verified,
           can_stream_live: canStreamLive,
+          can_moderate: canModerate,
         }),
       });
 
@@ -705,7 +726,11 @@ export function AdminProfileManager() {
   return (
     <section className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
       <h2 className="text-xl font-semibold">Studio Admin</h2>
-      <p className="mt-1 text-sm text-zinc-400">Admin-only controls. Target users by exact `@handle`.</p>
+      <p className="mt-1 text-sm text-zinc-400">
+        {isAdmin
+          ? 'Admin controls. Target users by exact `@handle`.'
+          : 'Moderation controls. Target videos and reports for review.'}
+      </p>
 
       <div className="mt-5 flex flex-wrap gap-2">
         {tabs.map((tab) => (
@@ -750,6 +775,14 @@ export function AdminProfileManager() {
               onChange={(event) => setCanStreamLive(event.target.checked)}
             />
             Live streaming enabled
+          </label>
+          <label className="flex items-center gap-2 text-sm text-zinc-200">
+            <input
+              type="checkbox"
+              checked={canModerate}
+              onChange={(event) => setCanModerate(event.target.checked)}
+            />
+            Moderation access
           </label>
           {verifyError && <p className="text-sm text-red-400">{verifyError}</p>}
           {verifyMessage && <p className="text-sm text-green-400">{verifyMessage}</p>}

@@ -7,6 +7,7 @@ export type Profile = {
   banner_url: string | null;
   verified: boolean;
   can_stream_live?: boolean;
+  can_moderate?: boolean;
   suspended?: boolean;
   suspension_reason?: string | null;
   suspended_at?: string | null;

@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { Upload } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { CreateMenu } from '@/components/create-menu';
 import { Logo } from '@/components/logo';
 import { NotificationMenu } from '@/components/notification-menu';
 import { ProfileMenu } from '@/components/profile-menu';
@@ -16,6 +16,7 @@ export async function Navbar() {
 
   let handle: string | null = null;
   let avatarUrl: string | null = null;
+  let isModerator = false;
   let notifications: {
     id: string;
     type: string;
@@ -29,7 +30,7 @@ export async function Navbar() {
 
   if (user) {
     const [profileRes, notificationsPrimary, countRes] = await Promise.all([
-      supabase.from('profiles').select('handle, avatar_url').eq('id', user.id).single(),
+      supabase.from('profiles').select('handle, avatar_url, can_moderate').eq('id', user.id).single(),
       supabase
         .from('notifications')
         .select(
@@ -60,6 +61,7 @@ export async function Navbar() {
 
     handle = profileRes.data?.handle ?? null;
     avatarUrl = profileRes.data?.avatar_url ?? null;
+    isModerator = Boolean(profileRes.data?.can_moderate);
     notifications = (notificationsData || []).map((item) => ({
       id: item.id,
       type: item.type,
@@ -103,21 +105,14 @@ export async function Navbar() {
           />
         )}
 
-        {user && (
-          <Link
-            href="/upload"
-            className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-2 text-sm font-medium hover:bg-zinc-200 sm:gap-2 sm:px-4 dark:bg-zinc-800 dark:hover:bg-zinc-700"
-          >
-            <Upload className="h-4 w-4" />
-            <span className="hidden sm:inline">Upload</span>
-          </Link>
-        )}
+        {user && <CreateMenu />}
 
         {user ? (
           <ProfileMenu
             avatarUrl={avatarUrl}
             handle={handle}
             isAdmin={isAdminEmail(user.email)}
+            isModerator={isModerator}
           />
         ) : (
           <Link

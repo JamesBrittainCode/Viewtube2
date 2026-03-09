@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isAdminEmail } from '@/lib/admin';
+import { canModerateUser } from '@/lib/admin';
 import { sendNotification } from '@/lib/notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
@@ -11,7 +11,7 @@ export async function GET() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user || !isAdminEmail(user.email)) {
+  if (!user || !(await canModerateUser(supabase, { id: user.id, email: user.email }))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -61,7 +61,7 @@ export async function PATCH(request: Request) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user || !isAdminEmail(user.email)) {
+  if (!user || !(await canModerateUser(supabase, { id: user.id, email: user.email }))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -143,4 +143,3 @@ export async function PATCH(request: Request) {
 
   return NextResponse.json({ ok: true, id, status: nextStatus });
 }
-

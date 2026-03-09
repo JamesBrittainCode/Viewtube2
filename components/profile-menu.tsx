@@ -10,9 +10,10 @@ type Props = {
   avatarUrl?: string | null;
   handle?: string | null;
   isAdmin?: boolean;
+  isModerator?: boolean;
 };
 
-export function ProfileMenu({ avatarUrl, handle, isAdmin = false }: Props) {
+export function ProfileMenu({ avatarUrl, handle, isAdmin = false, isModerator = false }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -77,12 +78,12 @@ export function ProfileMenu({ avatarUrl, handle, isAdmin = false }: Props) {
           >
             ViewTube Studio
           </Link>
-          {isAdmin && (
+          {(isAdmin || isModerator) && (
             <Link
               href="/studio/admin"
               className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
-              Studio Admin
+              {isAdmin ? 'Studio Admin' : 'Moderation'}
             </Link>
           )}
           {handle && (

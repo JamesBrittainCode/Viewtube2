@@ -32,7 +32,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
   } = await supabase.auth.getUser();
   const isAdmin = isAdminEmail(user?.email);
 
-  const [{ count: likeCount }, { count: dislikeCount }, likedRes, dislikedRes, subscribedRes] = await Promise.all([
+  const [{ count: likeCount }, { count: dislikeCount }, likedRes, dislikedRes, subscribedRes, moderationRes] = await Promise.all([
     supabase.from('likes').select('*', { count: 'exact', head: true }).eq('video_id', video.id),
     supabase.from('dislikes').select('*', { count: 'exact', head: true }).eq('video_id', video.id),
     user
@@ -59,7 +59,15 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
           .eq('creator_id', video.user_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    user
+      ? supabase
+          .from('profiles')
+          .select('can_moderate')
+          .eq('id', user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
+  const canModerate = isAdmin || Boolean(moderationRes?.data?.can_moderate);
 
   const channelProfile = unwrapRelation(video.profiles);
   const channelName = channelProfile?.username || 'unknown';
@@ -101,7 +109,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
             />
             {user && <ReportVideoButton videoId={video.id} />}
             {isAdmin && <SetSpotlightButton videoId={video.id} />}
-            {isAdmin && <AdminVideoTakedownButton videoId={video.id} />}
+            {canModerate && <AdminVideoTakedownButton videoId={video.id} />}
             {user && user.id !== video.user_id && (
               <SubscribeButton
                 creatorId={video.user_id}

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { AdminProfileManager } from '@/components/admin-profile-manager';
-import { isAdminEmail } from '@/lib/admin';
+import { canModerateUser, isAdminEmail } from '@/lib/admin';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function StudioAdminPage() {
@@ -10,12 +10,14 @@ export default async function StudioAdminPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect('/sign-in');
-  if (!isAdminEmail(user.email)) redirect('/studio');
+  const canModerate = await canModerateUser(supabase, { id: user.id, email: user.email });
+  if (!canModerate) redirect('/studio');
+  const isAdmin = isAdminEmail(user.email);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <h1 className="text-4xl font-bold">Admin</h1>
-      <AdminProfileManager />
+      <h1 className="text-4xl font-bold">{isAdmin ? 'Admin' : 'Moderation'}</h1>
+      <AdminProfileManager isAdmin={isAdmin} />
     </div>
   );
 }
