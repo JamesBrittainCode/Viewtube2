@@ -21,6 +21,17 @@ function shouldBlock(value: number) {
   return Number.isFinite(value) && value >= DEFAULT_THRESHOLD;
 }
 
+async function parseJsonSafely(response: Response) {
+  const text = await response.text();
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(
+      `Moderation provider returned non-JSON response (status ${response.status}): ${text.slice(0, 200)}`,
+    );
+  }
+}
+
 async function runSightengineImage(url: string): Promise<ModerationResult> {
   const apiUser = process.env.SIGHTENGINE_API_USER;
   const apiSecret = process.env.SIGHTENGINE_API_SECRET;
@@ -38,9 +49,10 @@ async function runSightengineImage(url: string): Promise<ModerationResult> {
     cache: 'no-store',
   });
   if (!response.ok) {
-    throw new Error('Image moderation service failed');
+    const body = await response.text();
+    throw new Error(`Image moderation service failed (${response.status}): ${body.slice(0, 200)}`);
   }
-  const data = (await response.json()) as Record<string, unknown>;
+  const data = await parseJsonSafely(response);
 
   const nudity = data.nudity as Record<string, number> | undefined;
   const offensive = data.offensive as Record<string, number> | undefined;
@@ -92,9 +104,10 @@ async function runSightengineVideo(url: string): Promise<ModerationResult> {
     cache: 'no-store',
   });
   if (!response.ok) {
-    throw new Error('Video moderation service failed');
+    const body = await response.text();
+    throw new Error(`Video moderation service failed (${response.status}): ${body.slice(0, 200)}`);
   }
-  const data = (await response.json()) as Record<string, unknown>;
+  const data = await parseJsonSafely(response);
   const summary = (data.summary as Record<string, number> | undefined) || {};
 
   const sexualProb = Math.max(
@@ -159,4 +172,3 @@ export async function moderateUploadedMedia(input: {
 }
 
 export const VIDEO_REPORT_REASONS = REPORT_REASONS;
-

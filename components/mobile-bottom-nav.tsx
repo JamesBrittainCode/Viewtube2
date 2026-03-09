@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Flame, Folder, Home, UserRound } from 'lucide-react';
+import { Flame, Folder, Home, Radio, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const links = [
@@ -10,6 +10,7 @@ const links = [
   { href: '/subscriptions', label: 'Subs', icon: UserRound },
   { href: '/library', label: 'Library', icon: Folder },
   { href: '/trending', label: 'Trending', icon: Flame },
+  { href: '/live', label: 'Live', icon: Radio },
 ] as const;
 
 export function MobileBottomNav() {
@@ -17,7 +18,7 @@ export function MobileBottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 backdrop-blur lg:hidden dark:border-zinc-800 dark:bg-zinc-950/95">
-      <div className="grid grid-cols-4">
+      <div className="grid grid-cols-5">
         {links.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

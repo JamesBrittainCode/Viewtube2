@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { normalizeHandle } from '@/lib/handle';
 import { isAdminEmail } from '@/lib/admin';
 import { sendNotification } from '@/lib/notifications';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
 export async function PATCH(request: Request) {
@@ -19,6 +20,7 @@ export async function PATCH(request: Request) {
     subscribers_count?: number;
     verified?: boolean;
     suspended?: boolean;
+    can_stream_live?: boolean;
   };
 
   const rawHandle = (body.handle || '').trim();
@@ -30,6 +32,8 @@ export async function PATCH(request: Request) {
     typeof body.verified === 'boolean' ? body.verified : undefined;
   const suspended =
     typeof body.suspended === 'boolean' ? body.suspended : undefined;
+  const canStreamLive =
+    typeof body.can_stream_live === 'boolean' ? body.can_stream_live : undefined;
 
   if (!body.handle || normalizedRaw.length < 3) {
     return NextResponse.json({ error: 'Valid handle is required' }, { status: 400 });
@@ -37,7 +41,7 @@ export async function PATCH(request: Request) {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, subscribers_count, verified, suspended')
+    .select('id, subscribers_count, verified, suspended, can_stream_live')
     .eq('handle', handle)
     .single();
 
@@ -45,19 +49,43 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
   }
 
-  if (subscribersCount === undefined && verified === undefined && suspended === undefined) {
+  if (
+    subscribersCount === undefined &&
+    verified === undefined &&
+    suspended === undefined &&
+    canStreamLive === undefined
+  ) {
     return NextResponse.json({ error: 'No admin changes provided' }, { status: 400 });
   }
 
-  const { data, error } = await supabase.rpc('admin_update_profile_meta', {
-    target_profile_id: profile.id,
-    target_subscribers_count: subscribersCount ?? profile.subscribers_count,
-    target_verified: verified ?? profile.verified,
-    target_suspended: suspended ?? profile.suspended,
-  });
+  let data = profile;
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  if (subscribersCount !== undefined || verified !== undefined || suspended !== undefined) {
+    const { data: rpcData, error } = await supabase.rpc('admin_update_profile_meta', {
+      target_profile_id: profile.id,
+      target_subscribers_count: subscribersCount ?? profile.subscribers_count,
+      target_verified: verified ?? profile.verified,
+      target_suspended: suspended ?? profile.suspended,
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    data = rpcData;
+  }
+
+  if (canStreamLive !== undefined) {
+    const adminClient = createAdminClient();
+    const { data: updatedLive, error: liveError } = await adminClient
+      .from('profiles')
+      .update({ can_stream_live: canStreamLive })
+      .eq('id', profile.id)
+      .select('id, subscribers_count, verified, suspended, can_stream_live')
+      .single();
+    if (liveError) {
+      return NextResponse.json({ error: liveError.message }, { status: 400 });
+    }
+    data = updatedLive;
   }
 
   if (verified === true && profile.verified === false) {
@@ -87,6 +115,16 @@ export async function PATCH(request: Request) {
       message: 'Your account suspension has been lifted.',
       actorId: user.id,
       targetUrl: '/',
+    });
+  }
+
+  if (canStreamLive === true && profile.can_stream_live === false) {
+    await sendNotification(supabase, {
+      userId: profile.id,
+      type: 'live_access_enabled',
+      message: 'Your channel is now approved for live streaming.',
+      actorId: user.id,
+      targetUrl: '/studio/live',
     });
   }
 

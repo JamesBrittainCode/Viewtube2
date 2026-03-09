@@ -14,6 +14,7 @@ import {
   Shield,
   Sparkles,
   Video,
+  Radio,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { isAdminEmail } from '@/lib/admin';
@@ -21,6 +22,7 @@ import { isAdminEmail } from '@/lib/admin';
 const baseNavLinks = [
   { href: '/studio', label: 'Dashboard', icon: Compass },
   { href: '/studio/content', label: 'Content', icon: Video },
+  { href: '/studio/live', label: 'Live', icon: Radio },
   { href: '/studio/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/studio/spotlight', label: 'Creator Spotlight', icon: Sparkles },
   { href: '/studio/earn', label: 'Earn', icon: DollarSign },

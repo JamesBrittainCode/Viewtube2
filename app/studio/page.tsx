@@ -75,6 +75,7 @@ export default async function StudioPage() {
           <div className="mt-3 flex flex-wrap gap-2">
             <Link href="/studio/analytics" className="rounded-full border border-zinc-700 px-4 py-2 text-sm hover:bg-zinc-800">Go to analytics</Link>
             <Link href="/studio/content" className="rounded-full border border-zinc-700 px-4 py-2 text-sm hover:bg-zinc-800">Go to content</Link>
+            <Link href="/studio/live" className="rounded-full border border-zinc-700 px-4 py-2 text-sm hover:bg-zinc-800">Go live</Link>
             <Link href="/studio/spotlight" className="rounded-full border border-zinc-700 px-4 py-2 text-sm hover:bg-zinc-800">Manage creator spotlight</Link>
           </div>
         </div>

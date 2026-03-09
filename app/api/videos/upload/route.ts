@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { THUMBNAIL_BUCKET, VIDEO_BUCKET } from '@/lib/constants';
+import { isAdminEmail } from '@/lib/admin';
 import { moderateUploadedMedia } from '@/lib/media-moderation';
 import { moderateUploadText } from '@/lib/moderation';
 import { sendNotification } from '@/lib/notifications';
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const isAdmin = isAdminEmail(user.email);
 
   const body = (await request.json()) as {
     title?: string;
@@ -63,7 +65,7 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .maybeSingle();
 
-  if (profile?.suspended) {
+  if (profile?.suspended && !isAdmin) {
     return NextResponse.json(
       {
         error:
@@ -100,13 +102,29 @@ export async function POST(request: Request) {
     );
   }
 
-  const moderation = moderateUploadText({ title, description, tags });
+  const moderation = isAdmin
+    ? { flagged: false as const, reason: undefined }
+    : moderateUploadText({ title, description, tags });
   let mediaModeration: { flagged: boolean; reason?: string } = { flagged: false };
-  if (!moderation.flagged) {
-    mediaModeration = await moderateUploadedMedia({
-      videoUrl,
-      thumbnailUrl,
-    });
+  if (!moderation.flagged && !isAdmin) {
+    try {
+      mediaModeration = await moderateUploadedMedia({
+        videoUrl,
+        thumbnailUrl,
+      });
+    } catch (err) {
+      const strictModeration = process.env.REQUIRE_MEDIA_MODERATION !== 'false';
+      const message = (err as Error).message || 'Media moderation service failed';
+      if (strictModeration) {
+        return NextResponse.json(
+          {
+            error: `Media moderation service is currently unavailable. ${message}`,
+          },
+          { status: 502 },
+        );
+      }
+      mediaModeration = { flagged: false };
+    }
   }
 
   if (moderation.flagged || mediaModeration.flagged) {

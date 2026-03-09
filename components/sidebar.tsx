@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Flame, Folder, Home, PlaySquare, UserRound } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flame, Folder, Home, PlaySquare, Radio, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const links = [
@@ -9,6 +9,7 @@ const links = [
   { href: '/subscriptions', label: 'Subscriptions', icon: UserRound },
   { href: '/library', label: 'Library', icon: Folder },
   { href: '/trending', label: 'Trending', icon: Flame },
+  { href: '/live', label: 'Live', icon: Radio },
   { href: '/upload', label: 'Upload', icon: PlaySquare },
 ] as const;
 

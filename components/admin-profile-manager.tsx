@@ -168,6 +168,7 @@ export function AdminProfileManager() {
   const [verifyHandle, setVerifyHandle] = useState('@');
   const [subscribersCount, setSubscribersCount] = useState(0);
   const [verified, setVerified] = useState(false);
+  const [canStreamLive, setCanStreamLive] = useState(false);
   const [suspendHandle, setSuspendHandle] = useState('@');
   const [suspended, setSuspended] = useState(true);
   const [countLoading, setCountLoading] = useState(false);
@@ -340,6 +341,7 @@ export function AdminProfileManager() {
         body: JSON.stringify({
           handle: normalizeHandle(verifyHandle),
           verified,
+          can_stream_live: canStreamLive,
         }),
       });
 
@@ -740,6 +742,14 @@ export function AdminProfileManager() {
           <label className="flex items-center gap-2 text-sm text-zinc-200">
             <input type="checkbox" checked={verified} onChange={(event) => setVerified(event.target.checked)} />
             Verified channel
+          </label>
+          <label className="flex items-center gap-2 text-sm text-zinc-200">
+            <input
+              type="checkbox"
+              checked={canStreamLive}
+              onChange={(event) => setCanStreamLive(event.target.checked)}
+            />
+            Live streaming enabled
           </label>
           {verifyError && <p className="text-sm text-red-400">{verifyError}</p>}
           {verifyMessage && <p className="text-sm text-green-400">{verifyMessage}</p>}

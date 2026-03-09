@@ -10,6 +10,7 @@ create table if not exists public.profiles (
   banner_url text,
   bio text,
   verified boolean not null default false,
+  can_stream_live boolean not null default false,
   suspended boolean not null default false,
   suspension_reason text,
   suspended_at timestamptz,
@@ -20,6 +21,8 @@ create table if not exists public.profiles (
 
 alter table public.profiles
 add column if not exists verified boolean not null default false;
+alter table public.profiles
+add column if not exists can_stream_live boolean not null default false;
 alter table public.profiles
 add column if not exists handle text;
 alter table public.profiles
@@ -291,9 +294,47 @@ create table if not exists public.earn_applications (
   reviewed_by uuid references public.profiles(id) on delete set null
 );
 
+create table if not exists public.live_streams (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  title text not null default 'Live Stream',
+  description text not null default '',
+  is_live boolean not null default true,
+  viewer_count integer not null default 0,
+  started_at timestamptz not null default now(),
+  ended_at timestamptz
+);
+
+create table if not exists public.live_stream_viewers (
+  id uuid primary key default gen_random_uuid(),
+  stream_id uuid not null references public.live_streams(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  joined_at timestamptz not null default now(),
+  unique (stream_id, user_id)
+);
+
+create table if not exists public.live_signals (
+  id uuid primary key default gen_random_uuid(),
+  stream_id uuid not null references public.live_streams(id) on delete cascade,
+  sender_id uuid not null references public.profiles(id) on delete cascade,
+  recipient_id uuid references public.profiles(id) on delete cascade,
+  kind text not null,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.live_chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  stream_id uuid not null references public.live_streams(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  content text not null check (char_length(trim(content)) > 0),
+  created_at timestamptz not null default now()
+);
+
 create index if not exists idx_profiles_username on public.profiles using btree(username);
 create unique index if not exists idx_profiles_username_lower_unique on public.profiles (lower(username));
 create unique index if not exists idx_profiles_handle_unique on public.profiles (handle);
+create index if not exists idx_profiles_can_stream_live on public.profiles using btree(can_stream_live);
 create index if not exists idx_videos_user_id on public.videos using btree(user_id);
 create index if not exists idx_videos_created_at on public.videos using btree(created_at desc);
 create index if not exists idx_videos_removed on public.videos using btree(is_removed, created_at desc);
@@ -323,6 +364,12 @@ create unique index if not exists idx_creator_spotlights_unique_slot on public.c
 create index if not exists idx_studio_feedback_user_created on public.studio_feedback using btree(user_id, created_at desc);
 create index if not exists idx_studio_feedback_status_created on public.studio_feedback using btree(status, created_at desc);
 create index if not exists idx_earn_applications_status_created on public.earn_applications using btree(status, created_at desc);
+create index if not exists idx_live_streams_live_started on public.live_streams using btree(is_live, started_at desc);
+create index if not exists idx_live_streams_user_live on public.live_streams using btree(user_id, is_live);
+create index if not exists idx_live_stream_viewers_stream on public.live_stream_viewers using btree(stream_id);
+create index if not exists idx_live_signals_stream_created on public.live_signals using btree(stream_id, created_at asc);
+create index if not exists idx_live_signals_recipient on public.live_signals using btree(recipient_id, created_at asc);
+create index if not exists idx_live_chat_stream_created on public.live_chat_messages using btree(stream_id, created_at asc);
 
 create or replace function public.videos_search_vector_update()
 returns trigger
@@ -719,6 +766,10 @@ alter table public.moderation_events enable row level security;
 alter table public.creator_spotlights enable row level security;
 alter table public.studio_feedback enable row level security;
 alter table public.earn_applications enable row level security;
+alter table public.live_streams enable row level security;
+alter table public.live_stream_viewers enable row level security;
+alter table public.live_signals enable row level security;
+alter table public.live_chat_messages enable row level security;
 
 -- profiles
 create policy "Profiles are viewable by everyone"
@@ -1071,6 +1122,78 @@ on public.earn_applications for update
 to authenticated
 using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com')
 with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
+
+create policy "Live streams are viewable by everyone"
+on public.live_streams for select
+to anon, authenticated
+using (true);
+
+create policy "Eligible users can create live streams"
+on public.live_streams for insert
+to authenticated
+with check (
+  user_id = (select auth.uid())
+  and exists (
+    select 1
+    from public.profiles p
+    where p.id = (select auth.uid())
+      and p.can_stream_live = true
+  )
+);
+
+create policy "Stream owners can update own streams"
+on public.live_streams for update
+to authenticated
+using (user_id = (select auth.uid()))
+with check (user_id = (select auth.uid()));
+
+create policy "Live stream viewers are viewable by stream owners"
+on public.live_stream_viewers for select
+to authenticated
+using (
+  user_id = (select auth.uid())
+  or exists (
+    select 1
+    from public.live_streams s
+    where s.id = stream_id
+      and s.user_id = (select auth.uid())
+  )
+);
+
+create policy "Users can manage own live stream presence"
+on public.live_stream_viewers for all
+to authenticated
+using (user_id = (select auth.uid()))
+with check (user_id = (select auth.uid()));
+
+create policy "Participants can view live signals"
+on public.live_signals for select
+to authenticated
+using (
+  sender_id = (select auth.uid())
+  or recipient_id = (select auth.uid())
+  or exists (
+    select 1
+    from public.live_streams s
+    where s.id = stream_id
+      and s.user_id = (select auth.uid())
+  )
+);
+
+create policy "Authenticated users can send live signals"
+on public.live_signals for insert
+to authenticated
+with check (sender_id = (select auth.uid()));
+
+create policy "Live chat messages are viewable by everyone"
+on public.live_chat_messages for select
+to anon, authenticated
+using (true);
+
+create policy "Authenticated users can send live chat"
+on public.live_chat_messages for insert
+to authenticated
+with check (user_id = (select auth.uid()));
 
 -- Storage buckets
 insert into storage.buckets (id, name, public)
