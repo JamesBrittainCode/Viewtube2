@@ -55,6 +55,10 @@ export function LiveStreamRoom({
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const seenSignalIdsRef = useRef<Set<string>>(new Set());
+  const seenMessageIdsRef = useRef<Set<string>>(new Set());
+  const lastSignalAtRef = useRef<string>('1970-01-01T00:00:00.000Z');
+  const lastMessageAtRef = useRef<string>('1970-01-01T00:00:00.000Z');
 
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
@@ -128,11 +132,18 @@ export function LiveStreamRoom({
   }
 
   async function handleSignal(row: {
+    id?: string;
+    created_at?: string;
     sender_id: string;
     recipient_id: string | null;
     kind: string;
     payload: Record<string, unknown>;
   }) {
+    if (row.id && seenSignalIdsRef.current.has(row.id)) return;
+    if (row.id) seenSignalIdsRef.current.add(row.id);
+    if (row.created_at && row.created_at > lastSignalAtRef.current) {
+      lastSignalAtRef.current = row.created_at;
+    }
     if (row.sender_id === userId) return;
     if (row.recipient_id && row.recipient_id !== userId) return;
 
@@ -184,7 +195,64 @@ export function LiveStreamRoom({
     }
   }
 
+  async function pollSignals() {
+    const { data, error } = await supabase
+      .from('live_signals')
+      .select('id,sender_id,recipient_id,kind,payload,created_at')
+      .eq('stream_id', streamId)
+      .gt('created_at', lastSignalAtRef.current)
+      .order('created_at', { ascending: true })
+      .limit(200);
+    if (error || !data?.length) return;
+    for (const row of data) {
+      await handleSignal(row);
+    }
+  }
+
+  async function pollMessages() {
+    const { data, error } = await supabase
+      .from('live_chat_messages')
+      .select('id,stream_id,user_id,content,created_at')
+      .eq('stream_id', streamId)
+      .gt('created_at', lastMessageAtRef.current)
+      .order('created_at', { ascending: true })
+      .limit(200);
+    if (error || !data?.length) return;
+    setMessages((prev) => {
+      const merged = [...prev];
+      for (const row of data) {
+        if (!seenMessageIdsRef.current.has(row.id)) {
+          seenMessageIdsRef.current.add(row.id);
+          merged.push(row as never);
+        }
+        if (row.created_at > lastMessageAtRef.current) {
+          lastMessageAtRef.current = row.created_at;
+        }
+      }
+      return merged;
+    });
+  }
+
+  async function pollStreamState() {
+    const res = await fetch(`/api/live/streams/${streamId}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const payload = (await res.json()) as {
+      stream?: { viewer_count?: number; is_live?: boolean };
+    };
+    const next = payload.stream;
+    if (!next) return;
+    if (typeof next.viewer_count === 'number') setViewerCount(next.viewer_count);
+    if (next.is_live === false) setLiveEnded(true);
+  }
+
   useEffect(() => {
+    for (const item of initialMessages) {
+      if (item.id) seenMessageIdsRef.current.add(item.id);
+      if (item.created_at && item.created_at > lastMessageAtRef.current) {
+        lastMessageAtRef.current = item.created_at;
+      }
+    }
+
     if (isOwner) void startBroadcastIfOwner();
 
     const channel = supabase
@@ -197,7 +265,15 @@ export function LiveStreamRoom({
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'live_chat_messages', filter: `stream_id=eq.${streamId}` },
-        (payload) => setMessages((prev) => [...prev, payload.new as never]),
+        (payload) => {
+          const row = payload.new as { id?: string; created_at?: string };
+          if (row.id && seenMessageIdsRef.current.has(row.id)) return;
+          if (row.id) seenMessageIdsRef.current.add(row.id);
+          if (row.created_at && row.created_at > lastMessageAtRef.current) {
+            lastMessageAtRef.current = row.created_at;
+          }
+          setMessages((prev) => [...prev, payload.new as never]);
+        },
       )
       .on(
         'postgres_changes',
@@ -223,7 +299,14 @@ export function LiveStreamRoom({
 
     channelRef.current = channel;
 
+    const timer = setInterval(() => {
+      void pollSignals();
+      void pollMessages();
+      void pollStreamState();
+    }, 700);
+
     return () => {
+      clearInterval(timer);
       if (!isOwner) {
         void fetch(`/api/live/streams/${streamId}`, {
           method: 'PATCH',
@@ -248,7 +331,7 @@ export function LiveStreamRoom({
         void supabase.removeChannel(channelRef.current);
       }
     };
-  }, [isOwner, ownerId, streamId, supabase, userId]);
+  }, [initialMessages, isOwner, ownerId, streamId, supabase, userId]);
 
   async function onSendChat(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -260,7 +343,17 @@ export function LiveStreamRoom({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
     });
-    if (res.ok) setChatInput('');
+    if (res.ok) {
+      const payload = (await res.json()) as { message?: ChatMessage };
+      if (payload.message?.id && !seenMessageIdsRef.current.has(payload.message.id)) {
+        seenMessageIdsRef.current.add(payload.message.id);
+        setMessages((prev) => [...prev, payload.message!]);
+      }
+      if (payload.message?.created_at && payload.message.created_at > lastMessageAtRef.current) {
+        lastMessageAtRef.current = payload.message.created_at;
+      }
+      setChatInput('');
+    }
   }
 
   function toggleMic() {

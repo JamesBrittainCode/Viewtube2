@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { normalizeHandle } from '@/lib/handle';
@@ -119,6 +120,17 @@ type AdminVideoItem = {
   } | null;
 };
 
+type CreatorAccessPreview = {
+  id: string;
+  username: string;
+  handle: string;
+  avatar_url?: string | null;
+  verified: boolean;
+  can_stream_live: boolean;
+  can_moderate: boolean;
+  is_admin: boolean;
+};
+
 async function parseApiError(response: Response) {
   const text = await response.text();
   try {
@@ -189,6 +201,9 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
   const [adApproved, setAdApproved] = useState(true);
   const [adStartsAt, setAdStartsAt] = useState('');
   const [adEndsAt, setAdEndsAt] = useState('');
+  const [creatorPreviewLoading, setCreatorPreviewLoading] = useState(false);
+  const [creatorPreviewError, setCreatorPreviewError] = useState<string | null>(null);
+  const [creatorPreview, setCreatorPreview] = useState<CreatorAccessPreview | null>(null);
   const [adVideoFile, setAdVideoFile] = useState<File | null>(null);
   const [adImageFile, setAdImageFile] = useState<File | null>(null);
   const [ads, setAds] = useState<AdItem[]>([]);
@@ -368,6 +383,16 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
 
       if (!res.ok) throw new Error(await parseApiError(res));
       setVerifyMessage('Verification status updated.');
+      setCreatorPreview((prev) =>
+        prev
+          ? {
+              ...prev,
+              verified,
+              can_stream_live: canStreamLive,
+              can_moderate: canModerate,
+            }
+          : prev,
+      );
       router.refresh();
     } catch (err) {
       setVerifyError((err as Error).message);
@@ -375,6 +400,40 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
       setVerifyLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!isAdmin || activeTab !== 'verification') return;
+    const normalizedRaw = verifyHandle.trim().replace(/^@+/, '').replace(/[^a-zA-Z0-9_]/g, '');
+    if (normalizedRaw.length < 3) {
+      setCreatorPreview(null);
+      setCreatorPreviewError(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setCreatorPreviewLoading(true);
+      setCreatorPreviewError(null);
+      try {
+        const res = await fetch(`/api/admin/profile?handle=${encodeURIComponent(normalizeHandle(verifyHandle))}`, {
+          cache: 'no-store',
+        });
+        if (!res.ok) throw new Error(await parseApiError(res));
+        const data = (await res.json()) as { profile?: CreatorAccessPreview };
+        if (!data.profile) throw new Error('Profile not found');
+        setCreatorPreview(data.profile);
+        setVerified(Boolean(data.profile.verified));
+        setCanStreamLive(Boolean(data.profile.can_stream_live));
+        setCanModerate(Boolean(data.profile.can_moderate));
+      } catch (err) {
+        setCreatorPreview(null);
+        setCreatorPreviewError((err as Error).message);
+      } finally {
+        setCreatorPreviewLoading(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [verifyHandle, activeTab, isAdmin]);
 
   async function onUpdateAd(item: AdItem, patch: Partial<AdItem>) {
     setAdError(null);
@@ -767,6 +826,35 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
             Manage channel verification, live streaming access, and moderation access for an exact `@handle`.
           </p>
           <input value={verifyHandle} onChange={(event) => setVerifyHandle(event.target.value)} placeholder="@target_handle" required className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3" />
+          {creatorPreviewLoading ? (
+            <p className="text-xs text-zinc-500">Looking up handle...</p>
+          ) : null}
+          {creatorPreviewError ? (
+            <p className="text-xs text-red-400">{creatorPreviewError}</p>
+          ) : null}
+          {creatorPreview ? (
+            <div className="rounded-xl border border-zinc-700 bg-zinc-950 p-3">
+              <div className="flex items-center gap-3">
+                <Image
+                  src={creatorPreview.avatar_url || '/avatar-placeholder.svg'}
+                  alt={creatorPreview.username}
+                  width={44}
+                  height={44}
+                  className="h-11 w-11 rounded-full object-cover"
+                />
+                <div>
+                  <p className="text-sm font-semibold">{creatorPreview.username}</p>
+                  <p className="text-xs text-zinc-500">{creatorPreview.handle}</p>
+                </div>
+              </div>
+              <div className="mt-3 grid gap-2 text-xs text-zinc-300 sm:grid-cols-2">
+                <p>Verified: {creatorPreview.verified ? 'Yes' : 'No'}</p>
+                <p>Admin: {creatorPreview.is_admin ? 'Yes' : 'No'}</p>
+                <p>Live Access: {creatorPreview.can_stream_live ? 'Yes' : 'No'}</p>
+                <p>Moderation Access: {creatorPreview.can_moderate ? 'Yes' : 'No'}</p>
+              </div>
+            </div>
+          ) : null}
           <label className="flex items-center gap-2 text-sm text-zinc-200">
             <input type="checkbox" checked={verified} onChange={(event) => setVerified(event.target.checked)} />
             Verified channel

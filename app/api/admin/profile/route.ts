@@ -5,6 +5,51 @@ import { sendNotification } from '@/lib/notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
+export async function GET(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || !isAdminEmail(user.email)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const rawHandle = String(searchParams.get('handle') || '').trim();
+  const normalizedRaw = rawHandle.replace(/^@+/, '').replace(/[^a-zA-Z0-9_]/g, '');
+  if (normalizedRaw.length < 3) {
+    return NextResponse.json({ error: 'Valid handle is required' }, { status: 400 });
+  }
+  const handle = normalizeHandle(rawHandle);
+
+  const adminClient = createAdminClient();
+  const { data: profile, error: profileError } = await adminClient
+    .from('profiles')
+    .select('id,username,handle,avatar_url,verified,can_stream_live,can_moderate')
+    .eq('handle', handle)
+    .maybeSingle();
+
+  if (profileError) {
+    return NextResponse.json({ error: profileError.message }, { status: 400 });
+  }
+  if (!profile) {
+    return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+  }
+
+  const userLookup = await adminClient.auth.admin.getUserById(profile.id);
+  const profileEmail = userLookup.data.user?.email || null;
+  const isAdmin = isAdminEmail(profileEmail);
+
+  return NextResponse.json({
+    profile: {
+      ...profile,
+      is_admin: isAdmin,
+      email: profileEmail,
+    },
+  });
+}
+
 export async function PATCH(request: Request) {
   const supabase = await createClient();
   const {
