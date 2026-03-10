@@ -8,7 +8,7 @@ import { AD_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
 
-type AdminTab = 'subscribers' | 'verification' | 'suspension' | 'earn' | 'reported' | 'videos' | 'ads';
+type AdminTab = 'subscribers' | 'verification' | 'suspension' | 'earn' | 'reported' | 'videos' | 'alert' | 'ads';
 
 type AdItem = {
   id: string;
@@ -131,6 +131,13 @@ type CreatorAccessPreview = {
   is_admin: boolean;
 };
 
+type SiteAlertItem = {
+  id: string;
+  message: string;
+  is_active: boolean;
+  created_at: string;
+};
+
 async function parseApiError(response: Response) {
   const text = await response.text();
   try {
@@ -204,6 +211,12 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
   const [creatorPreviewLoading, setCreatorPreviewLoading] = useState(false);
   const [creatorPreviewError, setCreatorPreviewError] = useState<string | null>(null);
   const [creatorPreview, setCreatorPreview] = useState<CreatorAccessPreview | null>(null);
+  const [siteAlertMessage, setSiteAlertMessage] = useState('');
+  const [siteAlertActive, setSiteAlertActive] = useState(true);
+  const [siteAlerts, setSiteAlerts] = useState<SiteAlertItem[]>([]);
+  const [siteAlertLoading, setSiteAlertLoading] = useState(false);
+  const [siteAlertError, setSiteAlertError] = useState<string | null>(null);
+  const [siteAlertNotice, setSiteAlertNotice] = useState<string | null>(null);
   const [adVideoFile, setAdVideoFile] = useState<File | null>(null);
   const [adImageFile, setAdImageFile] = useState<File | null>(null);
   const [ads, setAds] = useState<AdItem[]>([]);
@@ -246,6 +259,7 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
             { id: 'earn', label: 'Earn Applications' },
             { id: 'reported', label: 'Reported' },
             { id: 'videos', label: 'Video Takedown' },
+            { id: 'alert', label: 'Site Alert' },
             { id: 'ads', label: 'Ads' },
           ]
         : [
@@ -264,28 +278,32 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
       setVideoError(null);
       try {
         if (isAdmin) {
-          const [adsRes, submissionsRes, earnRes, reportsRes, videosRes] = await Promise.all([
+          const [adsRes, submissionsRes, earnRes, reportsRes, videosRes, siteAlertRes] = await Promise.all([
             fetch('/api/admin/ads', { cache: 'no-store' }),
             fetch('/api/admin/ad-submissions', { cache: 'no-store' }),
             fetch('/api/admin/earn-applications', { cache: 'no-store' }),
             fetch('/api/admin/video-reports', { cache: 'no-store' }),
             fetch('/api/admin/videos', { cache: 'no-store' }),
+            fetch('/api/admin/site-alert', { cache: 'no-store' }),
           ]);
           if (!adsRes.ok) throw new Error(await parseApiError(adsRes));
           if (!submissionsRes.ok) throw new Error(await parseApiError(submissionsRes));
           if (!earnRes.ok) throw new Error(await parseApiError(earnRes));
           if (!reportsRes.ok) throw new Error(await parseApiError(reportsRes));
           if (!videosRes.ok) throw new Error(await parseApiError(videosRes));
+          if (!siteAlertRes.ok) throw new Error(await parseApiError(siteAlertRes));
           const adsData = (await adsRes.json()) as { ads?: AdItem[] };
           const submissionsData = (await submissionsRes.json()) as { submissions?: AdSubmission[] };
           const earnData = (await earnRes.json()) as { applications?: EarnApplication[] };
           const reportData = (await reportsRes.json()) as { reports?: VideoReport[] };
           const videosData = (await videosRes.json()) as { videos?: AdminVideoItem[] };
+          const siteAlertData = (await siteAlertRes.json()) as { alerts?: SiteAlertItem[] };
           setAds(adsData.ads || []);
           setSubmissions(submissionsData.submissions || []);
           setEarnApplications(earnData.applications || []);
           setReports(reportData.reports || []);
           setVideos(videosData.videos || []);
+          setSiteAlerts(siteAlertData.alerts || []);
         } else {
           const [reportsRes, videosRes] = await Promise.all([
             fetch('/api/admin/video-reports', { cache: 'no-store' }),
@@ -398,6 +416,65 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
       setVerifyError((err as Error).message);
     } finally {
       setVerifyLoading(false);
+    }
+  }
+
+  async function onPublishSiteAlert(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSiteAlertLoading(true);
+    setSiteAlertError(null);
+    setSiteAlertNotice(null);
+    try {
+      const res = await fetch('/api/admin/site-alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: siteAlertMessage,
+          is_active: siteAlertActive,
+        }),
+      });
+      if (!res.ok) throw new Error(await parseApiError(res));
+      const data = (await res.json()) as { alert?: SiteAlertItem };
+      if (data.alert) {
+        setSiteAlerts((prev) => [data.alert!, ...prev.map((row) => ({ ...row, is_active: false }))]);
+        setSiteAlertMessage('');
+      }
+      setSiteAlertNotice(siteAlertActive ? 'Alert published.' : 'Alert saved (inactive).');
+      router.refresh();
+    } catch (err) {
+      setSiteAlertError((err as Error).message);
+    } finally {
+      setSiteAlertLoading(false);
+    }
+  }
+
+  async function onToggleSiteAlert(item: SiteAlertItem, isActive: boolean) {
+    setSiteAlertLoading(true);
+    setSiteAlertError(null);
+    setSiteAlertNotice(null);
+    try {
+      const res = await fetch('/api/admin/site-alert', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, is_active: isActive }),
+      });
+      if (!res.ok) throw new Error(await parseApiError(res));
+      const payload = (await res.json()) as { alert?: SiteAlertItem };
+      if (payload.alert) {
+        setSiteAlerts((prev) =>
+          prev.map((row) =>
+            row.id === item.id
+              ? payload.alert!
+              : { ...row, is_active: isActive ? false : row.is_active },
+          ),
+        );
+      }
+      setSiteAlertNotice(isActive ? 'Alert activated.' : 'Alert deactivated.');
+      router.refresh();
+    } catch (err) {
+      setSiteAlertError((err as Error).message);
+    } finally {
+      setSiteAlertLoading(false);
     }
   }
 
@@ -1090,6 +1167,87 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
                 </div>
               </article>
             ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'alert' && isAdmin && (
+        <div className="mt-5 space-y-4 rounded-xl border border-zinc-700 p-4">
+          <h3 className="text-sm font-semibold">Site Alert Banner</h3>
+          <p className="text-xs text-zinc-500">
+            Shows a red alert banner at the very top of ViewTube and Studio. Users can dismiss it locally, and you can deactivate it at any time.
+          </p>
+
+          <form onSubmit={onPublishSiteAlert} className="space-y-3">
+            <textarea
+              value={siteAlertMessage}
+              onChange={(event) => setSiteAlertMessage(event.target.value)}
+              rows={3}
+              maxLength={800}
+              placeholder="Alert message"
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-sm"
+              required
+            />
+            <label className="flex items-center gap-2 text-sm text-zinc-200">
+              <input
+                type="checkbox"
+                checked={siteAlertActive}
+                onChange={(event) => setSiteAlertActive(event.target.checked)}
+              />
+              Publish as active immediately
+            </label>
+
+            {siteAlertError ? <p className="text-sm text-red-400">{siteAlertError}</p> : null}
+            {siteAlertNotice ? <p className="text-sm text-green-400">{siteAlertNotice}</p> : null}
+
+            <button
+              type="submit"
+              disabled={siteAlertLoading}
+              className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+            >
+              {siteAlertLoading ? 'Saving…' : 'Publish Alert'}
+            </button>
+          </form>
+
+          <div className="rounded-xl border border-zinc-700 p-4">
+            <h4 className="text-sm font-semibold">Recent alerts</h4>
+            {!siteAlerts.length ? (
+              <p className="mt-2 text-sm text-zinc-400">No alerts created yet.</p>
+            ) : null}
+            <div className="mt-3 space-y-2">
+              {siteAlerts.map((item) => (
+                <div key={item.id} className="rounded-lg border border-zinc-700 p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm text-zinc-200">{item.message}</p>
+                      <p className="mt-1 text-xs text-zinc-500">{new Date(item.created_at).toLocaleString()}</p>
+                      <p className="mt-1 text-xs text-zinc-500">Status: {item.is_active ? 'Active' : 'Inactive'}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      {item.is_active ? (
+                        <button
+                          type="button"
+                          disabled={siteAlertLoading}
+                          onClick={() => void onToggleSiteAlert(item, false)}
+                          className="rounded-full border border-zinc-600 px-3 py-1 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 disabled:opacity-60"
+                        >
+                          Deactivate
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={siteAlertLoading}
+                          onClick={() => void onToggleSiteAlert(item, true)}
+                          className="rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-500 disabled:opacity-60"
+                        >
+                          Activate
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -4,6 +4,7 @@ import { CreateMenu } from '@/components/create-menu';
 import { Logo } from '@/components/logo';
 import { NotificationMenu } from '@/components/notification-menu';
 import { ProfileMenu } from '@/components/profile-menu';
+import { SiteAlert } from '@/components/site-alert';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { isAdminEmail } from '@/lib/admin';
 import { unwrapRelation } from '@/lib/profile';
@@ -75,54 +76,57 @@ export async function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
-      <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-2 px-3 sm:gap-4 sm:px-4 lg:px-6">
-        <Logo />
+    <>
+      <SiteAlert />
+      <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+        <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-2 px-3 sm:gap-4 sm:px-4 lg:px-6">
+          <Logo />
 
-        <form action="/search" className="mx-1 flex-1 sm:mx-auto sm:w-full sm:max-w-2xl">
-          <input
-            name="q"
-            placeholder="Search"
-            className="h-10 w-full rounded-full border border-zinc-300 bg-zinc-50 px-3 text-sm outline-none transition focus:border-zinc-400 sm:px-4 dark:border-zinc-700 dark:bg-zinc-900"
-          />
-        </form>
+          <form action="/search" className="mx-1 flex-1 sm:mx-auto sm:w-full sm:max-w-2xl">
+            <input
+              name="q"
+              placeholder="Search"
+              className="h-10 w-full rounded-full border border-zinc-300 bg-zinc-50 px-3 text-sm outline-none transition focus:border-zinc-400 sm:px-4 dark:border-zinc-700 dark:bg-zinc-900"
+            />
+          </form>
 
-        <div className="hidden sm:block">
-          <ThemeToggle />
-        </div>
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
 
-        <Link
-          href="/advertise"
-          className="hidden rounded-full border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 md:inline-flex dark:border-zinc-700 dark:hover:bg-zinc-800"
-        >
-          Advertise
-        </Link>
-
-        {user && (
-          <NotificationMenu
-            initialNotifications={notifications}
-            initialUnreadCount={unreadCount}
-          />
-        )}
-
-        {user && <CreateMenu />}
-
-        {user ? (
-          <ProfileMenu
-            avatarUrl={avatarUrl}
-            handle={handle}
-            isAdmin={isAdminEmail(user.email)}
-            isModerator={isModerator}
-          />
-        ) : (
           <Link
-            href="/sign-in"
-            className="rounded-full border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 sm:px-4 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            href="/advertise"
+            className="hidden rounded-full border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 md:inline-flex dark:border-zinc-700 dark:hover:bg-zinc-800"
           >
-            Sign in
+            Advertise
           </Link>
-        )}
-      </div>
-    </header>
+
+          {user && (
+            <NotificationMenu
+              initialNotifications={notifications}
+              initialUnreadCount={unreadCount}
+            />
+          )}
+
+          {user && <CreateMenu />}
+
+          {user ? (
+            <ProfileMenu
+              avatarUrl={avatarUrl}
+              handle={handle}
+              isAdmin={isAdminEmail(user.email)}
+              isModerator={isModerator}
+            />
+          ) : (
+            <Link
+              href="/sign-in"
+              className="rounded-full border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 sm:px-4 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            >
+              Sign in
+            </Link>
+          )}
+        </div>
+      </header>
+    </>
   );
 }

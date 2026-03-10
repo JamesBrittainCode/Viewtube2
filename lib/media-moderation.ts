@@ -16,6 +16,10 @@ type ModerationResult = {
 };
 
 const DEFAULT_THRESHOLD = Number(process.env.MEDIA_MODERATION_THRESHOLD || '0.65');
+const VIDEO_MODELS_PRIMARY =
+  process.env.SIGHTENGINE_VIDEO_MODELS || 'nudity-2.1,offensive,gore,weapon,recreational_drug,violence';
+const VIDEO_MODELS_FALLBACK =
+  process.env.SIGHTENGINE_VIDEO_MODELS_FALLBACK || 'nudity-2.1,offensive,gore,weapon,violence';
 
 function shouldBlock(value: number) {
   return Number.isFinite(value) && value >= DEFAULT_THRESHOLD;
@@ -86,7 +90,7 @@ async function runSightengineImage(url: string): Promise<ModerationResult> {
   };
 }
 
-async function runSightengineVideo(url: string): Promise<ModerationResult> {
+async function runSightengineVideoWithModels(url: string, models: string): Promise<ModerationResult> {
   const apiUser = process.env.SIGHTENGINE_API_USER;
   const apiSecret = process.env.SIGHTENGINE_API_SECRET;
   if (!apiUser || !apiSecret) {
@@ -94,7 +98,7 @@ async function runSightengineVideo(url: string): Promise<ModerationResult> {
   }
 
   const params = new URLSearchParams({
-    models: 'nudity-2.1,offensive,gore,weapon,recreational_drug,violence',
+    models,
     url,
     api_user: apiUser,
     api_secret: apiSecret,
@@ -105,7 +109,7 @@ async function runSightengineVideo(url: string): Promise<ModerationResult> {
   });
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`Video moderation service failed (${response.status}): ${body.slice(0, 200)}`);
+    throw new Error(`Video moderation service failed (${response.status}): ${body.slice(0, 250)}`);
   }
   const data = await parseJsonSafely(response);
   const summary = (data.summary as Record<string, number> | undefined) || {};
@@ -136,6 +140,17 @@ async function runSightengineVideo(url: string): Promise<ModerationResult> {
     reason: `Video flagged for ${hits.join(', ')}`,
     details: hits,
   };
+}
+
+async function runSightengineVideo(url: string): Promise<ModerationResult> {
+  try {
+    return await runSightengineVideoWithModels(url, VIDEO_MODELS_PRIMARY);
+  } catch (err) {
+    const message = (err as Error).message || '';
+    const isArgumentError = message.includes('argument_') || message.includes('argument');
+    if (!isArgumentError) throw err;
+    return runSightengineVideoWithModels(url, VIDEO_MODELS_FALLBACK);
+  }
 }
 
 export async function moderateUploadedMedia(input: {

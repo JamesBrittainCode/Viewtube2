@@ -274,6 +274,14 @@ create table if not exists public.creator_spotlights (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.site_alerts (
+  id uuid primary key default gen_random_uuid(),
+  message text not null,
+  is_active boolean not null default false,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.studio_feedback (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -365,6 +373,7 @@ create index if not exists idx_ad_submissions_status_created_at on public.ad_sub
 create index if not exists idx_moderation_events_user_id on public.moderation_events using btree(user_id, created_at desc);
 create index if not exists idx_creator_spotlights_scheduled_for on public.creator_spotlights using btree(scheduled_for desc);
 create unique index if not exists idx_creator_spotlights_unique_slot on public.creator_spotlights(scheduled_for);
+create index if not exists idx_site_alerts_active_created on public.site_alerts using btree(is_active, created_at desc);
 create index if not exists idx_studio_feedback_user_created on public.studio_feedback using btree(user_id, created_at desc);
 create index if not exists idx_studio_feedback_status_created on public.studio_feedback using btree(status, created_at desc);
 create index if not exists idx_earn_applications_status_created on public.earn_applications using btree(status, created_at desc);
@@ -768,6 +777,7 @@ alter table public.ads enable row level security;
 alter table public.ad_submissions enable row level security;
 alter table public.moderation_events enable row level security;
 alter table public.creator_spotlights enable row level security;
+alter table public.site_alerts enable row level security;
 alter table public.studio_feedback enable row level security;
 alter table public.earn_applications enable row level security;
 alter table public.live_streams enable row level security;
@@ -1200,6 +1210,11 @@ create policy "Authenticated users can send live chat"
 on public.live_chat_messages for insert
 to authenticated
 with check (user_id = (select auth.uid()));
+
+create policy "Active site alerts are viewable by everyone"
+on public.site_alerts for select
+to anon, authenticated
+using (is_active = true);
 
 -- Storage buckets
 insert into storage.buckets (id, name, public)
