@@ -106,16 +106,17 @@ export async function POST(request: Request) {
     ? { flagged: false as const, reason: undefined }
     : moderateUploadText({ title, description, tags });
   let mediaModeration: { flagged: boolean; reason?: string } = { flagged: false };
-  if (!moderation.flagged && !isAdmin) {
+  const requireMediaModeration = process.env.REQUIRE_MEDIA_MODERATION !== 'false';
+  // If moderation is disabled, do not call external providers at all.
+  if (!moderation.flagged && !isAdmin && requireMediaModeration) {
     try {
       mediaModeration = await moderateUploadedMedia({
         videoUrl,
         thumbnailUrl,
       });
     } catch (err) {
-      const strictModeration = process.env.REQUIRE_MEDIA_MODERATION !== 'false';
       const message = (err as Error).message || 'Media moderation service failed';
-      if (strictModeration) {
+      if (requireMediaModeration) {
         return NextResponse.json(
           {
             error: `Media moderation service is currently unavailable. ${message}`,
