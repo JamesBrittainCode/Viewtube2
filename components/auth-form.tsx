@@ -12,6 +12,8 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [acceptedLegal, setAcceptedLegal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [magicLoading, setMagicLoading] = useState(false);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
   const router = useRouter();
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -76,6 +78,63 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     }
   }
 
+  async function sendMagicLink() {
+    setError(null);
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError('Enter your email first.');
+      return;
+    }
+    if (mode === 'sign-up' && !acceptedLegal) {
+      setError('You must agree to the Terms and Privacy Policy to continue.');
+      return;
+    }
+
+    setMagicLoading(true);
+    try {
+      const supabase = createClient();
+      const siteOrigin = window.location.origin;
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: trimmed,
+        options: {
+          emailRedirectTo: `${siteOrigin}/auth/callback?next=/`,
+        },
+      });
+      if (otpError) throw otpError;
+      router.push(`/check-email?email=${encodeURIComponent(trimmed)}&type=magic`);
+      router.refresh();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setMagicLoading(false);
+    }
+  }
+
+  async function sendPasswordRecovery() {
+    setError(null);
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError('Enter your email first.');
+      return;
+    }
+
+    setRecoveryLoading(true);
+    try {
+      const supabase = createClient();
+      const siteOrigin = window.location.origin;
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(trimmed, {
+        redirectTo: `${siteOrigin}/auth/callback?next=/reset-password`,
+      });
+      if (resetError) throw resetError;
+      router.push(`/check-email?email=${encodeURIComponent(trimmed)}&type=recovery`);
+      router.refresh();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setRecoveryLoading(false);
+    }
+  }
+
   return (
     <div className="mx-auto mt-16 w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <h1 className="text-2xl font-bold">
@@ -115,6 +174,26 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           minLength={6}
           className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
         />
+        {mode === 'sign-in' && (
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => void sendPasswordRecovery()}
+              disabled={recoveryLoading}
+              className="font-medium text-zinc-700 hover:underline disabled:opacity-60 dark:text-zinc-300"
+            >
+              {recoveryLoading ? 'Sending...' : 'Forgot password?'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void sendMagicLink()}
+              disabled={magicLoading}
+              className="font-medium text-zinc-700 hover:underline disabled:opacity-60 dark:text-zinc-300"
+            >
+              {magicLoading ? 'Sending...' : 'Email me a magic link'}
+            </button>
+          </div>
+        )}
 
         {mode === 'sign-up' && (
           <label className="flex items-start gap-2 rounded-lg border border-zinc-200 p-3 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
