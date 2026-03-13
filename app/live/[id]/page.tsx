@@ -26,7 +26,9 @@ export default async function LiveStreamWatchPage({
       .maybeSingle(),
     supabase
       .from('live_chat_messages')
-      .select('id,stream_id,user_id,content,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,verified)')
+      .select(
+        'id,stream_id,user_id,content,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified)',
+      )
       .eq('stream_id', id)
       .order('created_at', { ascending: true })
       .limit(150),

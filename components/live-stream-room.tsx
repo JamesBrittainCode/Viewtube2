@@ -2,8 +2,18 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
 import { Mic, MicOff, Video, VideoOff, Radio, Square } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { VerifiedBadge } from '@/components/verified-badge';
+
+type ProfileLite = {
+  username?: string | null;
+  handle?: string | null;
+  avatar_url?: string | null;
+  verified?: boolean | null;
+};
 
 type ChatMessage = {
   id: string;
@@ -14,19 +24,27 @@ type ChatMessage = {
   profiles?: {
     username?: string | null;
     handle?: string | null;
+    avatar_url?: string | null;
     verified?: boolean | null;
   }[] | {
     username?: string | null;
     handle?: string | null;
+    avatar_url?: string | null;
     verified?: boolean | null;
   } | null;
 };
 
 function unwrapProfile(
   profile: ChatMessage['profiles'],
-): { username?: string | null; handle?: string | null; verified?: boolean | null } | null {
+): ProfileLite | null {
   if (!profile) return null;
   return Array.isArray(profile) ? profile[0] || null : profile;
+}
+
+function formatChatTime(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 export function LiveStreamRoom({
@@ -57,8 +75,10 @@ export function LiveStreamRoom({
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const seenSignalIdsRef = useRef<Set<string>>(new Set());
   const seenMessageIdsRef = useRef<Set<string>>(new Set());
+  const profileCacheRef = useRef<Map<string, ProfileLite>>(new Map());
   const lastSignalAtRef = useRef<string>('1970-01-01T00:00:00.000Z');
   const lastMessageAtRef = useRef<string>('1970-01-01T00:00:00.000Z');
+  const chatViewportRef = useRef<HTMLDivElement | null>(null);
 
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
@@ -71,6 +91,33 @@ export function LiveStreamRoom({
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [stickToBottom, setStickToBottom] = useState(true);
+
+  async function getProfileLite(targetUserId: string): Promise<ProfileLite | null> {
+    const cached = profileCacheRef.current.get(targetUserId);
+    if (cached) return cached;
+    const { data, error: profErr } = await supabase
+      .from('profiles')
+      .select('username,handle,avatar_url,verified')
+      .eq('id', targetUserId)
+      .maybeSingle();
+    if (profErr || !data) return null;
+    profileCacheRef.current.set(targetUserId, data);
+    return data;
+  }
+
+  async function enrichMessage(row: ChatMessage): Promise<ChatMessage> {
+    if (row.profiles) {
+      const p = unwrapProfile(row.profiles);
+      if (p && !profileCacheRef.current.get(row.user_id)) {
+        profileCacheRef.current.set(row.user_id, p);
+      }
+      return row;
+    }
+    const prof = await getProfileLite(row.user_id);
+    if (!prof) return row;
+    return { ...row, profiles: prof };
+  }
 
   async function sendSignal(recipientId: string | null, kind: string, payload: Record<string, unknown>) {
     const { error: insertError } = await supabase.from('live_signals').insert({
@@ -212,7 +259,9 @@ export function LiveStreamRoom({
   async function pollMessages() {
     const { data, error } = await supabase
       .from('live_chat_messages')
-      .select('id,stream_id,user_id,content,created_at')
+      .select(
+        'id,stream_id,user_id,content,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified)',
+      )
       .eq('stream_id', streamId)
       .gt('created_at', lastMessageAtRef.current)
       .order('created_at', { ascending: true })
@@ -223,6 +272,10 @@ export function LiveStreamRoom({
       for (const row of data) {
         if (!seenMessageIdsRef.current.has(row.id)) {
           seenMessageIdsRef.current.add(row.id);
+          const p = unwrapProfile((row as never as ChatMessage).profiles);
+          if (p && !profileCacheRef.current.get((row as never as ChatMessage).user_id)) {
+            profileCacheRef.current.set((row as never as ChatMessage).user_id, p);
+          }
           merged.push(row as never);
         }
         if (row.created_at > lastMessageAtRef.current) {
@@ -251,6 +304,10 @@ export function LiveStreamRoom({
       if (item.created_at && item.created_at > lastMessageAtRef.current) {
         lastMessageAtRef.current = item.created_at;
       }
+      const p = unwrapProfile(item.profiles);
+      if (p && !profileCacheRef.current.get(item.user_id)) {
+        profileCacheRef.current.set(item.user_id, p);
+      }
     }
 
     if (isOwner) void startBroadcastIfOwner();
@@ -266,13 +323,15 @@ export function LiveStreamRoom({
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'live_chat_messages', filter: `stream_id=eq.${streamId}` },
         (payload) => {
-          const row = payload.new as { id?: string; created_at?: string };
-          if (row.id && seenMessageIdsRef.current.has(row.id)) return;
-          if (row.id) seenMessageIdsRef.current.add(row.id);
-          if (row.created_at && row.created_at > lastMessageAtRef.current) {
-            lastMessageAtRef.current = row.created_at;
+          const base = payload.new as ChatMessage;
+          if (base.id && seenMessageIdsRef.current.has(base.id)) return;
+          if (base.id) seenMessageIdsRef.current.add(base.id);
+          if (base.created_at && base.created_at > lastMessageAtRef.current) {
+            lastMessageAtRef.current = base.created_at;
           }
-          setMessages((prev) => [...prev, payload.new as never]);
+          void enrichMessage(base).then((msg) => {
+            setMessages((prev) => [...prev, msg]);
+          });
         },
       )
       .on(
@@ -333,6 +392,23 @@ export function LiveStreamRoom({
     };
   }, [initialMessages, isOwner, ownerId, streamId, supabase, userId]);
 
+  useEffect(() => {
+    if (!stickToBottom) return;
+    const el = chatViewportRef.current;
+    if (!el) return;
+    const t = window.requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(t);
+  }, [messages.length, stickToBottom]);
+
+  function onChatScroll() {
+    const el = chatViewportRef.current;
+    if (!el) return;
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 12;
+    setStickToBottom(atBottom);
+  }
+
   async function onSendChat(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const content = chatInput.trim();
@@ -347,6 +423,10 @@ export function LiveStreamRoom({
       const payload = (await res.json()) as { message?: ChatMessage };
       if (payload.message?.id && !seenMessageIdsRef.current.has(payload.message.id)) {
         seenMessageIdsRef.current.add(payload.message.id);
+        const p = unwrapProfile(payload.message.profiles);
+        if (p && !profileCacheRef.current.get(payload.message.user_id)) {
+          profileCacheRef.current.set(payload.message.user_id, p);
+        }
         setMessages((prev) => [...prev, payload.message!]);
       }
       if (payload.message?.created_at && payload.message.created_at > lastMessageAtRef.current) {
@@ -451,16 +531,72 @@ export function LiveStreamRoom({
       </div>
 
       <aside className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Live Chat</h2>
-        <div className="mt-3 h-[420px] space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Live Chat</h2>
+          <button
+            type="button"
+            onClick={() => {
+              const el = chatViewportRef.current;
+              if (!el) return;
+              el.scrollTop = el.scrollHeight;
+              setStickToBottom(true);
+            }}
+            className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+          >
+            Jump to latest
+          </button>
+        </div>
+
+        <div
+          ref={chatViewportRef}
+          onScroll={onChatScroll}
+          className="mt-3 h-[420px] space-y-3 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+        >
           {!messages.length ? <p className="text-zinc-500">No messages yet.</p> : null}
           {messages.map((message) => {
             const profile = unwrapProfile(message.profiles);
+            const name = profile?.username || 'User';
+            const handle = profile?.handle || null;
+            const time = formatChatTime(message.created_at);
+            const isHost = message.user_id === ownerId;
+
             return (
-              <p key={message.id}>
-                <span className="font-semibold">{profile?.username || 'User'}:</span>{' '}
-                <span>{message.content}</span>
-              </p>
+              <div key={message.id} className="flex gap-2">
+                <Link
+                  href={`/channel/${encodeURIComponent(handle || name)}`}
+                  className="mt-0.5 h-8 w-8 shrink-0 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
+                >
+                  <Image
+                    src={profile?.avatar_url || '/avatar-placeholder.svg'}
+                    alt={name}
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 object-cover"
+                  />
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Link
+                      href={`/channel/${encodeURIComponent(handle || name)}`}
+                      className={`text-xs font-semibold hover:underline ${
+                        isHost ? 'text-red-700 dark:text-red-300' : 'text-zinc-900 dark:text-zinc-100'
+                      }`}
+                    >
+                      {name}
+                    </Link>
+                    {profile?.verified ? <VerifiedBadge className="h-4 w-4 text-zinc-500" /> : null}
+                    {isHost ? (
+                      <span className="ml-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-200">
+                        Host
+                      </span>
+                    ) : null}
+                    {time ? <span className="ml-1 text-[11px] text-zinc-500">{time}</span> : null}
+                  </div>
+                  <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-zinc-800 dark:text-zinc-100">
+                    {message.content}
+                  </p>
+                </div>
+              </div>
             );
           })}
         </div>
