@@ -18,7 +18,7 @@ export default async function StudioEditVideoPage({
 
   const { data: video, error } = await supabase
     .from('videos')
-    .select('id,user_id,title,description,comments_enabled')
+    .select('id,user_id,title,description,comments_enabled,thumbnail_url')
     .eq('id', id)
     .maybeSingle();
 
@@ -42,6 +42,7 @@ export default async function StudioEditVideoPage({
         initialTitle={video.title || ''}
         initialDescription={video.description || ''}
         initialCommentsEnabled={video.comments_enabled !== false}
+        initialThumbnailUrl={video.thumbnail_url || null}
       />
     </div>
   );

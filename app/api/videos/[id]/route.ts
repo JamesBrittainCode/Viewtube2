@@ -3,6 +3,11 @@ import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
 
+function hasAllowedThumbnailExtension(url: string) {
+  const path = url.split('?')[0].toLowerCase();
+  return path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png');
+}
+
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -21,12 +26,14 @@ export async function PATCH(
     title?: string;
     description?: string;
     comments_enabled?: boolean;
+    thumbnail_url?: string;
   };
 
   const title = String(body.title || '').trim();
   const description = String(body.description || '').trim();
   const commentsEnabled =
     typeof body.comments_enabled === 'boolean' ? body.comments_enabled : undefined;
+  const thumbnailUrlRaw = body.thumbnail_url;
 
   if (!title) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 });
@@ -50,6 +57,7 @@ export async function PATCH(
     title: string;
     description: string;
     comments_enabled?: boolean;
+    thumbnail_url?: string;
   } = {
     title,
     description,
@@ -57,6 +65,25 @@ export async function PATCH(
 
   if (commentsEnabled !== undefined) {
     updates.comments_enabled = commentsEnabled;
+  }
+
+  if (typeof thumbnailUrlRaw === 'string' && thumbnailUrlRaw.trim()) {
+    const thumbnailUrl = thumbnailUrlRaw.trim();
+    const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const publicPrefix = `${projectUrl}/storage/v1/object/public/`;
+    if (!thumbnailUrl.startsWith(publicPrefix)) {
+      return NextResponse.json(
+        { error: 'Invalid thumbnail URL. Upload to Supabase Storage first.' },
+        { status: 400 },
+      );
+    }
+    if (!hasAllowedThumbnailExtension(thumbnailUrl)) {
+      return NextResponse.json(
+        { error: 'Thumbnail must be a PNG or JPEG image.' },
+        { status: 400 },
+      );
+    }
+    updates.thumbnail_url = thumbnailUrl;
   }
 
   const { error } = await supabase.from('videos').update(updates).eq('id', id);
