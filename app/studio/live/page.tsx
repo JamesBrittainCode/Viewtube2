@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { StudioLiveManager } from '@/components/studio-live-manager';
+import { LivePolicyGate } from '@/components/live-policy-gate';
 
 export default async function StudioLivePage() {
   const supabase = await createClient();
@@ -32,8 +33,10 @@ export default async function StudioLivePage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <StudioLiveManager activeStream={activeStream || null} />
-    </div>
+    <LivePolicyGate role="creator">
+      <div className="mx-auto max-w-4xl">
+        <StudioLiveManager activeStream={activeStream || null} />
+      </div>
+    </LivePolicyGate>
   );
 }

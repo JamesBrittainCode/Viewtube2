@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { LiveStreamRoom } from '@/components/live-stream-room';
+import { LivePolicyGate } from '@/components/live-policy-gate';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
@@ -38,15 +39,17 @@ export default async function LiveStreamWatchPage({
   if (!profile) redirect('/sign-in');
 
   return (
-    <LiveStreamRoom
-      streamId={stream.id}
-      ownerId={stream.user_id}
-      initialTitle={stream.title}
-      initialDescription={stream.description || ''}
-      initialViewerCount={stream.viewer_count || 0}
-      initialMessages={(messages || []) as never[]}
-      userId={user.id}
-      isOwner={user.id === stream.user_id}
-    />
+    <LivePolicyGate role={user.id === stream.user_id ? 'creator' : 'viewer'}>
+      <LiveStreamRoom
+        streamId={stream.id}
+        ownerId={stream.user_id}
+        initialTitle={stream.title}
+        initialDescription={stream.description || ''}
+        initialViewerCount={stream.viewer_count || 0}
+        initialMessages={(messages || []) as never[]}
+        userId={user.id}
+        isOwner={user.id === stream.user_id}
+      />
+    </LivePolicyGate>
   );
 }
