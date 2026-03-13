@@ -1,11 +1,10 @@
-import { VideoCardSkeleton } from '@/components/skeletons';
+import { Spinner } from '@/components/spinner';
 
 export default function Loading() {
   return (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-      {Array.from({ length: 12 }).map((_, idx) => (
-        <VideoCardSkeleton key={idx} />
-      ))}
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
+      <Spinner size={34} />
+      <p className="text-sm text-zinc-500">Loading...</p>
     </div>
   );
 }

@@ -31,6 +31,10 @@ type CaptionCue = {
   text: string;
 };
 
+type WebkitFullscreenVideo = HTMLVideoElement & {
+  webkitEnterFullscreen?: () => void;
+};
+
 function buildAutoCaptions(text: string, totalDuration: number): CaptionCue[] {
   const cleaned = text.replace(/\s+/g, ' ').trim();
   if (!cleaned || totalDuration <= 0) return [];
@@ -92,6 +96,15 @@ export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
   const [activeCaption, setActiveCaption] = useState<string | null>(null);
 
   useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    // Force inline playback on iOS Safari (prevents auto fullscreen on play).
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('webkit-playsinline', 'true');
+    video.setAttribute('x5-playsinline', 'true');
+  }, []);
+
+  useEffect(() => {
     const key = `viewed:${id}`;
 
     if (sessionStorage.getItem(key)) return;
@@ -125,6 +138,37 @@ export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
     document.addEventListener('fullscreenchange', onFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
+
+  useEffect(() => {
+    function isMobileViewport() {
+      return typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    async function onOrientationOrResize() {
+      if (!isMobileViewport()) return;
+      const container = containerRef.current;
+      if (!container) return;
+
+      const landscape = window.innerWidth > window.innerHeight;
+      if (landscape && !isFullscreen && isPlaying) {
+        // Keep the custom player UI: only attempt element fullscreen.
+        if (container.requestFullscreen) {
+          await container.requestFullscreen().catch(() => null);
+        }
+      }
+
+      if (!landscape && isFullscreen) {
+        await document.exitFullscreen?.().catch(() => null);
+      }
+    }
+
+    window.addEventListener('resize', onOrientationOrResize);
+    window.addEventListener('orientationchange', onOrientationOrResize);
+    return () => {
+      window.removeEventListener('resize', onOrientationOrResize);
+      window.removeEventListener('orientationchange', onOrientationOrResize);
+    };
+  }, [isFullscreen, isPlaying]);
 
   useEffect(() => {
     if (mode !== 'main') {
@@ -227,7 +271,19 @@ export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
       await document.exitFullscreen().catch(() => null);
       return;
     }
-    await container.requestFullscreen().catch(() => null);
+    try {
+      await container.requestFullscreen();
+    } catch {
+      // iOS Safari often blocks element fullscreen; allow manual fallback to native fullscreen.
+      const video = videoRef.current as WebkitFullscreenVideo | null;
+      if (typeof video?.webkitEnterFullscreen === 'function') {
+        try {
+          video.webkitEnterFullscreen();
+        } catch {
+          // ignore
+        }
+      }
+    }
   }
 
   return (
@@ -237,6 +293,10 @@ export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
           ref={videoRef}
           src={sourceUrl}
           preload="metadata"
+          playsInline
+          controls={false}
+          disablePictureInPicture
+          controlsList="nodownload noplaybackrate noremoteplayback"
           muted={isMuted}
           className="h-full w-full"
           onPlay={() => setIsPlaying(true)}
