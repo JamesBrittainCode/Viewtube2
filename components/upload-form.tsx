@@ -6,6 +6,7 @@ import { FileVideo, Image as ImageIcon, MessageSquareText, Tags, Type } from 'lu
 import { THUMBNAIL_BUCKET, VIDEO_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
+import { compressVideoIfNeeded } from '@/lib/video-compress';
 
 async function parseApiError(response: Response) {
   const text = await response.text();
@@ -25,6 +26,7 @@ type GeneratedThumb = {
 };
 
 const ALLOWED_THUMBNAIL_TYPES = new Set(['image/jpeg', 'image/png']);
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -111,6 +113,8 @@ export function UploadForm() {
   const [generatingThumbs, setGeneratingThumbs] = useState(false);
   const [thumbsVisible, setThumbsVisible] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [compressing, setCompressing] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState(0);
 
   useEffect(() => {
     return () => {
@@ -159,7 +163,7 @@ export function UploadForm() {
 
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const video = videoFile;
+    let video = videoFile;
     const generated = generatedThumbs.find((item) => item.id === selectedGeneratedThumbId);
     const thumbnail =
       customThumbnailFile ||
@@ -181,6 +185,8 @@ export function UploadForm() {
 
     setLoading(true);
     setUploadProgress(0);
+    setCompressing(false);
+    setCompressionProgress(0);
 
     try {
       const supabase = createClient();
@@ -202,6 +208,16 @@ export function UploadForm() {
       } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error('Session expired. Please sign in again.');
+      }
+
+      if (video.size > MAX_VIDEO_BYTES) {
+        setCompressing(true);
+        setCompressionProgress(0);
+        video = await compressVideoIfNeeded(video, {
+          maxBytes: MAX_VIDEO_BYTES,
+          onProgress: (ratio) => setCompressionProgress(Math.max(0, Math.min(1, ratio || 0))),
+        });
+        setCompressing(false);
       }
 
       await uploadResumableToSupabase({
@@ -254,6 +270,8 @@ export function UploadForm() {
     } finally {
       setLoading(false);
       setUploadProgress(0);
+      setCompressing(false);
+      setCompressionProgress(0);
     }
   }
 
@@ -421,17 +439,28 @@ export function UploadForm() {
         Allow comments
       </label>
 
+      {videoFile && videoFile.size > MAX_VIDEO_BYTES && !loading ? (
+        <p className="text-xs text-zinc-500">
+          This video is over 50MB. ViewTube will compress it before uploading.
+        </p>
+      ) : null}
+
       {error && <p className="text-sm text-red-500">{error}</p>}
-      {loading && uploadProgress > 0 && (
+      {loading && compressing ? (
+        <p className="text-sm text-zinc-500">
+          Compressing video to fit under 50MB… {Math.round(compressionProgress * 100)}%
+        </p>
+      ) : null}
+      {loading && !compressing && uploadProgress > 0 ? (
         <p className="text-sm text-zinc-500">Uploading video: {uploadProgress}%</p>
-      )}
+      ) : null}
 
       <button
         type="submit"
         disabled={loading}
         className="inline-flex h-11 items-center justify-center rounded-full bg-red-600 px-6 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-70"
       >
-        {loading ? 'Uploading...' : 'Publish video'}
+        {loading ? (compressing ? 'Compressing…' : 'Uploading…') : 'Publish video'}
       </button>
     </form>
   );
