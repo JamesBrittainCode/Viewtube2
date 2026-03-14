@@ -23,7 +23,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'fixed left-0 top-16 hidden h-[calc(100vh-4rem)] border-r border-zinc-200 bg-zinc-50 p-3 lg:block dark:border-zinc-800 dark:bg-zinc-900/60',
+        'fixed left-0 top-16 hidden h-[calc(100vh-4rem)] border-r border-zinc-200 bg-zinc-50 p-3 transition-[width] duration-200 ease-out lg:block dark:border-zinc-800 dark:bg-zinc-900/60',
         collapsed ? 'w-20' : 'w-64',
       )}
     >
@@ -55,6 +55,7 @@ export function Sidebar({
               <span
                 className={cn(
                   '',
+                  'transition-all duration-200 ease-out',
                   collapsed ? 'w-0 overflow-hidden opacity-0' : 'w-auto opacity-100',
                 )}
               >

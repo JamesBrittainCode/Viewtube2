@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 import { Sidebar } from '@/components/sidebar';
+import { SidebarProvider } from '@/components/sidebar-context';
 import { cn } from '@/lib/utils';
 
 export function AppShell({
@@ -24,17 +25,19 @@ export function AppShell({
 
   return (
     <>
-      {navbar}
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
-      <MobileBottomNav />
-      <main
-        className={cn(
-          'mx-auto max-w-[1600px] px-4 py-4 pb-24 sm:py-6 lg:px-6 lg:pb-6',
-          collapsed ? 'lg:ml-20' : 'lg:ml-64',
-        )}
-      >
-        {children}
-      </main>
+      <SidebarProvider value={{ collapsed, setCollapsed }}>
+        {navbar}
+        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
+        <MobileBottomNav />
+        <main
+          className={cn(
+            'mx-auto max-w-[1600px] px-4 py-4 pb-24 transition-[margin] duration-200 ease-out sm:py-6 lg:px-6 lg:pb-6',
+            collapsed ? 'lg:ml-20' : 'lg:ml-64',
+          )}
+        >
+          {children}
+        </main>
+      </SidebarProvider>
     </>
   );
 }

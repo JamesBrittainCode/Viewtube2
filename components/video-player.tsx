@@ -1,11 +1,13 @@
 'use client';
 import { Captions, Maximize2, Minimize2, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useSidebarOptional } from '@/components/sidebar-context';
 
 type Props = {
   id: string;
   videoUrl: string;
   captionSource?: string | null;
+  collapseSidebarOnPlay?: boolean;
 };
 
 type AdDecision = {
@@ -75,9 +77,11 @@ function buildAutoCaptions(text: string, totalDuration: number): CaptionCue[] {
   }));
 }
 
-export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
+export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay = false }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const sidebar = useSidebarOptional();
+  const collapsedOnceRef = useRef(false);
   const [ad, setAd] = useState<AdDecision | null>(null);
   const [sourceUrl, setSourceUrl] = useState(videoUrl);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -103,6 +107,11 @@ export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
     video.setAttribute('webkit-playsinline', 'true');
     video.setAttribute('x5-playsinline', 'true');
   }, []);
+
+  useEffect(() => {
+    // Reset per-video collapse tracking.
+    collapsedOnceRef.current = false;
+  }, [id]);
 
   useEffect(() => {
     const key = `viewed:${id}`;
@@ -299,7 +308,19 @@ export function VideoPlayer({ id, videoUrl, captionSource }: Props) {
           controlsList="nodownload noplaybackrate noremoteplayback"
           muted={isMuted}
           className="h-full w-full"
-          onPlay={() => setIsPlaying(true)}
+          onPlay={() => {
+            setIsPlaying(true);
+            if (
+              collapseSidebarOnPlay &&
+              !collapsedOnceRef.current &&
+              mode === 'main' &&
+              sidebar &&
+              !sidebar.collapsed
+            ) {
+              collapsedOnceRef.current = true;
+              sidebar.setCollapsed(true);
+            }
+          }}
           onPause={() => setIsPlaying(false)}
           onTimeUpdate={() => {
             const v = videoRef.current;
