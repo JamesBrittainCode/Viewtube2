@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
@@ -17,6 +18,33 @@ import { ReportVideoButton } from '@/components/report-video-button';
 import { AdminVideoTakedownButton } from '@/components/admin-video-takedown-button';
 
 export const runtime = 'edge';
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const video = await getVideoById(id);
+  if (!video) return { title: 'Video not found' };
+
+  const description = (video.description || '').trim().slice(0, 160) || 'Watch this video on ViewTube.';
+  const image = video.thumbnail_url || '/thumbnail-placeholder.svg';
+  const title = video.title || 'ViewTube';
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [image],
+      type: 'video.other',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [image],
+    },
+  };
+}
 
 export default async function WatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
