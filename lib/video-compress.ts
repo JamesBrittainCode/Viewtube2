@@ -53,12 +53,6 @@ async function ensureFfmpegLoaded() {
   return ffmpeg;
 }
 
-function pickScaleWidth(videoBitrate: number) {
-  if (videoBitrate < 600_000) return 640;
-  if (videoBitrate < 1_200_000) return 854;
-  return 1280;
-}
-
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
@@ -75,9 +69,9 @@ async function transcodeAttempt(
 
   // Target bitrate: (maxBytes * 8) / duration, leave headroom.
   const totalTarget = Math.floor(((opts.maxBytes * 8) / Math.max(1, durationSec)) * 0.92);
-  const audioBitrate = 96_000;
+  const audioBitrate = 64_000;
   const targetVideoBitrate = clamp(totalTarget - audioBitrate, 150_000, 4_000_000);
-  const scaleWidth = pickScaleWidth(targetVideoBitrate);
+  const scaleWidth = attempt === 0 ? 854 : 640;
 
   // If we need to be extra aggressive, reduce bitrate further on later attempts.
   const videoBitrate = Math.floor(targetVideoBitrate * (attempt === 0 ? 1 : 0.78));
@@ -95,7 +89,7 @@ async function transcodeAttempt(
     '-c:v',
     'libx264',
     '-preset',
-    'veryfast',
+    'ultrafast',
     '-b:v',
     String(videoBitrate),
     '-maxrate',

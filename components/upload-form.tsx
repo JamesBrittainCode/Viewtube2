@@ -3,20 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
 import { FileVideo, Image as ImageIcon, MessageSquareText, Tags, Type } from 'lucide-react';
-import { THUMBNAIL_BUCKET, VIDEO_BUCKET } from '@/lib/constants';
-import { createClient } from '@/lib/supabase/client';
-import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
-import { compressVideoIfNeeded } from '@/lib/video-compress';
-
-async function parseApiError(response: Response) {
-  const text = await response.text();
-  try {
-    const parsed = JSON.parse(text) as { error?: string };
-    return parsed.error || 'Upload failed';
-  } catch {
-    return text || 'Upload failed';
-  }
-}
+import { startVideoUploadTask, resetVideoUploadTask } from '@/lib/upload-manager';
 
 type GeneratedThumb = {
   id: string;
@@ -112,11 +99,9 @@ export function UploadForm() {
   const [selectedGeneratedThumbId, setSelectedGeneratedThumbId] = useState<string | null>(null);
   const [generatingThumbs, setGeneratingThumbs] = useState(false);
   const [thumbsVisible, setThumbsVisible] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [compressing, setCompressing] = useState(false);
-  const [compressionProgress, setCompressionProgress] = useState(0);
 
   useEffect(() => {
+    resetVideoUploadTask();
     return () => {
       generatedThumbs.forEach((item) => URL.revokeObjectURL(item.url));
     };
@@ -163,7 +148,7 @@ export function UploadForm() {
 
     const form = event.currentTarget;
     const formData = new FormData(form);
-    let video = videoFile;
+    const video = videoFile;
     const generated = generatedThumbs.find((item) => item.id === selectedGeneratedThumbId);
     const thumbnail =
       customThumbnailFile ||
@@ -184,94 +169,27 @@ export function UploadForm() {
     }
 
     setLoading(true);
-    setUploadProgress(0);
-    setCompressing(false);
-    setCompressionProgress(0);
 
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const title = String(formData.get('title') || '').trim();
+      const description = String(formData.get('description') || '').trim();
+      const tags = String(formData.get('tags') || '');
+      const commentsEnabled = formData.get('comments_enabled') === 'on';
 
-      if (!user) {
-        throw new Error('Please sign in before uploading.');
-      }
-
-      const videoExt = video.name.split('.').pop() || 'mp4';
-      const thumbExt = thumbnail.name.split('.').pop() || 'jpg';
-      const videoPath = `${user.id}/${crypto.randomUUID()}.${videoExt}`;
-      const thumbnailPath = `${user.id}/${crypto.randomUUID()}.${thumbExt}`;
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('Session expired. Please sign in again.');
-      }
-
-      if (video.size > MAX_VIDEO_BYTES) {
-        setCompressing(true);
-        setCompressionProgress(0);
-        video = await compressVideoIfNeeded(video, {
-          maxBytes: MAX_VIDEO_BYTES,
-          onProgress: (ratio) => setCompressionProgress(Math.max(0, Math.min(1, ratio || 0))),
-        });
-        setCompressing(false);
-      }
-
-      await uploadResumableToSupabase({
-        file: video,
-        bucket: VIDEO_BUCKET,
-        objectPath: videoPath,
-        accessToken: session.access_token,
-        onProgress: setUploadProgress,
+      await startVideoUploadTask({
+        title,
+        description,
+        tags,
+        commentsEnabled,
+        video,
+        thumbnail,
       });
 
-      const { error: thumbErr } = await supabase.storage
-        .from(THUMBNAIL_BUCKET)
-        .upload(thumbnailPath, thumbnail, {
-          contentType: thumbnail.type,
-          upsert: false,
-        });
-      if (thumbErr) throw new Error(thumbErr.message);
-
-      const videoUrl = supabase.storage
-        .from(VIDEO_BUCKET)
-        .getPublicUrl(videoPath).data.publicUrl;
-      const thumbnailUrl = supabase.storage
-        .from(THUMBNAIL_BUCKET)
-        .getPublicUrl(thumbnailPath).data.publicUrl;
-
-      const res = await fetch('/api/videos/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: String(formData.get('title') || ''),
-          description: String(formData.get('description') || ''),
-          tags: String(formData.get('tags') || ''),
-          comments_enabled: formData.get('comments_enabled') === 'on',
-          video_url: videoUrl,
-          thumbnail_url: thumbnailUrl,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error(await parseApiError(res));
-      }
-
-      const data = await res.json();
-      router.push(`/watch/${data.id}`);
-      router.refresh();
+      router.push('/upload/processing');
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setLoading(false);
-      setUploadProgress(0);
-      setCompressing(false);
-      setCompressionProgress(0);
     }
   }
 
@@ -446,21 +364,14 @@ export function UploadForm() {
       ) : null}
 
       {error && <p className="text-sm text-red-500">{error}</p>}
-      {loading && compressing ? (
-        <p className="text-sm text-zinc-500">
-          Compressing video to fit under 50MB… {Math.round(compressionProgress * 100)}%
-        </p>
-      ) : null}
-      {loading && !compressing && uploadProgress > 0 ? (
-        <p className="text-sm text-zinc-500">Uploading video: {uploadProgress}%</p>
-      ) : null}
+      {loading ? <p className="text-sm text-zinc-500">Starting upload…</p> : null}
 
       <button
         type="submit"
         disabled={loading}
         className="inline-flex h-11 items-center justify-center rounded-full bg-red-600 px-6 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-70"
       >
-        {loading ? (compressing ? 'Compressing…' : 'Uploading…') : 'Publish video'}
+        {loading ? 'Starting…' : 'Continue'}
       </button>
     </form>
   );
