@@ -37,11 +37,10 @@ async function ensureFfmpegLoaded() {
   const ffmpeg = ffmpegInstance || new FFmpeg();
   ffmpegInstance = ffmpeg;
 
-  // Load core from CDN and convert to blob URLs to avoid CORS issues.
-  const coreBase = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist';
-  const coreURL = await toBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript');
-  const wasmURL = await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm');
-  const workerURL = await toBlobURL(`${coreBase}/ffmpeg-core.worker.js`, 'text/javascript');
+  // Load core from same-origin static assets to avoid adblock/CDN/network failures.
+  // `scripts/copy-ffmpeg-core.mjs` copies these into `public/ffmpeg/` on install.
+  const coreURL = await toBlobURL('/ffmpeg/ffmpeg-core.js', 'text/javascript');
+  const wasmURL = await toBlobURL('/ffmpeg/ffmpeg-core.wasm', 'application/wasm');
 
   // Single progress listener; we swap the callback per job.
   ffmpeg.on('progress', (event) => {
@@ -49,7 +48,7 @@ async function ensureFfmpegLoaded() {
     progressCallback?.(payload.progress ?? 0);
   });
 
-  await ffmpeg.load({ coreURL, wasmURL, workerURL });
+  await ffmpeg.load({ coreURL, wasmURL });
   ffmpegLoaded = true;
   return ffmpeg;
 }
@@ -139,7 +138,12 @@ export async function compressVideoIfNeeded(input: File, opts: CompressOptions):
   }
 
   // Attempt 1–2 passes.
-  const first = await transcodeAttempt(input, 0, duration, opts);
+  let first: File;
+  try {
+    first = await transcodeAttempt(input, 0, duration, opts);
+  } catch {
+    throw new Error('Video compression failed to load. Please disable ad blockers or try again.');
+  }
   if (first.size <= opts.maxBytes) return first;
 
   const second = await transcodeAttempt(first, 1, duration, opts);
