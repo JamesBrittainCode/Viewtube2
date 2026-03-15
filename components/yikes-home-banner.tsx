@@ -4,7 +4,7 @@ import Link from 'next/link';
 export function YikesHomeBanner({ votes }: { votes: number }) {
   return (
     <div className="mb-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="relative aspect-[3/1] w-full min-h-[120px]">
+      <div className="relative aspect-[1375/413] w-full">
         <Image
           src="/yikes-banner.png"
           alt="yikes x ViewTube"
@@ -15,10 +15,10 @@ export function YikesHomeBanner({ votes }: { votes: number }) {
         <div className="absolute inset-0 bg-black/5" />
 
         <div className="absolute inset-0 flex items-end justify-end p-4 sm:p-6">
-          <div className="mr-5 flex w-[190px] flex-col items-start pb-1 text-left text-white sm:mr-12 sm:w-[210px]">
+          <div className="flex w-[200px] flex-col items-end pb-1 text-right text-white sm:w-[230px]">
             <Link
               href="/petition/yikes"
-              className="inline-flex items-center justify-center rounded-full border-2 border-white/90 bg-white/10 px-6 py-2.5 text-sm font-semibold text-white backdrop-blur hover:bg-white/20"
+              className="inline-flex min-w-[150px] items-center justify-center rounded-full border-2 border-white/90 bg-white/10 px-8 py-2.5 text-sm font-semibold text-white backdrop-blur hover:bg-white/20"
             >
               Petition
             </Link>
