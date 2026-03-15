@@ -5,6 +5,7 @@ import { moderateUploadedMedia } from '@/lib/media-moderation';
 import { moderateUploadText } from '@/lib/moderation';
 import { sendNotification } from '@/lib/notifications';
 import { createClient } from '@/lib/supabase/server';
+import { getSupportEmail } from '@/lib/support';
 
 export const runtime = 'edge';
 
@@ -29,6 +30,7 @@ function extractStoragePath(publicUrl: string, projectUrl: string, bucket: strin
 }
 
 export async function POST(request: Request) {
+  const supportEmail = getSupportEmail();
   const supabase = await createClient();
   const {
     data: { user },
@@ -69,7 +71,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          'Your account is suspended. Contact support@viewtube.heyrivo.com for help.',
+          `Your account is suspended. Contact ${supportEmail} for help.`,
       },
       { status: 403 },
     );
@@ -158,13 +160,13 @@ export async function POST(request: Request) {
         userId: user.id,
         type: 'account_suspended',
         message:
-          'Your account has been suspended after repeated moderation violations. Contact support@viewtube.heyrivo.com.',
+          `Your account has been suspended after repeated moderation violations. Contact ${supportEmail}.`,
         targetUrl: '/suspended',
       });
       return NextResponse.json(
         {
           error:
-            'Upload blocked by moderation. Your account is now suspended after 5 violations. Contact support@viewtube.heyrivo.com.',
+            `Upload blocked by moderation. Your account is now suspended after 5 violations. Contact ${supportEmail}.`,
         },
         { status: 403 },
       );

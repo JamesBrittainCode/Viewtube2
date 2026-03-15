@@ -1,4 +1,5 @@
 export default function PrivacyPolicyPage() {
+  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@viewtube.tv';
   return (
     <main className="mx-auto max-w-4xl space-y-6 px-4 py-10">
       <header>
@@ -122,7 +123,7 @@ export default function PrivacyPolicyPage() {
       <section className="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
         <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">11. Contact</h2>
         <p>
-          For privacy requests or questions, contact support@viewtube.heyrivo.com.
+          For privacy requests or questions, contact {supportEmail}.
         </p>
       </section>
     </main>

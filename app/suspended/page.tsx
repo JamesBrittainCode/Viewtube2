@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { SuspendedSignOut } from '@/components/suspended-signout';
+import { getSupportEmail } from '@/lib/support';
 
 export default async function SuspendedPage() {
+  const supportEmail = getSupportEmail();
   const supabase = await createClient();
   const {
     data: { user },
@@ -31,8 +33,8 @@ export default async function SuspendedPage() {
       )}
       <p className="mt-4 text-sm text-zinc-500">
         If you believe this is a mistake, contact{' '}
-        <a className="font-medium underline" href="mailto:support@viewtube.heyrivo.com">
-          support@viewtube.heyrivo.com
+        <a className="font-medium underline" href={`mailto:${supportEmail}`}>
+          {supportEmail}
         </a>
         .
       </p>

@@ -20,7 +20,7 @@ function getBaseUrl() {
 
 async function sendEmail({ to, subject, html }: SendEmailArgs) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL || 'ViewTube <noreply@viewtube.heyrivo.com>';
+  const from = process.env.RESEND_FROM_EMAIL || 'ViewTube <noreply@viewtube.tv>';
 
   if (!apiKey) {
     console.warn('Email skipped: RESEND_API_KEY is not set');

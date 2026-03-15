@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { normalizeHandle } from '@/lib/handle';
 import { isAdminEmail } from '@/lib/admin';
 import { sendNotification } from '@/lib/notifications';
+import { getSupportEmail } from '@/lib/support';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
@@ -51,6 +52,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const supportEmail = getSupportEmail();
   const supabase = await createClient();
   const {
     data: { user },
@@ -165,7 +167,7 @@ export async function PATCH(request: Request) {
       userId: profile.id,
       type: 'account_suspended',
       message:
-        'Your account has been suspended. Contact support@viewtube.heyrivo.com.',
+        `Your account has been suspended. Contact ${supportEmail}.`,
       actorId: user.id,
       targetUrl: '/suspended',
     });

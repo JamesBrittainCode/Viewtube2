@@ -519,7 +519,7 @@ begin
     values (
       target_user_id,
       'account_suspended',
-      'Your account has been suspended after repeated moderation violations. Contact support@viewtube.heyrivo.com.'
+      'Your account has been suspended after repeated moderation violations. Contact support@viewtube.tv.'
     );
   else
     suspended_now := false;
