@@ -14,16 +14,14 @@ export function YikesHomeBanner({ votes }: { votes: number }) {
         />
         <div className="absolute inset-0 bg-black/5" />
 
-        <div className="absolute inset-0 flex items-end justify-end p-4 sm:p-6">
-          <div className="-translate-x-1 translate-y-1 flex w-[200px] flex-col items-end pb-0 text-right text-white sm:-translate-x-2 sm:w-[230px]">
-            <Link
-              href="/petition/yikes"
-              className="inline-flex min-w-[132px] items-center justify-center rounded-full border-2 border-white/90 bg-white/10 px-6 py-2 text-xs font-semibold text-white backdrop-blur hover:bg-white/20"
-            >
-              Petition
-            </Link>
-            <p className="mt-2 text-xs text-white/90">{votes.toLocaleString()} votes</p>
-          </div>
+        <div className="absolute bottom-5 right-8 flex w-[200px] flex-col items-end pb-0 text-right text-white sm:bottom-7 sm:right-12 sm:w-[230px]">
+          <Link
+            href="/petition/yikes"
+            className="inline-flex min-w-[132px] items-center justify-center rounded-full border-2 border-white/90 bg-white/10 px-6 py-2 text-xs font-semibold text-white outline-none backdrop-blur hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset"
+          >
+            Petition
+          </Link>
+          <p className="mt-2 text-xs text-white/90">{votes.toLocaleString()} votes</p>
         </div>
       </div>
     </div>
