@@ -31,6 +31,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title,
     description,
+    alternates: {
+      canonical: `/watch/${video.id}`,
+    },
     openGraph: {
       title,
       description,
@@ -101,9 +104,35 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
   const channelName = channelProfile?.username || 'unknown';
   const channelHref = channelProfile?.handle ? `/channel/${channelProfile.handle}` : '/';
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px]">
       <section>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'VideoObject',
+              name: video.title,
+              description: (video.description || '').trim() || 'Watch this video on ViewTube.',
+              thumbnailUrl: [video.thumbnail_url || `${siteUrl}/thumbnail-placeholder.svg`],
+              uploadDate: video.created_at,
+              contentUrl: video.video_url,
+              author: {
+                '@type': 'Person',
+                name: channelName,
+                url: `${siteUrl}${channelHref}`,
+              },
+              interactionStatistic: {
+                '@type': 'InteractionCounter',
+                interactionType: { '@type': 'WatchAction' },
+                userInteractionCount: video.views,
+              },
+            }),
+          }}
+        />
         <VideoPlayer
           id={video.id}
           videoUrl={video.video_url}

@@ -20,6 +20,14 @@ import { createClient } from '@/lib/supabase/server';
 import { isAdminEmail } from '@/lib/admin';
 import { SiteAlert } from '@/components/site-alert';
 
+export const metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
+
 const baseNavLinks = [
   { href: '/studio', label: 'Dashboard', icon: Compass },
   { href: '/studio/content', label: 'Content', icon: Video },

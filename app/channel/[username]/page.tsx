@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { SubscribeButton } from '@/components/subscribe-button';
 import { VerifiedBadge } from '@/components/verified-badge';
@@ -8,6 +9,45 @@ import { createPublicClient } from '@/lib/supabase/public';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
+
+export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
+  const { username } = await params;
+  const channelKey = decodeURIComponent(username);
+  const publicClient = createPublicClient();
+
+  let { data: channel } = await publicClient.from('profiles').select('*').eq('handle', channelKey).maybeSingle();
+  if (!channel) {
+    const fallback = await publicClient.from('profiles').select('*').eq('username', channelKey).maybeSingle();
+    channel = fallback.data;
+  }
+  if (!channel) return { title: 'Channel not found' };
+
+  const title = `${channel.username} (${channel.handle})`;
+  const description =
+    (channel.bio || '').trim() ||
+    `Watch videos from ${channel.username} on ViewTube.`;
+  const image = channel.avatar_url || '/avatar-placeholder.svg';
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `/channel/${channel.handle}`,
+    },
+    openGraph: {
+      title,
+      description,
+      images: [image],
+      type: 'profile',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [image],
+    },
+  };
+}
 
 export default async function ChannelPage({
   params,
@@ -67,6 +107,20 @@ export default async function ChannelPage({
 
   return (
     <section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Person',
+            name: channel.username,
+            identifier: channel.handle,
+            image: channel.avatar_url || undefined,
+            description: channel.bio || undefined,
+            url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/channel/${channel.handle}`,
+          }),
+        }}
+      />
       <div className="relative h-44 overflow-hidden rounded-2xl bg-gradient-to-r from-zinc-200 via-zinc-100 to-zinc-200 dark:from-zinc-800 dark:via-zinc-900 dark:to-zinc-800">
         {channel.banner_url && (
           <Image src={channel.banner_url} alt={channel.username} fill className="object-cover" />

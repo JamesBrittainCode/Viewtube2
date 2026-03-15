@@ -3,6 +3,7 @@ import './globals.css';
 import { AppShell } from '@/components/app-shell';
 import { Navbar } from '@/components/navbar';
 import { ThemeProvider } from '@/components/theme-provider';
+import { JsonLd } from '@/components/json-ld';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
@@ -27,10 +28,24 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider>
+          <JsonLd
+            data={{
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              name: 'ViewTube',
+              url: siteUrl,
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: `${siteUrl}/search?q={search_term_string}`,
+                'query-input': 'required name=search_term_string',
+              },
+            }}
+          />
           <AppShell navbar={<Navbar />}>{children}</AppShell>
         </ThemeProvider>
       </body>
