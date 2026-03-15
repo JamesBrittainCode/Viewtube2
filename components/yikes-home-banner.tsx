@@ -15,10 +15,10 @@ export function YikesHomeBanner({ votes }: { votes: number }) {
         <div className="absolute inset-0 bg-black/5" />
 
         <div className="absolute inset-0 flex items-end justify-end p-4 sm:p-6">
-          <div className="w-[220px] pb-1 text-center text-white sm:w-[260px]">
+          <div className="mr-5 flex w-[190px] flex-col items-start pb-1 text-left text-white sm:mr-12 sm:w-[210px]">
             <Link
               href="/petition/yikes"
-              className="inline-flex w-full items-center justify-center rounded-full border-2 border-white/90 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur hover:bg-white/20"
+              className="inline-flex items-center justify-center rounded-full border-2 border-white/90 bg-white/10 px-6 py-2.5 text-sm font-semibold text-white backdrop-blur hover:bg-white/20"
             >
               Petition
             </Link>
