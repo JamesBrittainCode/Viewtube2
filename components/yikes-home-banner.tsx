@@ -12,23 +12,20 @@ export function YikesHomeBanner({ votes }: { votes: number }) {
           priority
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-black/10" />
+        <div className="absolute inset-0 bg-black/5" />
 
-        <div className="absolute inset-0 flex items-center justify-end p-4 sm:p-6">
-          <div className="max-w-[240px] rounded-2xl bg-black/25 p-4 text-white backdrop-blur-sm sm:max-w-[300px]">
-            <p className="text-xs font-semibold uppercase tracking-wide text-white/90">Petition</p>
-            <p className="mt-1 text-lg font-extrabold leading-tight">yikes x ViewTube</p>
-            <p className="mt-1 text-xs text-white/90">{votes.toLocaleString()} votes</p>
+        <div className="absolute inset-0 flex items-end justify-end p-4 sm:p-6">
+          <div className="w-[220px] pb-1 text-center text-white sm:w-[260px]">
             <Link
               href="/petition/yikes"
-              className="mt-3 inline-flex w-full items-center justify-center rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-white"
+              className="inline-flex w-full items-center justify-center rounded-full border-2 border-white/90 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur hover:bg-white/20"
             >
               Petition
             </Link>
+            <p className="mt-2 text-xs text-white/90">{votes.toLocaleString()} votes</p>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
