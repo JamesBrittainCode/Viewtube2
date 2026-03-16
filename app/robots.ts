@@ -1,7 +1,9 @@
 import type { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const rawBase = (process.env.NEXT_PUBLIC_SITE_URL || 'https://viewtube.tv').replace(/\/+$/, '');
+  // Guard against stale env values after domain changes.
+  const base = rawBase.includes('viewtube.heyrivo.com') ? 'https://viewtube.tv' : rawBase;
 
   return {
     rules: [
@@ -25,4 +27,3 @@ export default function robots(): MetadataRoute.Robots {
     host: base,
   };
 }
-

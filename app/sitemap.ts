@@ -4,7 +4,9 @@ import { createPublicClient } from '@/lib/supabase/public';
 const MAX_URLS = 500;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const rawBase = (process.env.NEXT_PUBLIC_SITE_URL || 'https://viewtube.tv').replace(/\/+$/, '');
+  // Guard against stale env values after domain changes.
+  const base = rawBase.includes('viewtube.heyrivo.com') ? 'https://viewtube.tv' : rawBase;
   const now = new Date();
   const supabase = createPublicClient();
 
@@ -52,4 +54,3 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return items;
 }
-
