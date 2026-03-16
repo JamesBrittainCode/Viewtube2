@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { createPublicClient } from '@/lib/supabase/public';
 import { PetitionVoteButton } from '@/components/petition-vote-button';
+import { PetitionLiveCount } from '@/components/petition-live-count';
 
 export const runtime = 'edge';
 
@@ -48,13 +49,14 @@ export default async function YikesPetitionPage() {
             ViewTube is an independent platform and is not affiliated with yikes, Google, or YouTube.
           </p>
           <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-            Current votes: {(count || 0).toLocaleString()}
+            Current votes:{' '}
+            <PetitionLiveCount petitionKey={PETITION_KEY} initialCount={count || 0} />
           </p>
         </section>
 
         <aside className="rounded-2xl bg-[#02B6F3] p-6 text-white">
           {user ? (
-            <PetitionVoteButton />
+            <PetitionVoteButton petitionKey={PETITION_KEY} initialCount={count || 0} />
           ) : (
             <div className="space-y-3">
               <Link
@@ -64,7 +66,7 @@ export default async function YikesPetitionPage() {
                 Sign in to sign
               </Link>
               <p className="text-center text-xs text-white/90">
-                {(count || 0).toLocaleString()} votes so far
+                <PetitionLiveCount petitionKey={PETITION_KEY} initialCount={count || 0} showSuffix />
               </p>
             </div>
           )}
@@ -73,4 +75,3 @@ export default async function YikesPetitionPage() {
     </main>
   );
 }
-

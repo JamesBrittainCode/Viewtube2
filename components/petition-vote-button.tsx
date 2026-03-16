@@ -2,15 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { PetitionLiveCount } from '@/components/petition-live-count';
 
-type PetitionState = {
-  count: number;
-  voted: boolean;
-};
+type PetitionState = { voted: boolean };
 
-export function PetitionVoteButton() {
+export function PetitionVoteButton({ petitionKey, initialCount }: { petitionKey: string; initialCount: number }) {
   const router = useRouter();
-  const [state, setState] = useState<PetitionState>({ count: 0, voted: false });
+  const [state, setState] = useState<PetitionState>({ voted: false });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +18,7 @@ export function PetitionVoteButton() {
       const res = await fetch('/api/petitions/yikes', { cache: 'no-store' });
       const data = (await res.json()) as { count?: number; voted?: boolean };
       if (cancelled) return;
-      setState({ count: Number(data.count || 0), voted: Boolean(data.voted) });
+      setState({ voted: Boolean(data.voted) });
     }
     void load();
     return () => {
@@ -46,10 +44,10 @@ export function PetitionVoteButton() {
       }
       if (!res.ok) throw new Error(payload.error || 'Request failed');
 
-      // Refresh count + voted status from the server.
+      // Refresh voted status from the server.
       const updatedRes = await fetch('/api/petitions/yikes', { cache: 'no-store' });
       const updated = (await updatedRes.json()) as { count?: number; voted?: boolean };
-      setState({ count: Number(updated.count || 0), voted: Boolean(updated.voted) });
+      setState({ voted: Boolean(updated.voted) });
     } catch (e) {
       setError((e as Error).message || 'Could not update petition.');
     } finally {
@@ -68,7 +66,7 @@ export function PetitionVoteButton() {
         {loading ? 'Working…' : state.voted ? 'Signed' : 'Sign petition'}
       </button>
       <p className="text-center text-xs text-white/90">
-        {state.count.toLocaleString()} {state.count === 1 ? 'vote' : 'votes'}
+        <PetitionLiveCount petitionKey={petitionKey} initialCount={initialCount} showSuffix />
       </p>
       {error ? <p className="text-center text-xs text-red-200">{error}</p> : null}
     </div>
