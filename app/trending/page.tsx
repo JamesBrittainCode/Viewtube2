@@ -2,6 +2,7 @@ import { getTrendingVideos } from '@/lib/data';
 import { VideoGrid } from '@/components/video-grid';
 
 export const runtime = 'edge';
+export const metadata = { title: 'Trending' };
 
 export default async function TrendingPage() {
   const videos = await getTrendingVideos();

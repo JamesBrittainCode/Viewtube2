@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   title: {
     default: 'ViewTube',
-    template: '%s | ViewTube',
+    template: '%s - ViewTube',
   },
   description: 'Watch, upload, and share videos on ViewTube.',
   openGraph: {
