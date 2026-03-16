@@ -4,6 +4,7 @@ import { THUMBNAIL_BUCKET, VIDEO_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
 import { compressVideoIfNeeded } from '@/lib/video-compress';
+import { getVideoDurationSeconds } from '@/lib/video-metadata';
 
 export type UploadStage =
   | 'idle'
@@ -98,6 +99,9 @@ export async function startVideoUploadTask(input: {
       });
     }
 
+    setState({ stage: 'preparing', overall: 0.34, detail: 'Reading video details…' });
+    const durationSeconds = await getVideoDurationSeconds(video);
+
     const videoExt = video.name.split('.').pop() || 'mp4';
     const thumbExt = input.thumbnail.name.split('.').pop() || 'jpg';
     const videoPath = `${user.id}/${crypto.randomUUID()}.${videoExt}`;
@@ -140,6 +144,7 @@ export async function startVideoUploadTask(input: {
         comments_enabled: input.commentsEnabled,
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl,
+        duration_seconds: Math.round(durationSeconds || 0),
       }),
     });
 
@@ -168,4 +173,3 @@ export async function startVideoUploadTask(input: {
 export function resetVideoUploadTask() {
   setState({ stage: 'idle', overall: 0, detail: '', error: null, videoId: null });
 }
-

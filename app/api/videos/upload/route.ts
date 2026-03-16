@@ -48,6 +48,7 @@ export async function POST(request: Request) {
     comments_enabled?: boolean;
     video_url?: string;
     thumbnail_url?: string;
+    duration_seconds?: number;
   };
   const title = String(body.title || '').trim();
   const description = String(body.description || '').trim();
@@ -60,6 +61,10 @@ export async function POST(request: Request) {
   const videoUrl = String(body.video_url || '').trim();
   const thumbnailUrl = String(body.thumbnail_url || '').trim();
   const commentsEnabled = body.comments_enabled !== false;
+  const durationSecondsRaw = Number(body.duration_seconds);
+  const durationSeconds = Number.isFinite(durationSecondsRaw) && durationSecondsRaw > 0
+    ? Math.min(60 * 60 * 24, Math.round(durationSecondsRaw))
+    : null;
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -192,6 +197,7 @@ export async function POST(request: Request) {
       comments_enabled: commentsEnabled,
       thumbnail_url: thumbnailUrl,
       video_url: videoUrl,
+      duration_seconds: durationSeconds,
     })
     .select('id')
     .single();

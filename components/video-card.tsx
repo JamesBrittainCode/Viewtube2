@@ -3,12 +3,14 @@ import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { unwrapRelation } from '@/lib/profile';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { formatDuration } from '@/lib/format-duration';
 
 type Props = {
   video: {
     id: string;
     title: string;
     thumbnail_url: string | null;
+    duration_seconds?: number | null;
     views: number;
     created_at: string;
     profiles?:
@@ -45,6 +47,11 @@ export function VideoCard({ video }: Props) {
             className="object-cover transition duration-300 group-hover:scale-[1.02]"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
+          {video.duration_seconds && video.duration_seconds > 0 && (
+            <span className="absolute bottom-2 right-2 rounded-md bg-black/80 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">
+              {formatDuration(video.duration_seconds)}
+            </span>
+          )}
         </div>
       </Link>
 

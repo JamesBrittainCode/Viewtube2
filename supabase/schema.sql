@@ -49,6 +49,7 @@ create table if not exists public.videos (
   removed_by uuid references public.profiles(id) on delete set null,
   thumbnail_url text,
   video_url text not null,
+  duration_seconds integer,
   tags text[] not null default '{}',
   views bigint not null default 0,
   created_at timestamptz not null default now(),
@@ -65,6 +66,8 @@ alter table public.videos
 add column if not exists removed_at timestamptz;
 alter table public.videos
 add column if not exists removed_by uuid references public.profiles(id) on delete set null;
+alter table public.videos
+add column if not exists duration_seconds integer;
 
 create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),

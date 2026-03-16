@@ -10,6 +10,7 @@ const baseVideoSelect = `
   comments_enabled,
   thumbnail_url,
   video_url,
+  duration_seconds,
   tags,
   views,
   created_at,
