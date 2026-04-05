@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { VideoGrid } from '@/components/video-grid';
 import { Spinner } from '@/components/spinner';
-import { YikesHomeBanner } from '@/components/yikes-home-banner';
 
 type FeedPayload = {
   videos: Array<Record<string, unknown>>;
@@ -14,11 +13,9 @@ type FeedPayload = {
 export function HomeFeed({
   initialVideos,
   initialHasMore,
-  petitionVotes,
 }: {
   initialVideos: Array<Record<string, unknown>>;
   initialHasMore: boolean;
-  petitionVotes: number;
 }) {
   const [videos, setVideos] = useState(initialVideos);
   const [page, setPage] = useState(1);
@@ -58,7 +55,6 @@ export function HomeFeed({
 
   return (
     <section>
-      <YikesHomeBanner votes={petitionVotes} />
       <VideoGrid videos={videos as never[]} />
 
       <div className="mt-8 flex flex-col items-center justify-center gap-3">

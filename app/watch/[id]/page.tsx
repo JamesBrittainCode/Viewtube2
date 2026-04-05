@@ -16,8 +16,6 @@ import { unwrapRelation } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
 import { ReportVideoButton } from '@/components/report-video-button';
 import { AdminVideoTakedownButton } from '@/components/admin-video-takedown-button';
-import { RecommendedPetitionBanner } from '@/components/recommended-petition-banner';
-import { createPublicClient } from '@/lib/supabase/public';
 
 export const runtime = 'edge';
 
@@ -60,7 +58,6 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
   const recommendations = await getRecommendations(video.id, video.tags || []);
 
   const supabase = await createClient();
-  const publicClient = createPublicClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -73,7 +70,6 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
     dislikedRes,
     subscribedRes,
     moderationRes,
-    petitionCountRes,
   ] = await Promise.all([
     supabase.from('likes').select('*', { count: 'exact', head: true }).eq('video_id', video.id),
     supabase.from('dislikes').select('*', { count: 'exact', head: true }).eq('video_id', video.id),
@@ -108,13 +104,8 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
           .eq('id', user.id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
-    publicClient
-      .from('petition_votes')
-      .select('*', { count: 'exact', head: true })
-      .eq('petition_key', 'yikes_x_viewtube'),
   ]);
   const canModerate = isAdmin || Boolean(moderationRes?.data?.can_moderate);
-  const petitionVotes = petitionCountRes?.count || 0;
 
   const channelProfile = unwrapRelation(video.profiles);
   const channelName = channelProfile?.username || 'unknown';
@@ -207,9 +198,6 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
       </section>
 
       <aside className="lg:sticky lg:top-20 lg:self-start">
-        <div className="mb-4">
-          <RecommendedPetitionBanner count={petitionVotes} />
-        </div>
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500">Recommended</h2>
         <VideoGrid videos={recommendations as never[]} />
       </aside>
