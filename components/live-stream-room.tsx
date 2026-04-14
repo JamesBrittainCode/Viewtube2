@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Mic, MicOff, Video, VideoOff, Radio, Square } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Radio, Square, Settings, MoreVertical, Pin, PinOff, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { VerifiedBadge } from '@/components/verified-badge';
 
@@ -20,6 +20,10 @@ type ChatMessage = {
   stream_id: string;
   user_id: string;
   content: string;
+  pinned?: boolean | null;
+  is_deleted?: boolean | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
   created_at: string;
   profiles?: {
     username?: string | null;
@@ -56,6 +60,9 @@ export function LiveStreamRoom({
   initialMessages,
   userId,
   isOwner,
+  initialChatEnabled,
+  initialChatSubscribersOnly,
+  initialChatSlowModeSeconds,
 }: {
   streamId: string;
   ownerId: string;
@@ -65,6 +72,9 @@ export function LiveStreamRoom({
   initialMessages: ChatMessage[];
   userId: string;
   isOwner: boolean;
+  initialChatEnabled: boolean;
+  initialChatSubscribersOnly: boolean;
+  initialChatSlowModeSeconds: number;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -92,6 +102,31 @@ export function LiveStreamRoom({
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stickToBottom, setStickToBottom] = useState(true);
+  const [chatEnabled, setChatEnabled] = useState(initialChatEnabled);
+  const [chatSubscribersOnly, setChatSubscribersOnly] = useState(initialChatSubscribersOnly);
+  const [chatSlowModeSeconds, setChatSlowModeSeconds] = useState(initialChatSlowModeSeconds);
+  const [chatSettingsOpen, setChatSettingsOpen] = useState(false);
+  const [chatActionError, setChatActionError] = useState<string | null>(null);
+  const [openMenuFor, setOpenMenuFor] = useState<string | null>(null);
+
+  const pinnedMessage = useMemo(() => {
+    const pinned = messages
+      .filter((m) => Boolean(m.pinned) && !Boolean(m.is_deleted))
+      .sort((a, b) => (a.created_at > b.created_at ? -1 : 1));
+    return pinned[0] || null;
+  }, [messages]);
+
+  useEffect(() => {
+    function onGlobalPointerDown(event: MouseEvent) {
+      const target = event.target as HTMLElement | null;
+      // Close message menu when clicking outside any menu trigger/menu.
+      if (!target?.closest('[data-chat-menu-root]')) {
+        setOpenMenuFor(null);
+      }
+    }
+    window.addEventListener('pointerdown', onGlobalPointerDown);
+    return () => window.removeEventListener('pointerdown', onGlobalPointerDown);
+  }, []);
 
   async function getProfileLite(targetUserId: string): Promise<ProfileLite | null> {
     const cached = profileCacheRef.current.get(targetUserId);
@@ -260,7 +295,7 @@ export function LiveStreamRoom({
     const { data, error } = await supabase
       .from('live_chat_messages')
       .select(
-        'id,stream_id,user_id,content,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified)',
+        'id,stream_id,user_id,content,pinned,is_deleted,deleted_at,deleted_by,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified)',
       )
       .eq('stream_id', streamId)
       .gt('created_at', lastMessageAtRef.current)
@@ -269,14 +304,20 @@ export function LiveStreamRoom({
     if (error || !data?.length) return;
     setMessages((prev) => {
       const merged = [...prev];
+      const index = new Map(merged.map((m, i) => [m.id, i]));
       for (const row of data) {
-        if (!seenMessageIdsRef.current.has(row.id)) {
-          seenMessageIdsRef.current.add(row.id);
-          const p = unwrapProfile((row as never as ChatMessage).profiles);
-          if (p && !profileCacheRef.current.get((row as never as ChatMessage).user_id)) {
-            profileCacheRef.current.set((row as never as ChatMessage).user_id, p);
+        const next = row as never as ChatMessage;
+        const existingIdx = index.get(next.id);
+        if (existingIdx !== undefined) {
+          merged[existingIdx] = next;
+        } else {
+          seenMessageIdsRef.current.add(next.id);
+          const p = unwrapProfile(next.profiles);
+          if (p && !profileCacheRef.current.get(next.user_id)) {
+            profileCacheRef.current.set(next.user_id, p);
           }
-          merged.push(row as never);
+          merged.push(next);
+          index.set(next.id, merged.length - 1);
         }
         if (row.created_at > lastMessageAtRef.current) {
           lastMessageAtRef.current = row.created_at;
@@ -336,11 +377,31 @@ export function LiveStreamRoom({
       )
       .on(
         'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'live_chat_messages', filter: `stream_id=eq.${streamId}` },
+        (payload) => {
+          const next = payload.new as ChatMessage;
+          if (!next?.id) return;
+          void enrichMessage(next).then((msg) => {
+            setMessages((prev) => {
+              const idx = prev.findIndex((m) => m.id === msg.id);
+              if (idx === -1) return prev;
+              const copy = [...prev];
+              copy[idx] = msg;
+              return copy;
+            });
+          });
+        },
+      )
+      .on(
+        'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'live_streams', filter: `id=eq.${streamId}` },
         (payload) => {
-          const row = payload.new as { is_live?: boolean; viewer_count?: number };
+          const row = payload.new as { is_live?: boolean; viewer_count?: number; chat_enabled?: boolean; chat_subscribers_only?: boolean; chat_slow_mode_seconds?: number };
           if (typeof row.viewer_count === 'number') setViewerCount(row.viewer_count);
           if (row.is_live === false) setLiveEnded(true);
+          if (typeof row.chat_enabled === 'boolean') setChatEnabled(row.chat_enabled);
+          if (typeof row.chat_subscribers_only === 'boolean') setChatSubscribersOnly(row.chat_subscribers_only);
+          if (typeof row.chat_slow_mode_seconds === 'number') setChatSlowModeSeconds(row.chat_slow_mode_seconds);
         },
       )
       .subscribe(async (status) => {
@@ -413,14 +474,25 @@ export function LiveStreamRoom({
     event.preventDefault();
     const content = chatInput.trim();
     if (!content || liveEnded) return;
+    if (!chatEnabled && !isOwner) {
+      setChatActionError('Chat is disabled by the creator.');
+      return;
+    }
 
     const res = await fetch(`/api/live/streams/${streamId}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
     });
+    const text = await res.text();
+    let payload: { message?: ChatMessage; error?: string } = {};
+    try {
+      payload = JSON.parse(text) as typeof payload;
+    } catch {
+      payload = { error: text || 'Request failed' };
+    }
+
     if (res.ok) {
-      const payload = (await res.json()) as { message?: ChatMessage };
       if (payload.message?.id && !seenMessageIdsRef.current.has(payload.message.id)) {
         seenMessageIdsRef.current.add(payload.message.id);
         const p = unwrapProfile(payload.message.profiles);
@@ -433,7 +505,52 @@ export function LiveStreamRoom({
         lastMessageAtRef.current = payload.message.created_at;
       }
       setChatInput('');
+      setChatActionError(null);
+    } else {
+      setChatActionError(payload.error || 'Could not send message.');
     }
+  }
+
+  async function saveChatSettings(next: {
+    enabled: boolean;
+    subscribersOnly: boolean;
+    slowModeSeconds: number;
+  }) {
+    setChatActionError(null);
+    const res = await fetch(`/api/live/streams/${streamId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'settings',
+        chat_enabled: next.enabled,
+        chat_subscribers_only: next.subscribersOnly,
+        chat_slow_mode_seconds: next.slowModeSeconds,
+      }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      setChatActionError(text || 'Could not save chat settings.');
+      return;
+    }
+    setChatEnabled(next.enabled);
+    setChatSubscribersOnly(next.subscribersOnly);
+    setChatSlowModeSeconds(next.slowModeSeconds);
+    setChatSettingsOpen(false);
+  }
+
+  async function moderateMessage(messageId: string, action: 'pin' | 'unpin' | 'delete') {
+    setChatActionError(null);
+    const res = await fetch(`/api/live/streams/${streamId}/chat/${messageId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      setChatActionError(text || 'Could not update message.');
+      return;
+    }
+    setOpenMenuFor(null);
   }
 
   function toggleMic() {
@@ -533,19 +650,52 @@ export function LiveStreamRoom({
       <aside className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Live Chat</h2>
-          <button
-            type="button"
-            onClick={() => {
-              const el = chatViewportRef.current;
-              if (!el) return;
-              el.scrollTop = el.scrollHeight;
-              setStickToBottom(true);
-            }}
-            className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-          >
-            Jump to latest
-          </button>
+          <div className="flex items-center gap-2">
+            {isOwner ? (
+              <button
+                type="button"
+                onClick={() => setChatSettingsOpen(true)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                title="Chat settings"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                const el = chatViewportRef.current;
+                if (!el) return;
+                el.scrollTop = el.scrollHeight;
+                setStickToBottom(true);
+              }}
+              className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+            >
+              Jump to latest
+            </button>
+          </div>
         </div>
+
+        {pinnedMessage ? (
+          <div className="mt-3 rounded-xl border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="flex items-center justify-between gap-2">
+              <p className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-500">
+                <Pin className="h-3.5 w-3.5" />
+                Pinned message
+              </p>
+              {isOwner ? (
+                <button
+                  type="button"
+                  onClick={() => void moderateMessage(pinnedMessage.id, 'unpin')}
+                  className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                >
+                  Unpin
+                </button>
+              ) : null}
+            </div>
+            <p className="mt-1 line-clamp-2 text-zinc-800 dark:text-zinc-100">{pinnedMessage.content}</p>
+          </div>
+        ) : null}
 
         <div
           ref={chatViewportRef}
@@ -559,9 +709,11 @@ export function LiveStreamRoom({
             const handle = profile?.handle || null;
             const time = formatChatTime(message.created_at);
             const isHost = message.user_id === ownerId;
+            const deleted = Boolean(message.is_deleted);
+            const isPinned = Boolean(message.pinned) && !deleted;
 
             return (
-              <div key={message.id} className="flex gap-2">
+              <div key={message.id} className="group flex gap-2">
                 <Link
                   href={`/channel/${encodeURIComponent(handle || name)}`}
                   className="mt-0.5 h-8 w-8 shrink-0 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
@@ -590,32 +742,167 @@ export function LiveStreamRoom({
                         Host
                       </span>
                     ) : null}
+                    {isPinned ? (
+                      <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                        <Pin className="h-3 w-3" />
+                        Pinned
+                      </span>
+                    ) : null}
                     {time ? <span className="ml-1 text-[11px] text-zinc-500">{time}</span> : null}
                   </div>
                   <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-zinc-800 dark:text-zinc-100">
-                    {message.content}
+                    {deleted ? (
+                      <span className="text-zinc-500 italic">Message deleted by creator.</span>
+                    ) : (
+                      message.content
+                    )}
                   </p>
                 </div>
+
+                {isOwner && !deleted ? (
+                  <div className="relative" data-chat-menu-root>
+                    <button
+                      type="button"
+                      onClick={() => setOpenMenuFor((prev) => (prev === message.id ? null : message.id))}
+                      className="invisible mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-zinc-500 hover:border-zinc-200 hover:bg-white group-hover:visible dark:hover:border-zinc-800 dark:hover:bg-zinc-950"
+                      title="Moderate message"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+
+                    {openMenuFor === message.id ? (
+                      <div className="absolute right-0 top-9 z-10 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
+                        <button
+                          type="button"
+                          onClick={() => void moderateMessage(message.id, isPinned ? 'unpin' : 'pin')}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                        >
+                          {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                          {isPinned ? 'Unpin' : 'Pin'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void moderateMessage(message.id, 'delete')}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-700 hover:bg-zinc-100 dark:text-red-300 dark:hover:bg-zinc-900"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             );
           })}
         </div>
+        {chatActionError ? <p className="mt-2 text-xs text-red-600 dark:text-red-300">{chatActionError}</p> : null}
+
+        {!chatEnabled && !isOwner ? (
+          <p className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+            Chat is disabled by the creator.
+          </p>
+        ) : null}
+
         <form onSubmit={onSendChat} className="mt-3 flex gap-2">
           <input
             value={chatInput}
             onChange={(event) => setChatInput(event.target.value)}
-            disabled={liveEnded}
-            placeholder={liveEnded ? 'Stream ended' : 'Send a message'}
+            disabled={liveEnded || (!chatEnabled && !isOwner)}
+            placeholder={
+              liveEnded
+                ? 'Stream ended'
+                : !chatEnabled && !isOwner
+                  ? 'Chat disabled'
+                  : chatSubscribersOnly && !isOwner
+                    ? 'Subscribers-only chat'
+                    : chatSlowModeSeconds > 0 && !isOwner
+                      ? `Slow mode: ${chatSlowModeSeconds}s`
+                      : 'Send a message'
+            }
             className="h-10 flex-1 rounded-xl border border-zinc-300 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950"
           />
           <button
             type="submit"
-            disabled={liveEnded || !chatInput.trim()}
+            disabled={liveEnded || (!chatEnabled && !isOwner) || !chatInput.trim()}
             className="rounded-xl bg-zinc-900 px-4 text-sm font-semibold text-white disabled:opacity-60 dark:bg-white dark:text-zinc-900"
           >
             Send
           </button>
         </form>
+
+        {chatSettingsOpen ? (
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center"
+            onMouseDown={() => setChatSettingsOpen(false)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-800 dark:bg-zinc-950"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold">Chat settings</h3>
+                <button
+                  type="button"
+                  onClick={() => setChatSettingsOpen(false)}
+                  className="rounded-full border border-zinc-200 px-3 py-1 text-sm hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-900"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-3 text-sm">
+                <label className="flex items-center justify-between gap-3">
+                  <span className="font-medium">Enable chat</span>
+                  <input
+                    type="checkbox"
+                    checked={chatEnabled}
+                    onChange={(e) => setChatEnabled(e.target.checked)}
+                    className="h-4 w-4 accent-red-600"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between gap-3">
+                  <span className="font-medium">Subscribers-only</span>
+                  <input
+                    type="checkbox"
+                    checked={chatSubscribersOnly}
+                    onChange={(e) => setChatSubscribersOnly(e.target.checked)}
+                    className="h-4 w-4 accent-red-600"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between gap-3">
+                  <span className="font-medium">Slow mode</span>
+                  <select
+                    value={chatSlowModeSeconds}
+                    onChange={(e) => setChatSlowModeSeconds(Number(e.target.value) || 0)}
+                    className="h-10 rounded-xl border border-zinc-300 bg-white px-3 dark:border-zinc-700 dark:bg-zinc-950"
+                  >
+                    <option value={0}>Off</option>
+                    <option value={5}>5 seconds</option>
+                    <option value={10}>10 seconds</option>
+                    <option value={30}>30 seconds</option>
+                  </select>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    void saveChatSettings({
+                      enabled: chatEnabled,
+                      subscribersOnly: chatSubscribersOnly,
+                      slowModeSeconds: chatSlowModeSeconds,
+                    })
+                  }
+                  className="mt-2 w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                >
+                  Save settings
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </aside>
     </section>
   );

@@ -314,6 +314,9 @@ create table if not exists public.live_streams (
   title text not null default 'Live Stream',
   description text not null default '',
   is_live boolean not null default true,
+  chat_enabled boolean not null default true,
+  chat_subscribers_only boolean not null default false,
+  chat_slow_mode_seconds integer not null default 0,
   viewer_count integer not null default 0,
   started_at timestamptz not null default now(),
   ended_at timestamptz
@@ -342,6 +345,10 @@ create table if not exists public.live_chat_messages (
   stream_id uuid not null references public.live_streams(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
   content text not null check (char_length(trim(content)) > 0),
+  pinned boolean not null default false,
+  is_deleted boolean not null default false,
+  deleted_at timestamptz,
+  deleted_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -386,6 +393,7 @@ create index if not exists idx_live_stream_viewers_stream on public.live_stream_
 create index if not exists idx_live_signals_stream_created on public.live_signals using btree(stream_id, created_at asc);
 create index if not exists idx_live_signals_recipient on public.live_signals using btree(recipient_id, created_at asc);
 create index if not exists idx_live_chat_stream_created on public.live_chat_messages using btree(stream_id, created_at asc);
+create index if not exists idx_live_chat_stream_pinned_created on public.live_chat_messages using btree(stream_id, pinned desc, created_at desc);
 
 create or replace function public.videos_search_vector_update()
 returns trigger
@@ -1209,10 +1217,51 @@ on public.live_chat_messages for select
 to anon, authenticated
 using (true);
 
+drop policy if exists "Stream owners can moderate live chat" on public.live_chat_messages;
+create policy "Stream owners can moderate live chat"
+on public.live_chat_messages for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.live_streams s
+    where s.id = stream_id
+      and s.user_id = (select auth.uid())
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.live_streams s
+    where s.id = stream_id
+      and s.user_id = (select auth.uid())
+  )
+);
+
+drop policy if exists "Authenticated users can send live chat" on public.live_chat_messages;
 create policy "Authenticated users can send live chat"
 on public.live_chat_messages for insert
 to authenticated
-with check (user_id = (select auth.uid()));
+with check (
+  user_id = (select auth.uid())
+  and exists (
+    select 1
+    from public.live_streams s
+    where s.id = stream_id
+      and s.is_live = true
+      and s.chat_enabled = true
+      and (
+        s.chat_subscribers_only = false
+        or s.user_id = (select auth.uid())
+        or exists (
+          select 1
+          from public.subscriptions sub
+          where sub.subscriber_id = (select auth.uid())
+            and sub.creator_id = s.user_id
+        )
+      )
+  )
+);
 
 create policy "Active site alerts are viewable by everyone"
 on public.site_alerts for select

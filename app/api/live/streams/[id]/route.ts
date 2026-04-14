@@ -40,9 +40,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = (await request.json().catch(() => ({}))) as {
-    action?: 'join' | 'leave' | 'end';
+    action?: 'join' | 'leave' | 'end' | 'settings';
     title?: string;
     description?: string;
+    chat_enabled?: boolean;
+    chat_subscribers_only?: boolean;
+    chat_slow_mode_seconds?: number;
   };
   const action = body.action || 'join';
 
@@ -88,6 +91,26 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       .eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     await supabase.from('live_stream_viewers').delete().eq('stream_id', id);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === 'settings') {
+    if (user.id !== stream.user_id) {
+      return NextResponse.json({ error: 'Only the stream owner can change chat settings' }, { status: 403 });
+    }
+
+    const slowModeRaw = Number(body.chat_slow_mode_seconds);
+    const slowMode = Number.isFinite(slowModeRaw) ? Math.max(0, Math.min(120, Math.round(slowModeRaw))) : 0;
+
+    const updates = {
+      chat_enabled: typeof body.chat_enabled === 'boolean' ? body.chat_enabled : undefined,
+      chat_subscribers_only:
+        typeof body.chat_subscribers_only === 'boolean' ? body.chat_subscribers_only : undefined,
+      chat_slow_mode_seconds: slowMode,
+    };
+
+    const { error } = await supabase.from('live_streams').update(updates).eq('id', id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ ok: true });
   }
 

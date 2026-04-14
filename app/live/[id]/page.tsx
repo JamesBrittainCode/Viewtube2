@@ -21,13 +21,13 @@ export default async function LiveStreamWatchPage({
   const [{ data: stream }, { data: messages }, { data: profile }] = await Promise.all([
     supabase
       .from('live_streams')
-      .select('id,user_id,title,description,is_live,viewer_count,started_at')
+      .select('id,user_id,title,description,is_live,viewer_count,started_at,chat_enabled,chat_subscribers_only,chat_slow_mode_seconds')
       .eq('id', id)
       .maybeSingle(),
     supabase
       .from('live_chat_messages')
       .select(
-        'id,stream_id,user_id,content,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified)',
+        'id,stream_id,user_id,content,pinned,is_deleted,deleted_at,deleted_by,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified)',
       )
       .eq('stream_id', id)
       .order('created_at', { ascending: true })
@@ -51,6 +51,9 @@ export default async function LiveStreamWatchPage({
         initialMessages={(messages || []) as never[]}
         userId={user.id}
         isOwner={user.id === stream.user_id}
+        initialChatEnabled={stream.chat_enabled !== false}
+        initialChatSubscribersOnly={Boolean(stream.chat_subscribers_only)}
+        initialChatSlowModeSeconds={Number(stream.chat_slow_mode_seconds || 0)}
       />
     </LivePolicyGate>
   );
