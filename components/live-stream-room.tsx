@@ -672,7 +672,7 @@ export function LiveStreamRoom({
   }
 
   return (
-    <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <section className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="space-y-4">
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-black dark:border-zinc-800">
           {isOwner ? (
@@ -690,7 +690,6 @@ export function LiveStreamRoom({
               LIVE
             </div>
           </div>
-          <p className="mt-1 text-sm text-zinc-500">{description || 'No description.'}</p>
           <p className="mt-2 text-sm text-zinc-500">Viewers: {viewerCount.toLocaleString()}</p>
 
           {error ? <p className="mt-2 text-sm text-red-500">{error}</p> : null}
@@ -726,9 +725,16 @@ export function LiveStreamRoom({
             </div>
           ) : null}
         </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Description</h3>
+          <p className="mt-2 whitespace-pre-wrap text-zinc-800 dark:text-zinc-100">
+            {description || 'No description.'}
+          </p>
+        </div>
       </div>
 
-      <aside className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+      <aside className="rounded-2xl border border-zinc-200 bg-white p-4 lg:sticky lg:top-20 lg:self-start dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Live Chat</h2>
           <div className="flex items-center gap-2">

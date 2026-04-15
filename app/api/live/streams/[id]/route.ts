@@ -22,7 +22,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('live_streams')
-    .select('id,user_id,title,description,is_live,viewer_count,started_at,ended_at,profiles:profiles!live_streams_user_id_fkey(username,handle,avatar_url,verified)')
+    .select('id,user_id,title,description,thumbnail_url,is_live,viewer_count,started_at,ended_at,profiles:profiles!live_streams_user_id_fkey(username,handle,avatar_url,verified)')
     .eq('id', id)
     .maybeSingle();
 
@@ -40,9 +40,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = (await request.json().catch(() => ({}))) as {
-    action?: 'join' | 'leave' | 'end' | 'settings';
+    action?: 'join' | 'leave' | 'end' | 'settings' | 'update';
     title?: string;
     description?: string;
+    thumbnail_url?: string | null;
     chat_enabled?: boolean;
     chat_subscribers_only?: boolean;
     chat_slow_mode_seconds?: number;
@@ -109,6 +110,21 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       chat_slow_mode_seconds: slowMode,
     };
 
+    const { error } = await supabase.from('live_streams').update(updates).eq('id', id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === 'update') {
+    if (user.id !== stream.user_id) {
+      return NextResponse.json({ error: 'Only the stream owner can update this stream' }, { status: 403 });
+    }
+    const thumb = typeof body.thumbnail_url === 'string' ? body.thumbnail_url.trim() : null;
+    const updates = {
+      title: typeof body.title === 'string' ? body.title.slice(0, 120) : undefined,
+      description: typeof body.description === 'string' ? body.description.slice(0, 1000) : undefined,
+      thumbnail_url: thumb && thumb.length ? thumb : null,
+    };
     const { error } = await supabase.from('live_streams').update(updates).eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ ok: true });

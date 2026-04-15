@@ -21,7 +21,7 @@ export default async function LiveStreamWatchPage({
   const [{ data: stream }, { data: messages }, { data: profile }] = await Promise.all([
     supabase
       .from('live_streams')
-      .select('id,user_id,title,description,is_live,viewer_count,started_at,chat_enabled,chat_subscribers_only,chat_slow_mode_seconds')
+      .select('id,user_id,title,description,thumbnail_url,is_live,viewer_count,started_at,chat_enabled,chat_subscribers_only,chat_slow_mode_seconds')
       .eq('id', id)
       .maybeSingle(),
     supabase

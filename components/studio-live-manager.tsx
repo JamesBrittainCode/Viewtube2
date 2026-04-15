@@ -2,11 +2,15 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { createClient } from '@/lib/supabase/client';
+import { THUMBNAIL_BUCKET } from '@/lib/constants';
 
 type LiveStream = {
   id: string;
   title: string;
   description: string;
+  thumbnail_url?: string | null;
   is_live: boolean;
   started_at: string;
 };
@@ -17,10 +21,44 @@ export function StudioLiveManager({
   activeStream: LiveStream | null;
 }) {
   const router = useRouter();
+  const supabase = createClient();
   const [title, setTitle] = useState(activeStream?.title || 'Live Stream');
   const [description, setDescription] = useState(activeStream?.description || '');
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function uploadStreamThumbnail(streamId: string, file: File) {
+    const allowed = new Set(['image/jpeg', 'image/png']);
+    if (!allowed.has(file.type)) throw new Error('Thumbnail must be a PNG or JPEG image.');
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error('Please sign in again.');
+
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const safeExt = ext === 'png' ? 'png' : 'jpg';
+    const path = `live-streams/${user.id}/${streamId}.${safeExt}`;
+
+    const { error: uploadErr } = await supabase.storage.from(THUMBNAIL_BUCKET).upload(path, file, {
+      contentType: file.type || 'image/jpeg',
+      upsert: true,
+    });
+    if (uploadErr) throw new Error(uploadErr.message);
+
+    const url = supabase.storage.from(THUMBNAIL_BUCKET).getPublicUrl(path).data.publicUrl;
+    const res = await fetch(`/api/live/streams/${streamId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update', title, description, thumbnail_url: url }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) throw new Error(data.error || 'Could not save stream thumbnail.');
+
+    return url;
+  }
 
   async function startStream(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,6 +72,18 @@ export function StudioLiveManager({
       });
       const data = (await res.json()) as { stream?: LiveStream; error?: string };
       if (!res.ok || !data.stream) throw new Error(data.error || 'Could not start stream.');
+
+      if (thumbnailFile) {
+        await uploadStreamThumbnail(data.stream.id, thumbnailFile);
+      } else {
+        // Still persist title/description edits before launching the room.
+        await fetch(`/api/live/streams/${data.stream.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'update', title, description, thumbnail_url: data.stream.thumbnail_url ?? null }),
+        }).catch(() => null);
+      }
+
       router.push(`/live/${data.stream.id}`);
       router.refresh();
     } catch (err) {
@@ -71,6 +121,38 @@ export function StudioLiveManager({
       </p>
 
       <form onSubmit={startStream} className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-[160px_1fr] sm:items-start">
+          <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950">
+            <Image
+              src={
+                thumbnailPreview ||
+                activeStream?.thumbnail_url ||
+                '/thumbnail-placeholder.svg'
+              }
+              alt="Stream thumbnail preview"
+              fill
+              className="object-cover"
+              sizes="160px"
+            />
+          </div>
+          <label className="space-y-2">
+            <span className="block text-sm font-semibold text-zinc-200">Stream thumbnail (optional)</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg"
+              onChange={(event) => {
+                const file = event.target.files?.[0] || null;
+                setError(null);
+                setThumbnailFile(file);
+                if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+                setThumbnailPreview(file ? URL.createObjectURL(file) : null);
+              }}
+              className="block w-full text-sm text-zinc-300 file:mr-4 file:rounded-full file:border-0 file:bg-zinc-800 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-700"
+            />
+            <p className="text-xs text-zinc-400">PNG or JPEG only.</p>
+          </label>
+        </div>
+
         <input
           value={title}
           onChange={(event) => setTitle(event.target.value)}

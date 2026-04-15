@@ -314,6 +314,7 @@ create table if not exists public.live_streams (
   title text not null default 'Live Stream',
   description text not null default '',
   is_live boolean not null default true,
+  thumbnail_url text,
   chat_enabled boolean not null default true,
   chat_subscribers_only boolean not null default false,
   chat_slow_mode_seconds integer not null default 0,

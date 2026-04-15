@@ -14,7 +14,7 @@ export default async function StudioLivePage() {
     supabase.from('profiles').select('can_stream_live').eq('id', user.id).single(),
     supabase
       .from('live_streams')
-      .select('id,title,description,is_live,started_at')
+      .select('id,title,description,thumbnail_url,is_live,started_at')
       .eq('user_id', user.id)
       .eq('is_live', true)
       .order('started_at', { ascending: false })
