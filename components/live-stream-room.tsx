@@ -4,7 +4,21 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Mic, MicOff, Video, VideoOff, Radio, Square, Settings, Pin, PinOff, Trash2 } from 'lucide-react';
+import {
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  Radio,
+  Square,
+  Settings,
+  Pin,
+  PinOff,
+  Trash2,
+  ScreenShare,
+  ScreenShareOff,
+  FlipHorizontal2,
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { VerifiedBadge } from '@/components/verified-badge';
 
@@ -102,6 +116,9 @@ export function LiveStreamRoom({
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stickToBottom, setStickToBottom] = useState(true);
+  const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('user');
+  const [sharingScreen, setSharingScreen] = useState(false);
+  const screenTrackRef = useRef<MediaStreamTrack | null>(null);
   const [chatEnabled, setChatEnabled] = useState(initialChatEnabled);
   const [chatSubscribersOnly, setChatSubscribersOnly] = useState(initialChatSubscribersOnly);
   const [chatSlowModeSeconds, setChatSlowModeSeconds] = useState(initialChatSlowModeSeconds);
@@ -187,6 +204,59 @@ export function LiveStreamRoom({
     if (insertError) throw insertError;
   }
 
+  async function getCameraVideoTrack(facingMode: 'user' | 'environment') {
+    const camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode },
+      audio: false,
+    });
+    const track = camStream.getVideoTracks()[0] || null;
+    if (!track) {
+      for (const t of camStream.getTracks()) t.stop();
+      throw new Error('Could not access camera.');
+    }
+    for (const t of camStream.getTracks()) {
+      if (t !== track) t.stop();
+    }
+    return track;
+  }
+
+  async function replaceOutgoingVideoTrack(newTrack: MediaStreamTrack) {
+    const stream = localStreamRef.current;
+    if (!stream) return;
+
+    newTrack.enabled = cameraEnabled;
+
+    const oldVideoTracks = stream.getVideoTracks().filter((t) => t.id !== newTrack.id);
+    stream.addTrack(newTrack);
+
+    for (const pc of peersRef.current.values()) {
+      const sender = pc.getSenders().find((s) => s.track?.kind === 'video') || null;
+      if (sender) {
+        // eslint-disable-next-line no-await-in-loop
+        await sender.replaceTrack(newTrack);
+      } else {
+        pc.addTrack(newTrack, stream);
+      }
+    }
+
+    for (const t of oldVideoTracks) {
+      try {
+        stream.removeTrack(t);
+      } catch {
+        // ignore
+      }
+      try {
+        t.stop();
+      } catch {
+        // ignore
+      }
+    }
+
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
+    }
+  }
+
   function getOrCreatePeerConnection(partnerId: string) {
     const existing = peersRef.current.get(partnerId);
     if (existing) return existing;
@@ -220,13 +290,18 @@ export function LiveStreamRoom({
   async function startBroadcastIfOwner() {
     if (!isOwner) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: cameraFacing },
+        audio: true,
+      });
       localStreamRef.current = stream;
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
       setMicEnabled(true);
       setCameraEnabled(true);
+      setSharingScreen(false);
+      screenTrackRef.current = null;
       setError(null);
     } catch {
       setError('Could not access camera/microphone. Check browser permissions.');
@@ -654,6 +729,74 @@ export function LiveStreamRoom({
     setCameraEnabled(next);
   }
 
+  async function flipCamera() {
+    if (!isOwner || liveEnded) return;
+    if (sharingScreen) {
+      setError('Stop screen sharing before flipping the camera.');
+      return;
+    }
+    setError(null);
+    const nextFacing: 'user' | 'environment' = cameraFacing === 'user' ? 'environment' : 'user';
+    try {
+      const track = await getCameraVideoTrack(nextFacing);
+      await replaceOutgoingVideoTrack(track);
+      setCameraFacing(nextFacing);
+    } catch (err) {
+      setError((err as Error).message || 'Could not flip camera.');
+    }
+  }
+
+  async function startScreenShare() {
+    if (!isOwner || liveEnded) return;
+    if (typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+      setError('Screen sharing is not supported on this device/browser.');
+      return;
+    }
+    setError(null);
+    try {
+      const display = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+      const track = display.getVideoTracks()[0] || null;
+      if (!track) throw new Error('Could not start screen sharing.');
+
+      screenTrackRef.current = track;
+      setSharingScreen(true);
+
+      track.onended = () => {
+        void stopScreenShare();
+      };
+
+      await replaceOutgoingVideoTrack(track);
+    } catch (err) {
+      setSharingScreen(false);
+      screenTrackRef.current = null;
+      setError((err as Error).message || 'Could not start screen sharing.');
+    }
+  }
+
+  async function stopScreenShare() {
+    if (!isOwner) return;
+    if (!sharingScreen) return;
+    setError(null);
+    setSharingScreen(false);
+    const prev = screenTrackRef.current;
+    screenTrackRef.current = null;
+    try {
+      if (prev) prev.stop();
+    } catch {
+      // ignore
+    }
+    try {
+      const track = await getCameraVideoTrack(cameraFacing);
+      track.enabled = cameraEnabled;
+      await replaceOutgoingVideoTrack(track);
+    } catch (err) {
+      setError((err as Error).message || 'Could not restore camera after screen share.');
+    }
+  }
+
   async function endStream() {
     if (!isOwner || ending) return;
     setEnding(true);
@@ -713,6 +856,24 @@ export function LiveStreamRoom({
               >
                 {cameraEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
                 {cameraEnabled ? 'Turn Camera Off' : 'Turn Camera On'}
+              </button>
+              <button
+                type="button"
+                onClick={() => void flipCamera()}
+                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                title="Flip camera (mobile)"
+              >
+                <FlipHorizontal2 className="h-4 w-4" />
+                Flip Camera
+              </button>
+              <button
+                type="button"
+                onClick={() => void (sharingScreen ? stopScreenShare() : startScreenShare())}
+                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                title="Share screen"
+              >
+                {sharingScreen ? <ScreenShareOff className="h-4 w-4" /> : <ScreenShare className="h-4 w-4" />}
+                {sharingScreen ? 'Stop Share' : 'Share Screen'}
               </button>
               <button
                 type="button"
