@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { formatDistanceToNow } from 'date-fns';
 import {
   Mic,
   MicOff,
@@ -71,6 +72,7 @@ export function LiveStreamRoom({
   initialTitle,
   initialDescription,
   initialViewerCount,
+  initialStartedAt,
   initialMessages,
   userId,
   isOwner,
@@ -83,6 +85,7 @@ export function LiveStreamRoom({
   initialTitle: string;
   initialDescription: string;
   initialViewerCount: number;
+  initialStartedAt: string;
   initialMessages: ChatMessage[];
   userId: string;
   isOwner: boolean;
@@ -133,6 +136,12 @@ export function LiveStreamRoom({
       .sort((a, b) => (a.created_at > b.created_at ? -1 : 1));
     return pinned[0] || null;
   }, [messages]);
+
+  const startedLabel = useMemo(() => {
+    const d = new Date(initialStartedAt);
+    if (Number.isNaN(d.getTime())) return null;
+    return `Started ${formatDistanceToNow(d, { addSuffix: true })}`;
+  }, [initialStartedAt]);
 
   function animateNewMessage(id: string) {
     setNewMessageIds((prev) => {
@@ -864,7 +873,10 @@ export function LiveStreamRoom({
               LIVE
             </div>
           </div>
-          <p className="mt-2 text-sm text-zinc-500">Viewers: {viewerCount.toLocaleString()}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-500">
+            <p>Viewers: {viewerCount.toLocaleString()}</p>
+            {startedLabel ? <p>{startedLabel}</p> : null}
+          </div>
 
           {error ? <p className="mt-2 text-sm text-red-500">{error}</p> : null}
           {starting ? <p className="mt-2 text-sm text-zinc-500">Starting camera and microphone…</p> : null}

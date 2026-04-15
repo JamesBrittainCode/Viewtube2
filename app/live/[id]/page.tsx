@@ -48,6 +48,7 @@ export default async function LiveStreamWatchPage({
         initialTitle={stream.title}
         initialDescription={stream.description || ''}
         initialViewerCount={stream.viewer_count || 0}
+        initialStartedAt={stream.started_at}
         initialMessages={(messages || []) as never[]}
         userId={user.id}
         isOwner={user.id === stream.user_id}
