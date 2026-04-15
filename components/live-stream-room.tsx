@@ -349,6 +349,36 @@ export function LiveStreamRoom({
     });
   }
 
+  async function pollChatSnapshot() {
+    // Snapshot refresh to catch UPDATEs even if Realtime is misconfigured.
+    const res = await fetch(`/api/live/streams/${streamId}/chat`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const payload = (await res.json()) as { messages?: ChatMessage[] };
+    const next = payload.messages || [];
+    if (!next.length) return;
+
+    // Keep lastMessageAt in sync.
+    for (const row of next) {
+      if (row.id) seenMessageIdsRef.current.add(row.id);
+      if (row.created_at && row.created_at > lastMessageAtRef.current) {
+        lastMessageAtRef.current = row.created_at;
+      }
+      const p = unwrapProfile(row.profiles);
+      if (p && !profileCacheRef.current.get(row.user_id)) {
+        profileCacheRef.current.set(row.user_id, p);
+      }
+    }
+
+    setMessages((prev) => {
+      // Replace-by-id merge to preserve local animation states.
+      const map = new Map(prev.map((m) => [m.id, m]));
+      for (const row of next) {
+        map.set(row.id, row);
+      }
+      return Array.from(map.values()).sort((a, b) => (a.created_at > b.created_at ? 1 : -1));
+    });
+  }
+
   async function pollStreamState() {
     const res = await fetch(`/api/live/streams/${streamId}`, { cache: 'no-store' });
     if (!res.ok) return;
@@ -452,8 +482,13 @@ export function LiveStreamRoom({
       void pollStreamState();
     }, 700);
 
+    const snapshotTimer = setInterval(() => {
+      void pollChatSnapshot();
+    }, 4000);
+
     return () => {
       clearInterval(timer);
+      clearInterval(snapshotTimer);
       if (!isOwner) {
         void fetch(`/api/live/streams/${streamId}`, {
           method: 'PATCH',
@@ -567,6 +602,20 @@ export function LiveStreamRoom({
 
   async function moderateMessage(messageId: string, action: 'pin' | 'unpin' | 'delete') {
     setChatActionError(null);
+
+    // Optimistic UI so the pinned bubble updates immediately for the creator.
+    if (action === 'pin') {
+      setMessages((prev) =>
+        prev.map((m) => ({
+          ...m,
+          pinned: m.id === messageId,
+        })),
+      );
+    }
+    if (action === 'unpin') {
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, pinned: false } : m)));
+    }
+
     const res = await fetch(`/api/live/streams/${streamId}/chat/${messageId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -575,10 +624,13 @@ export function LiveStreamRoom({
     if (!res.ok) {
       const text = await res.text();
       setChatActionError(text || 'Could not update message.');
+      // Re-sync state if the server rejected the optimistic update.
+      void pollChatSnapshot();
       return;
     }
     if (action === 'delete') {
       animateRemoveMessage(messageId);
+      // Others should see it via Realtime UPDATE. Snapshot polling is a fallback.
     }
   }
 
