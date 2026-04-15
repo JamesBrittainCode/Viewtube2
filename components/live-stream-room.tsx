@@ -774,7 +774,43 @@ export function LiveStreamRoom({
                 </button>
               ) : null}
             </div>
-            <p className="mt-1 line-clamp-2 text-zinc-800 dark:text-zinc-100">{pinnedMessage.content}</p>
+            {(() => {
+              const profile = unwrapProfile(pinnedMessage.profiles);
+              const name = profile?.username || 'User';
+              const handle = profile?.handle || null;
+              return (
+                <div className="mt-2 flex items-start gap-2">
+                  <Link
+                    href={`/channel/${encodeURIComponent(handle || name)}`}
+                    className="mt-0.5 h-7 w-7 shrink-0 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
+                    title={handle || name}
+                  >
+                    <Image
+                      src={profile?.avatar_url || '/avatar-placeholder.svg'}
+                      alt={name}
+                      width={28}
+                      height={28}
+                      className="h-7 w-7 object-cover"
+                    />
+                  </Link>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <Link
+                        href={`/channel/${encodeURIComponent(handle || name)}`}
+                        className="text-xs font-semibold text-zinc-900 hover:underline dark:text-zinc-100"
+                      >
+                        {name}
+                      </Link>
+                      {profile?.verified ? <VerifiedBadge className="h-4 w-4 text-zinc-500" /> : null}
+                      {handle ? <span className="text-[11px] text-zinc-500">{handle}</span> : null}
+                    </div>
+                    <p className="mt-0.5 line-clamp-2 text-sm text-zinc-800 dark:text-zinc-100">
+                      {pinnedMessage.content}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         ) : null}
 
