@@ -28,6 +28,19 @@ body {
   color: hsl(var(--foreground));
 }
 
+@layer utilities {
+  @keyframes vtMsgIn {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
 .viewtube-player {
   accent-color: #ff0000;
 }

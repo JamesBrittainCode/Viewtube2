@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Mic, MicOff, Video, VideoOff, Radio, Square, Settings, MoreVertical, Pin, PinOff, Trash2 } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Radio, Square, Settings, Pin, PinOff, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { VerifiedBadge } from '@/components/verified-badge';
 
@@ -107,7 +107,8 @@ export function LiveStreamRoom({
   const [chatSlowModeSeconds, setChatSlowModeSeconds] = useState(initialChatSlowModeSeconds);
   const [chatSettingsOpen, setChatSettingsOpen] = useState(false);
   const [chatActionError, setChatActionError] = useState<string | null>(null);
-  const [openMenuFor, setOpenMenuFor] = useState<string | null>(null);
+  const [newMessageIds, setNewMessageIds] = useState<Set<string>>(new Set());
+  const [removingMessageIds, setRemovingMessageIds] = useState<Set<string>>(new Set());
 
   const pinnedMessage = useMemo(() => {
     const pinned = messages
@@ -116,17 +117,38 @@ export function LiveStreamRoom({
     return pinned[0] || null;
   }, [messages]);
 
-  useEffect(() => {
-    function onGlobalPointerDown(event: MouseEvent) {
-      const target = event.target as HTMLElement | null;
-      // Close message menu when clicking outside any menu trigger/menu.
-      if (!target?.closest('[data-chat-menu-root]')) {
-        setOpenMenuFor(null);
-      }
-    }
-    window.addEventListener('pointerdown', onGlobalPointerDown);
-    return () => window.removeEventListener('pointerdown', onGlobalPointerDown);
-  }, []);
+  function animateNewMessage(id: string) {
+    setNewMessageIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    window.setTimeout(() => {
+      setNewMessageIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 450);
+  }
+
+  function animateRemoveMessage(id: string) {
+    setRemovingMessageIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    window.setTimeout(() => {
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+      setRemovingMessageIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 220);
+  }
 
   async function getProfileLite(targetUserId: string): Promise<ProfileLite | null> {
     const cached = profileCacheRef.current.get(targetUserId);
@@ -372,6 +394,7 @@ export function LiveStreamRoom({
           }
           void enrichMessage(base).then((msg) => {
             setMessages((prev) => [...prev, msg]);
+            if (msg.id) animateNewMessage(msg.id);
           });
         },
       )
@@ -381,6 +404,10 @@ export function LiveStreamRoom({
         (payload) => {
           const next = payload.new as ChatMessage;
           if (!next?.id) return;
+          if (next.is_deleted) {
+            animateRemoveMessage(next.id);
+            return;
+          }
           void enrichMessage(next).then((msg) => {
             setMessages((prev) => {
               const idx = prev.findIndex((m) => m.id === msg.id);
@@ -550,7 +577,9 @@ export function LiveStreamRoom({
       setChatActionError(text || 'Could not update message.');
       return;
     }
-    setOpenMenuFor(null);
+    if (action === 'delete') {
+      animateRemoveMessage(messageId);
+    }
   }
 
   function toggleMic() {
@@ -711,9 +740,18 @@ export function LiveStreamRoom({
             const isHost = message.user_id === ownerId;
             const deleted = Boolean(message.is_deleted);
             const isPinned = Boolean(message.pinned) && !deleted;
+            const isNew = newMessageIds.has(message.id);
+            const isRemoving = removingMessageIds.has(message.id);
 
             return (
-              <div key={message.id} className="group flex gap-2">
+              <div
+                key={message.id}
+                className={[
+                  'group flex gap-2 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
+                  isNew ? 'motion-safe:animate-[vtMsgIn_220ms_ease-out]' : '',
+                  isRemoving ? 'pointer-events-none opacity-0 translate-y-1' : '',
+                ].join(' ')}
+              >
                 <Link
                   href={`/channel/${encodeURIComponent(handle || name)}`}
                   className="mt-0.5 h-8 w-8 shrink-0 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
@@ -760,36 +798,23 @@ export function LiveStreamRoom({
                 </div>
 
                 {isOwner && !deleted ? (
-                  <div className="relative" data-chat-menu-root>
+                  <div className="mt-0.5 flex items-start gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 motion-reduce:transition-none">
                     <button
                       type="button"
-                      onClick={() => setOpenMenuFor((prev) => (prev === message.id ? null : message.id))}
-                      className="invisible mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-zinc-500 hover:border-zinc-200 hover:bg-white group-hover:visible dark:hover:border-zinc-800 dark:hover:bg-zinc-950"
-                      title="Moderate message"
+                      onClick={() => void moderateMessage(message.id, isPinned ? 'unpin' : 'pin')}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-zinc-500 hover:border-zinc-200 hover:bg-white dark:hover:border-zinc-800 dark:hover:bg-zinc-950"
+                      title={isPinned ? 'Unpin' : 'Pin'}
                     >
-                      <MoreVertical className="h-4 w-4" />
+                      {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                     </button>
-
-                    {openMenuFor === message.id ? (
-                      <div className="absolute right-0 top-9 z-10 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
-                        <button
-                          type="button"
-                          onClick={() => void moderateMessage(message.id, isPinned ? 'unpin' : 'pin')}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-900"
-                        >
-                          {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
-                          {isPinned ? 'Unpin' : 'Pin'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void moderateMessage(message.id, 'delete')}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-700 hover:bg-zinc-100 dark:text-red-300 dark:hover:bg-zinc-900"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </button>
-                      </div>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => void moderateMessage(message.id, 'delete')}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-zinc-500 hover:border-zinc-200 hover:bg-white hover:text-red-700 dark:hover:border-zinc-800 dark:hover:bg-zinc-950 dark:hover:text-red-300"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 ) : null}
               </div>
