@@ -40,7 +40,8 @@ export function StudioLiveManager({
 
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
     const safeExt = ext === 'png' ? 'png' : 'jpg';
-    const path = `live-streams/${user.id}/${streamId}.${safeExt}`;
+    // Storage RLS for the `thumbnails` bucket expects the first folder segment to be the user id.
+    const path = `${user.id}/live-streams/${streamId}.${safeExt}`;
 
     const { error: uploadErr } = await supabase.storage.from(THUMBNAIL_BUCKET).upload(path, file, {
       contentType: file.type || 'image/jpeg',
