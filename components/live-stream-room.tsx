@@ -818,11 +818,42 @@ export function LiveStreamRoom({
     <section className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="space-y-4">
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-black dark:border-zinc-800">
-          {isOwner ? (
-            <video ref={localVideoRef} autoPlay muted playsInline className="aspect-video w-full object-cover" />
-          ) : (
-            <video ref={remoteVideoRef} autoPlay playsInline controls={false} className="aspect-video w-full object-cover" />
-          )}
+          <div className="relative">
+            {isOwner ? (
+              <video ref={localVideoRef} autoPlay muted playsInline className="aspect-video w-full object-cover" />
+            ) : (
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                controls={false}
+                className="aspect-video w-full object-cover"
+              />
+            )}
+          </div>
+
+          {/* Live edge timeline (UI parity with regular player). */}
+          <div className="space-y-2 bg-zinc-950/80 px-3 py-2">
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={1}
+              readOnly
+              disabled
+              style={{
+                background: 'linear-gradient(to right, #ef4444 0%, #ef4444 100%, #3f3f46 100%, #3f3f46 100%)',
+              }}
+              className="h-1.5 w-full appearance-none rounded-full opacity-95 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-moz-range-thumb]:bg-red-500 [&::-webkit-slider-thumb]:bg-red-500"
+            />
+            <div className="flex items-center justify-end">
+              <span className="inline-flex items-center gap-2 text-xs font-semibold text-red-300">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                LIVE
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
