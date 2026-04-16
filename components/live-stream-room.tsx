@@ -19,6 +19,7 @@ import {
   ScreenShare,
   ScreenShareOff,
   FlipHorizontal2,
+  Smile,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { VerifiedBadge } from '@/components/verified-badge';
@@ -106,6 +107,8 @@ export function LiveStreamRoom({
   const lastSignalAtRef = useRef<string>('1970-01-01T00:00:00.000Z');
   const lastMessageAtRef = useRef<string>('1970-01-01T00:00:00.000Z');
   const chatViewportRef = useRef<HTMLDivElement | null>(null);
+  const chatInputRef = useRef<HTMLInputElement | null>(null);
+  const emojiPopoverRef = useRef<HTMLDivElement | null>(null);
 
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
@@ -129,6 +132,33 @@ export function LiveStreamRoom({
   const [chatActionError, setChatActionError] = useState<string | null>(null);
   const [newMessageIds, setNewMessageIds] = useState<Set<string>>(new Set());
   const [removingMessageIds, setRemovingMessageIds] = useState<Set<string>>(new Set());
+  const [emojiOpen, setEmojiOpen] = useState(false);
+
+  const EMOJIS = useMemo(
+    () => [
+      '😀',
+      '😅',
+      '😂',
+      '😊',
+      '😍',
+      '😎',
+      '🤝',
+      '👏',
+      '🙏',
+      '🔥',
+      '✨',
+      '💯',
+      '🎉',
+      '❤️',
+      '👍',
+      '👎',
+      '🤔',
+      '😮',
+      '😭',
+      '😡',
+    ],
+    [],
+  );
 
   const pinnedMessage = useMemo(() => {
     const pinned = messages
@@ -142,6 +172,20 @@ export function LiveStreamRoom({
     if (Number.isNaN(d.getTime())) return null;
     return `Started ${formatDistanceToNow(d, { addSuffix: true })}`;
   }, [initialStartedAt]);
+
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      if (!emojiOpen) return;
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (emojiPopoverRef.current?.contains(target)) return;
+      // Allow clicking the emoji button without immediately closing via bubbling.
+      if (target.closest('[data-emoji-button]')) return;
+      setEmojiOpen(false);
+    }
+    window.addEventListener('pointerdown', onPointerDown);
+    return () => window.removeEventListener('pointerdown', onPointerDown);
+  }, [emojiOpen]);
 
   function animateNewMessage(id: string) {
     setNewMessageIds((prev) => {
@@ -657,6 +701,29 @@ export function LiveStreamRoom({
     }
   }
 
+  function insertEmoji(emoji: string) {
+    const el = chatInputRef.current;
+    if (!el) {
+      setChatInput((v) => `${v}${emoji}`);
+      setEmojiOpen(false);
+      return;
+    }
+    const start = el.selectionStart ?? chatInput.length;
+    const end = el.selectionEnd ?? chatInput.length;
+    const next = `${chatInput.slice(0, start)}${emoji}${chatInput.slice(end)}`;
+    setChatInput(next);
+    setEmojiOpen(false);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + emoji.length;
+      try {
+        el.setSelectionRange(pos, pos);
+      } catch {
+        // ignore
+      }
+    });
+  }
+
   async function saveChatSettings(next: {
     enabled: boolean;
     subscribersOnly: boolean;
@@ -1127,8 +1194,51 @@ export function LiveStreamRoom({
           </p>
         ) : null}
 
-        <form onSubmit={onSendChat} className="mt-3 flex gap-2">
+        <form onSubmit={onSendChat} className="relative mt-3 flex gap-2">
+          <button
+            type="button"
+            data-emoji-button
+            onClick={() => setEmojiOpen((v) => !v)}
+            disabled={liveEnded || (!chatEnabled && !isOwner)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            title="Emoji"
+          >
+            <Smile className="h-5 w-5" />
+          </button>
+
+          {emojiOpen ? (
+            <div
+              ref={emojiPopoverRef}
+              className="absolute bottom-12 left-0 z-30 w-[260px] overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl motion-safe:animate-[vtMsgIn_220ms_ease-out] dark:border-zinc-800 dark:bg-zinc-950"
+            >
+              <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2 dark:border-zinc-800">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Emojis</p>
+                <button
+                  type="button"
+                  onClick={() => setEmojiOpen(false)}
+                  className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="grid grid-cols-8 gap-1 p-2">
+                {EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => insertEmoji(emoji)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                    title={emoji}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <input
+            ref={chatInputRef}
             value={chatInput}
             onChange={(event) => setChatInput(event.target.value)}
             disabled={liveEnded || (!chatEnabled && !isOwner)}
