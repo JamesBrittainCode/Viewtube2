@@ -1,6 +1,8 @@
 import Image from 'next/image';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
+import Link from 'next/link';
+import { formatDistanceToNow } from 'date-fns';
 import { SubscribeButton } from '@/components/subscribe-button';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { VideoGrid } from '@/components/video-grid';
@@ -79,6 +81,14 @@ export default async function ChannelPage({
     redirect(`/channel/${channel.handle}`);
   }
 
+  const { data: liveStream } = await publicClient
+    .from('live_streams')
+    .select('id,title,description,thumbnail_url,viewer_count,started_at,is_live')
+    .eq('user_id', channel.id)
+    .eq('is_live', true)
+    .order('started_at', { ascending: false })
+    .maybeSingle();
+
   const { data: videos } = await publicClient
     .from('videos')
     .select(
@@ -129,13 +139,27 @@ export default async function ChannelPage({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Image
-            src={channel.avatar_url || '/avatar-placeholder.svg'}
-            alt={channel.username}
-            width={84}
-            height={84}
-            className="h-20 w-20 rounded-full object-cover"
-          />
+          <div
+            className={[
+              'relative h-20 w-20 rounded-full',
+              liveStream?.id
+                ? 'ring-4 ring-red-500 ring-offset-4 ring-offset-white dark:ring-offset-zinc-950'
+                : '',
+            ].join(' ')}
+          >
+            <Image
+              src={channel.avatar_url || '/avatar-placeholder.svg'}
+              alt={channel.username}
+              width={84}
+              height={84}
+              className="h-20 w-20 rounded-full object-cover"
+            />
+            {liveStream?.id ? (
+              <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
+                LIVE
+              </span>
+            ) : null}
+          </div>
           <div>
             <div className="flex items-center gap-1">
               <h1 className="text-2xl font-bold">{channel.username}</h1>
@@ -156,6 +180,46 @@ export default async function ChannelPage({
           />
         )}
       </div>
+
+      {liveStream?.id ? (
+        <div className="mt-6">
+          <h2 className="mb-3 text-lg font-semibold">Live now</h2>
+          <Link
+            href={`/live/${liveStream.id}`}
+            className="group block overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+          >
+            <div className="relative aspect-video w-full bg-zinc-200 dark:bg-zinc-800">
+              <Image
+                src={liveStream.thumbnail_url || channel.banner_url || '/thumbnail-placeholder.svg'}
+                alt={liveStream.title || 'Live stream'}
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 900px"
+                priority
+              />
+              <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+                LIVE
+              </span>
+              <span className="absolute bottom-3 right-3 rounded-full bg-black/70 px-2 py-1 text-xs font-semibold text-white">
+                {Number(liveStream.viewer_count || 0).toLocaleString()} watching
+              </span>
+            </div>
+            <div className="p-4">
+              <h3 className="line-clamp-2 text-base font-semibold group-hover:underline">
+                {liveStream.title || 'Live Stream'}
+              </h3>
+              <p className="mt-1 text-sm text-zinc-500">
+                Started {formatDistanceToNow(new Date(liveStream.started_at), { addSuffix: true })}
+              </p>
+              {liveStream.description ? (
+                <p className="mt-2 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-300">
+                  {liveStream.description}
+                </p>
+              ) : null}
+            </div>
+          </Link>
+        </div>
+      ) : null}
 
       <h2 className="mb-5 mt-8 text-lg font-semibold">Videos</h2>
       <VideoGrid videos={(videos || []) as never[]} />
