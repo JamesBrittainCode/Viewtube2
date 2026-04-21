@@ -126,6 +126,7 @@ type CreatorAccessPreview = {
   handle: string;
   avatar_url?: string | null;
   verified: boolean;
+  top_streamer?: boolean;
   can_stream_live: boolean;
   can_moderate: boolean;
   is_admin: boolean;
@@ -187,6 +188,7 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
   const [verifyHandle, setVerifyHandle] = useState('@');
   const [subscribersCount, setSubscribersCount] = useState(0);
   const [verified, setVerified] = useState(false);
+  const [topStreamer, setTopStreamer] = useState(false);
   const [canStreamLive, setCanStreamLive] = useState(false);
   const [canModerate, setCanModerate] = useState(false);
   const [suspendHandle, setSuspendHandle] = useState('@');
@@ -394,6 +396,7 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
         body: JSON.stringify({
           handle: normalizeHandle(verifyHandle),
           verified,
+          top_streamer: topStreamer,
           can_stream_live: canStreamLive,
           can_moderate: canModerate,
         }),
@@ -406,6 +409,7 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
           ? {
               ...prev,
               verified,
+              top_streamer: topStreamer,
               can_stream_live: canStreamLive,
               can_moderate: canModerate,
             }
@@ -499,6 +503,7 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
         if (!data.profile) throw new Error('Profile not found');
         setCreatorPreview(data.profile);
         setVerified(Boolean(data.profile.verified));
+        setTopStreamer(Boolean(data.profile.top_streamer));
         setCanStreamLive(Boolean(data.profile.can_stream_live));
         setCanModerate(Boolean(data.profile.can_moderate));
       } catch (err) {
@@ -926,6 +931,7 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
               </div>
               <div className="mt-3 grid gap-2 text-xs text-zinc-300 sm:grid-cols-2">
                 <p>Verified: {creatorPreview.verified ? 'Yes' : 'No'}</p>
+                <p>Top Streamer: {creatorPreview.top_streamer ? 'Yes' : 'No'}</p>
                 <p>Admin: {creatorPreview.is_admin ? 'Yes' : 'No'}</p>
                 <p>Live Access: {creatorPreview.can_stream_live ? 'Yes' : 'No'}</p>
                 <p>Moderation Access: {creatorPreview.can_moderate ? 'Yes' : 'No'}</p>
@@ -935,6 +941,14 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
           <label className="flex items-center gap-2 text-sm text-zinc-200">
             <input type="checkbox" checked={verified} onChange={(event) => setVerified(event.target.checked)} />
             Verified channel
+          </label>
+          <label className="flex items-center gap-2 text-sm text-zinc-200">
+            <input
+              type="checkbox"
+              checked={topStreamer}
+              onChange={(event) => setTopStreamer(event.target.checked)}
+            />
+            Top ViewTube Streamer badge
           </label>
           <label className="flex items-center gap-2 text-sm text-zinc-200">
             <input

@@ -9,6 +9,7 @@ import { SubscribeButton } from '@/components/subscribe-button';
 import { VideoGrid } from '@/components/video-grid';
 import { VideoPlayer } from '@/components/video-player';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { SetSpotlightButton } from '@/components/set-spotlight-button';
 import { isAdminEmail } from '@/lib/admin';
 import { getRecommendations, getVideoById } from '@/lib/data';
@@ -154,6 +155,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
                 {channelName}
               </Link>
               {channelProfile?.verified && <VerifiedBadge />}
+              {channelProfile?.top_streamer && <TopStreamerBadge />}
             </div>
             <p className="text-sm text-zinc-500">
               {video.views.toLocaleString()} views •{' '}

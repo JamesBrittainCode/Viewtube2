@@ -21,13 +21,13 @@ export default async function LiveStreamWatchPage({
   const [{ data: stream }, { data: messages }, { data: profile }] = await Promise.all([
     supabase
       .from('live_streams')
-      .select('id,user_id,title,description,thumbnail_url,is_live,viewer_count,started_at,chat_enabled,chat_subscribers_only,chat_slow_mode_seconds')
+      .select('id,user_id,title,description,thumbnail_url,source,ingest_stream_name,is_live,viewer_count,started_at,chat_enabled,chat_subscribers_only,chat_slow_mode_seconds')
       .eq('id', id)
       .maybeSingle(),
     supabase
       .from('live_chat_messages')
       .select(
-        'id,stream_id,user_id,content,pinned,is_deleted,deleted_at,deleted_by,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified)',
+        'id,stream_id,user_id,content,pinned,is_deleted,deleted_at,deleted_by,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified,top_streamer)',
       )
       .eq('stream_id', id)
       .order('created_at', { ascending: true })
@@ -40,6 +40,16 @@ export default async function LiveStreamWatchPage({
   }
   if (!profile) redirect('/sign-in');
 
+  const hlsBase = (process.env.NEXT_PUBLIC_HLS_BASE_URL || '').replace(/\/+$/, '');
+  const ingestName =
+    (stream as unknown as { ingest_stream_name?: string | null })?.ingest_stream_name ?? null;
+  const source =
+    (stream as unknown as { source?: 'webrtc' | 'obs' | null })?.source ?? null;
+  const hlsManifestUrl =
+    source === 'obs' && hlsBase && ingestName
+      ? `${hlsBase}/${encodeURIComponent(ingestName)}.m3u8`
+      : null;
+
   return (
     <LivePolicyGate role={user.id === stream.user_id ? 'creator' : 'viewer'}>
       <LiveStreamRoom
@@ -47,6 +57,9 @@ export default async function LiveStreamWatchPage({
         ownerId={stream.user_id}
         initialTitle={stream.title}
         initialDescription={stream.description || ''}
+        initialSource={(source === 'obs' ? 'obs' : 'webrtc') as 'webrtc' | 'obs'}
+        initialHlsManifestUrl={hlsManifestUrl}
+        initialPosterUrl={stream.thumbnail_url ?? null}
         initialViewerCount={stream.viewer_count || 0}
         initialStartedAt={stream.started_at}
         initialMessages={(messages || []) as never[]}

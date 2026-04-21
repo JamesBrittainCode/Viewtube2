@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { MessageCircle, Pin, Reply, ThumbsUp, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import type { Comment } from '@/lib/types';
 
 type FlatComment = Comment & {
@@ -15,6 +16,7 @@ type FlatComment = Comment & {
     handle: string;
     avatar_url: string | null;
     verified: boolean;
+    top_streamer?: boolean;
   };
 };
 
@@ -30,6 +32,7 @@ function nestComments(comments: FlatComment[]): Comment[] {
         handle: item.profiles?.handle || '',
         avatar_url: item.profiles?.avatar_url || null,
         verified: item.profiles?.verified || false,
+        top_streamer: Boolean(item.profiles?.top_streamer),
       },
       replies: [],
     });
@@ -99,6 +102,7 @@ function CommentItem({
                 @{item.profile?.username}
               </Link>
               {item.profile?.verified && <VerifiedBadge className="h-3.5 w-3.5" />}
+              {item.profile?.top_streamer && <TopStreamerBadge className="h-3.5 w-3.5" />}
             </span>{' '}
             • {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
             {item.pinned ? (

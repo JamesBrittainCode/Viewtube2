@@ -23,12 +23,15 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { LiveHlsPlayer } from '@/components/live-hls-player';
+import { TopStreamerBadge } from '@/components/top-streamer-badge';
 
 type ProfileLite = {
   username?: string | null;
   handle?: string | null;
   avatar_url?: string | null;
   verified?: boolean | null;
+  top_streamer?: boolean | null;
 };
 
 type ChatMessage = {
@@ -46,11 +49,13 @@ type ChatMessage = {
     handle?: string | null;
     avatar_url?: string | null;
     verified?: boolean | null;
+    top_streamer?: boolean | null;
   }[] | {
     username?: string | null;
     handle?: string | null;
     avatar_url?: string | null;
     verified?: boolean | null;
+    top_streamer?: boolean | null;
   } | null;
 };
 
@@ -72,6 +77,9 @@ export function LiveStreamRoom({
   ownerId,
   initialTitle,
   initialDescription,
+  initialSource,
+  initialHlsManifestUrl,
+  initialPosterUrl,
   initialViewerCount,
   initialStartedAt,
   initialMessages,
@@ -85,6 +93,9 @@ export function LiveStreamRoom({
   ownerId: string;
   initialTitle: string;
   initialDescription: string;
+  initialSource: 'webrtc' | 'obs';
+  initialHlsManifestUrl: string | null;
+  initialPosterUrl: string | null;
   initialViewerCount: number;
   initialStartedAt: string;
   initialMessages: ChatMessage[];
@@ -110,13 +121,14 @@ export function LiveStreamRoom({
   const chatInputRef = useRef<HTMLInputElement | null>(null);
   const emojiPopoverRef = useRef<HTMLDivElement | null>(null);
 
+  const isObs = initialSource === 'obs';
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [chatInput, setChatInput] = useState('');
   const [viewerCount, setViewerCount] = useState(initialViewerCount);
   const [liveEnded, setLiveEnded] = useState(false);
-  const [starting, setStarting] = useState(isOwner);
+  const [starting, setStarting] = useState(isOwner && !isObs);
   const [ending, setEnding] = useState(false);
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
@@ -225,7 +237,7 @@ export function LiveStreamRoom({
     if (cached) return cached;
     const { data, error: profErr } = await supabase
       .from('profiles')
-      .select('username,handle,avatar_url,verified')
+      .select('username,handle,avatar_url,verified,top_streamer')
       .eq('id', targetUserId)
       .maybeSingle();
     if (profErr || !data) return null;
@@ -247,6 +259,7 @@ export function LiveStreamRoom({
   }
 
   async function sendSignal(recipientId: string | null, kind: string, payload: Record<string, unknown>) {
+    if (isObs) return;
     const { error: insertError } = await supabase.from('live_signals').insert({
       stream_id: streamId,
       sender_id: userId,
@@ -341,6 +354,10 @@ export function LiveStreamRoom({
   }
 
   async function startBroadcastIfOwner() {
+    if (isObs) {
+      setStarting(false);
+      return;
+    }
     if (!isOwner) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -371,6 +388,7 @@ export function LiveStreamRoom({
     kind: string;
     payload: Record<string, unknown>;
   }) {
+    if (isObs) return;
     if (row.id && seenSignalIdsRef.current.has(row.id)) return;
     if (row.id) seenSignalIdsRef.current.add(row.id);
     if (row.created_at && row.created_at > lastSignalAtRef.current) {
@@ -428,6 +446,7 @@ export function LiveStreamRoom({
   }
 
   async function pollSignals() {
+    if (isObs) return;
     const { data, error } = await supabase
       .from('live_signals')
       .select('id,sender_id,recipient_id,kind,payload,created_at')
@@ -445,7 +464,7 @@ export function LiveStreamRoom({
     const { data, error } = await supabase
       .from('live_chat_messages')
       .select(
-        'id,stream_id,user_id,content,pinned,is_deleted,deleted_at,deleted_by,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified)',
+        'id,stream_id,user_id,content,pinned,is_deleted,deleted_at,deleted_by,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified,top_streamer)',
       )
       .eq('stream_id', streamId)
       .gt('created_at', lastMessageAtRef.current)
@@ -538,7 +557,10 @@ export function LiveStreamRoom({
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'live_signals', filter: `stream_id=eq.${streamId}` },
-        (payload) => void handleSignal(payload.new as never),
+        (payload) => {
+          if (isObs) return;
+          void handleSignal(payload.new as never);
+        },
       )
       .on(
         'postgres_changes',
@@ -895,16 +917,18 @@ export function LiveStreamRoom({
       <div className="space-y-4">
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-black dark:border-zinc-800">
           <div className="relative">
-            {isOwner ? (
+            {isObs ? (
+              initialHlsManifestUrl ? (
+                <LiveHlsPlayer manifestUrl={initialHlsManifestUrl} posterUrl={initialPosterUrl} />
+              ) : (
+                <div className="flex aspect-video w-full items-center justify-center bg-black text-sm text-zinc-200">
+                  Live playback is not configured yet.
+                </div>
+              )
+            ) : isOwner ? (
               <video ref={localVideoRef} autoPlay muted playsInline className="aspect-video w-full object-cover" />
             ) : (
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                controls={false}
-                className="aspect-video w-full object-cover"
-              />
+              <video ref={remoteVideoRef} autoPlay playsInline controls={false} className="aspect-video w-full object-cover" />
             )}
           </div>
 
@@ -951,40 +975,46 @@ export function LiveStreamRoom({
 
           {isOwner && !liveEnded ? (
             <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={toggleMic}
-                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-              >
-                {micEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-                {micEnabled ? 'Mute Mic' : 'Unmute Mic'}
-              </button>
-              <button
-                type="button"
-                onClick={toggleCamera}
-                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-              >
-                {cameraEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
-                {cameraEnabled ? 'Turn Camera Off' : 'Turn Camera On'}
-              </button>
-              <button
-                type="button"
-                onClick={() => void flipCamera()}
-                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-                title="Flip camera (mobile)"
-              >
-                <FlipHorizontal2 className="h-4 w-4" />
-                Flip Camera
-              </button>
-              <button
-                type="button"
-                onClick={() => void (sharingScreen ? stopScreenShare() : startScreenShare())}
-                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-                title="Share screen"
-              >
-                {sharingScreen ? <ScreenShareOff className="h-4 w-4" /> : <ScreenShare className="h-4 w-4" />}
-                {sharingScreen ? 'Stop Share' : 'Share Screen'}
-              </button>
+              {!isObs ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={toggleMic}
+                    className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                  >
+                    {micEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+                    {micEnabled ? 'Mute Mic' : 'Unmute Mic'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleCamera}
+                    className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                  >
+                    {cameraEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
+                    {cameraEnabled ? 'Turn Camera Off' : 'Turn Camera On'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void flipCamera()}
+                    className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                    title="Flip camera (mobile)"
+                  >
+                    <FlipHorizontal2 className="h-4 w-4" />
+                    Flip Camera
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void (sharingScreen ? stopScreenShare() : startScreenShare())}
+                    className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                    title="Share screen"
+                  >
+                    {sharingScreen ? <ScreenShareOff className="h-4 w-4" /> : <ScreenShare className="h-4 w-4" />}
+                    {sharingScreen ? 'Stop Share' : 'Share Screen'}
+                  </button>
+                </>
+              ) : (
+                <p className="text-sm text-zinc-500">Streaming via OBS.</p>
+              )}
               <button
                 type="button"
                 onClick={() => void endStream()}
@@ -1079,6 +1109,7 @@ export function LiveStreamRoom({
                         {name}
                       </Link>
                       {profile?.verified ? <VerifiedBadge className="h-4 w-4 text-zinc-500" /> : null}
+                      {profile?.top_streamer ? <TopStreamerBadge className="h-4 w-4" /> : null}
                       {handle ? <span className="text-[11px] text-zinc-500">{handle}</span> : null}
                     </div>
                     <p className="mt-0.5 line-clamp-2 text-sm text-zinc-800 dark:text-zinc-100">
@@ -1140,6 +1171,7 @@ export function LiveStreamRoom({
                       {name}
                     </Link>
                     {profile?.verified ? <VerifiedBadge className="h-4 w-4 text-zinc-500" /> : null}
+                    {profile?.top_streamer ? <TopStreamerBadge className="h-4 w-4" /> : null}
                     {isHost ? (
                       <span className="ml-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-200">
                         Host

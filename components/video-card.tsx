@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { unwrapRelation } from '@/lib/profile';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { formatDuration } from '@/lib/format-duration';
 
 type Props = {
@@ -19,12 +20,14 @@ type Props = {
           handle?: string;
           avatar_url?: string | null;
           verified?: boolean;
+          top_streamer?: boolean;
         }
       | Array<{
           username?: string;
           handle?: string;
           avatar_url?: string | null;
           verified?: boolean;
+          top_streamer?: boolean;
         }>;
   };
 };
@@ -73,6 +76,7 @@ export function VideoCard({ video }: Props) {
               {profile?.username || 'Unknown channel'}
             </Link>
             {profile?.verified && <VerifiedBadge className="h-3.5 w-3.5" />}
+            {profile?.top_streamer && <TopStreamerBadge className="h-3.5 w-3.5" />}
           </div>
           <p className="text-xs text-zinc-500">
             {video.views.toLocaleString()} views • {createdAt}

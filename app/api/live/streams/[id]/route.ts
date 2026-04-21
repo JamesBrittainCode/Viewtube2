@@ -22,7 +22,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('live_streams')
-    .select('id,user_id,title,description,thumbnail_url,is_live,viewer_count,started_at,ended_at,profiles:profiles!live_streams_user_id_fkey(username,handle,avatar_url,verified)')
+    .select('id,user_id,title,description,thumbnail_url,source,ingest_stream_name,is_live,viewer_count,started_at,ended_at,profiles:profiles!live_streams_user_id_fkey(username,handle,avatar_url,verified,top_streamer)')
     .eq('id', id)
     .maybeSingle();
 

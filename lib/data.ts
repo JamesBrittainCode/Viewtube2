@@ -20,6 +20,7 @@ const baseVideoSelect = `
     handle,
     avatar_url,
     verified,
+    top_streamer,
     subscribers_count
   )
 `;

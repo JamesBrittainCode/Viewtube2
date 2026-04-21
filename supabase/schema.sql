@@ -10,6 +10,7 @@ create table if not exists public.profiles (
   banner_url text,
   bio text,
   verified boolean not null default false,
+  top_streamer boolean not null default false,
   can_stream_live boolean not null default false,
   can_moderate boolean not null default false,
   suspended boolean not null default false,
@@ -22,6 +23,8 @@ create table if not exists public.profiles (
 
 alter table public.profiles
 add column if not exists verified boolean not null default false;
+alter table public.profiles
+add column if not exists top_streamer boolean not null default false;
 alter table public.profiles
 add column if not exists can_stream_live boolean not null default false;
 alter table public.profiles
@@ -313,14 +316,38 @@ create table if not exists public.live_streams (
   user_id uuid not null references public.profiles(id) on delete cascade,
   title text not null default 'Live Stream',
   description text not null default '',
+  -- Delivery source for live playback.
+  -- `webrtc`: in-browser camera/mic streaming.
+  -- `obs`: external RTMP ingest that produces HLS for playback.
+  source text not null default 'webrtc',
   is_live boolean not null default true,
   thumbnail_url text,
+  -- For OBS/RTMP ingest, this is the RTMP "stream name" used to derive HLS playback.
+  ingest_stream_name text,
   chat_enabled boolean not null default true,
   chat_subscribers_only boolean not null default false,
   chat_slow_mode_seconds integer not null default 0,
   viewer_count integer not null default 0,
   started_at timestamptz not null default now(),
   ended_at timestamptz
+);
+
+-- OBS/RTMP stream keys (stored hashed; never store plaintext).
+create table if not exists public.live_stream_keys (
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  key_hash text not null unique,
+  key_last4 text not null,
+  created_at timestamptz not null default now(),
+  rotated_at timestamptz
+);
+
+-- OBS/RTMP stream draft settings saved in Studio, used when ingest goes live.
+create table if not exists public.live_stream_configs (
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  title text not null default 'Live Stream',
+  description text not null default '',
+  thumbnail_url text,
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists public.live_stream_viewers (
@@ -390,6 +417,7 @@ create index if not exists idx_studio_feedback_status_created on public.studio_f
 create index if not exists idx_earn_applications_status_created on public.earn_applications using btree(status, created_at desc);
 create index if not exists idx_live_streams_live_started on public.live_streams using btree(is_live, started_at desc);
 create index if not exists idx_live_streams_user_live on public.live_streams using btree(user_id, is_live);
+create index if not exists idx_live_streams_source_live on public.live_streams using btree(source, is_live, started_at desc);
 create index if not exists idx_live_stream_viewers_stream on public.live_stream_viewers using btree(stream_id);
 create index if not exists idx_live_signals_stream_created on public.live_signals using btree(stream_id, created_at asc);
 create index if not exists idx_live_signals_recipient on public.live_signals using btree(recipient_id, created_at asc);
@@ -796,6 +824,8 @@ alter table public.live_streams enable row level security;
 alter table public.live_stream_viewers enable row level security;
 alter table public.live_signals enable row level security;
 alter table public.live_chat_messages enable row level security;
+alter table public.live_stream_keys enable row level security;
+alter table public.live_stream_configs enable row level security;
 
 -- profiles
 create policy "Profiles are viewable by everyone"
@@ -811,6 +841,7 @@ with check (
   (select auth.uid()) = id
   and subscribers_count = (select p.subscribers_count from public.profiles p where p.id = (select auth.uid()))
   and verified = (select p.verified from public.profiles p where p.id = (select auth.uid()))
+  and top_streamer = (select p.top_streamer from public.profiles p where p.id = (select auth.uid()))
   and suspended = (select p.suspended from public.profiles p where p.id = (select auth.uid()))
   and suspension_reason is not distinct from (select p.suspension_reason from public.profiles p where p.id = (select auth.uid()))
   and suspended_at is not distinct from (select p.suspended_at from public.profiles p where p.id = (select auth.uid()))
@@ -823,7 +854,8 @@ create or replace function public.admin_update_profile_meta(
   target_profile_id uuid,
   target_subscribers_count bigint,
   target_verified boolean,
-  target_suspended boolean
+  target_suspended boolean,
+  target_top_streamer boolean
 )
 returns public.profiles
 language plpgsql
@@ -844,6 +876,7 @@ begin
   set
     subscribers_count = greatest(0, target_subscribers_count),
     verified = target_verified,
+    top_streamer = target_top_streamer,
     suspended = target_suspended,
     suspension_reason = case
       when target_suspended then coalesce(suspension_reason, 'Suspended by admin')
@@ -862,6 +895,26 @@ begin
   end if;
 
   return updated_profile;
+end;
+$$;
+
+-- Backwards compatible wrapper (older deployments may still call 4-arg version).
+create or replace function public.admin_update_profile_meta(
+  target_profile_id uuid,
+  target_subscribers_count bigint,
+  target_verified boolean,
+  target_suspended boolean
+)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_top boolean;
+begin
+  select top_streamer into current_top from public.profiles where id = target_profile_id;
+  return public.admin_update_profile_meta(target_profile_id, target_subscribers_count, target_verified, target_suspended, coalesce(current_top, false));
 end;
 $$;
 
@@ -1171,6 +1224,22 @@ with check (
 
 create policy "Stream owners can update own streams"
 on public.live_streams for update
+to authenticated
+using (user_id = (select auth.uid()))
+with check (user_id = (select auth.uid()));
+
+-- Stream keys: only the owner can manage/view their own key metadata (masked in UI).
+drop policy if exists "Users can manage own live stream key" on public.live_stream_keys;
+create policy "Users can manage own live stream key"
+on public.live_stream_keys for all
+to authenticated
+using (user_id = (select auth.uid()))
+with check (user_id = (select auth.uid()));
+
+-- OBS configs: only the owner can manage/view their own saved OBS details.
+drop policy if exists "Users can manage own live stream config" on public.live_stream_configs;
+create policy "Users can manage own live stream config"
+on public.live_stream_configs for all
 to authenticated
 using (user_id = (select auth.uid()))
 with check (user_id = (select auth.uid()));

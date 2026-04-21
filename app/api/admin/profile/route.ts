@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const adminClient = createAdminClient();
   const { data: profile, error: profileError } = await adminClient
     .from('profiles')
-    .select('id,username,handle,avatar_url,verified,can_stream_live,can_moderate')
+    .select('id,username,handle,avatar_url,verified,top_streamer,can_stream_live,can_moderate')
     .eq('handle', handle)
     .maybeSingle();
 
@@ -66,6 +66,7 @@ export async function PATCH(request: Request) {
     handle?: string;
     subscribers_count?: number;
     verified?: boolean;
+    top_streamer?: boolean;
     suspended?: boolean;
     can_stream_live?: boolean;
     can_moderate?: boolean;
@@ -78,6 +79,8 @@ export async function PATCH(request: Request) {
     typeof body.subscribers_count === 'number' ? Math.max(0, Number(body.subscribers_count)) : undefined;
   const verified =
     typeof body.verified === 'boolean' ? body.verified : undefined;
+  const topStreamer =
+    typeof body.top_streamer === 'boolean' ? body.top_streamer : undefined;
   const suspended =
     typeof body.suspended === 'boolean' ? body.suspended : undefined;
   const canStreamLive =
@@ -91,7 +94,7 @@ export async function PATCH(request: Request) {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, subscribers_count, verified, suspended, can_stream_live, can_moderate')
+    .select('id, subscribers_count, verified, top_streamer, suspended, can_stream_live, can_moderate')
     .eq('handle', handle)
     .single();
 
@@ -102,6 +105,7 @@ export async function PATCH(request: Request) {
   if (
     subscribersCount === undefined &&
     verified === undefined &&
+    topStreamer === undefined &&
     suspended === undefined &&
     canStreamLive === undefined &&
     canModerate === undefined
@@ -111,12 +115,13 @@ export async function PATCH(request: Request) {
 
   let data = profile;
 
-  if (subscribersCount !== undefined || verified !== undefined || suspended !== undefined) {
+  if (subscribersCount !== undefined || verified !== undefined || topStreamer !== undefined || suspended !== undefined) {
     const { data: rpcData, error } = await supabase.rpc('admin_update_profile_meta', {
       target_profile_id: profile.id,
       target_subscribers_count: subscribersCount ?? profile.subscribers_count,
       target_verified: verified ?? profile.verified,
       target_suspended: suspended ?? profile.suspended,
+      target_top_streamer: topStreamer ?? profile.top_streamer,
     });
 
     if (error) {
@@ -131,7 +136,7 @@ export async function PATCH(request: Request) {
       .from('profiles')
       .update({ can_stream_live: canStreamLive })
       .eq('id', profile.id)
-      .select('id, subscribers_count, verified, suspended, can_stream_live, can_moderate')
+      .select('id, subscribers_count, verified, top_streamer, suspended, can_stream_live, can_moderate')
       .single();
     if (liveError) {
       return NextResponse.json({ error: liveError.message }, { status: 400 });
@@ -145,7 +150,7 @@ export async function PATCH(request: Request) {
       .from('profiles')
       .update({ can_moderate: canModerate })
       .eq('id', profile.id)
-      .select('id, subscribers_count, verified, suspended, can_stream_live, can_moderate')
+      .select('id, subscribers_count, verified, top_streamer, suspended, can_stream_live, can_moderate')
       .single();
     if (moderationError) {
       return NextResponse.json({ error: moderationError.message }, { status: 400 });
@@ -159,6 +164,16 @@ export async function PATCH(request: Request) {
       type: 'verified',
       message: "You've Been Verified! Congrats! 🎉",
       actorId: user.id,
+    });
+  }
+
+  if (topStreamer === true && profile.top_streamer === false) {
+    await sendNotification(supabase, {
+      userId: profile.id,
+      type: 'top_streamer_awarded',
+      message: "You earned the Top ViewTube Streamer badge!",
+      actorId: user.id,
+      targetUrl: `/channel/${handle}`,
     });
   }
 
