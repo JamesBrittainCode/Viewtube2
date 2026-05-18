@@ -1,5 +1,2 @@
-# ViewTube ads.txt
-#
-# If you enable Google AdSense, Google will give you one or more lines to place
-# in this file. Replace this placeholder with the exact line(s) from AdSense.
-
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7440729603400218"
+     crossorigin="anonymous"></script>
