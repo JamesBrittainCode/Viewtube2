@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { VideoGrid } from '@/components/video-grid';
 import { Spinner } from '@/components/spinner';
+import { AdsenseSlot } from '@/components/adsense-slot';
 
 type FeedPayload = {
   videos: Array<Record<string, unknown>>;
@@ -17,6 +18,7 @@ export function HomeFeed({
   initialVideos: Array<Record<string, unknown>>;
   initialHasMore: boolean;
 }) {
+  const homeAdSlot = process.env.NEXT_PUBLIC_ADSENSE_HOME_SLOT;
   const [videos, setVideos] = useState(initialVideos);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -55,6 +57,16 @@ export function HomeFeed({
 
   return (
     <section>
+      {homeAdSlot ? (
+        <div className="mb-4">
+          <div className="mx-auto max-w-[1200px]">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+              <AdsenseSlot slot={homeAdSlot} className="min-h-[90px]" />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <VideoGrid videos={videos as never[]} />
 
       <div className="mt-8 flex flex-col items-center justify-center gap-3">

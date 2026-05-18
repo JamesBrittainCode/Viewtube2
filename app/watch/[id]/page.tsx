@@ -17,6 +17,7 @@ import { unwrapRelation } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
 import { ReportVideoButton } from '@/components/report-video-button';
 import { AdminVideoTakedownButton } from '@/components/admin-video-takedown-button';
+import { AdsenseSlot } from '@/components/adsense-slot';
 
 export const runtime = 'edge';
 
@@ -200,6 +201,14 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
       </section>
 
       <aside className="lg:sticky lg:top-20 lg:self-start">
+        {process.env.NEXT_PUBLIC_ADSENSE_WATCH_SIDEBAR_SLOT ? (
+          <div className="mb-4 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+            <AdsenseSlot
+              slot={process.env.NEXT_PUBLIC_ADSENSE_WATCH_SIDEBAR_SLOT}
+              className="min-h-[250px]"
+            />
+          </div>
+        ) : null}
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500">Recommended</h2>
         <VideoGrid videos={recommendations as never[]} />
       </aside>

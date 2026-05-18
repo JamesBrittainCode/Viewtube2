@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import Script from 'next/script';
 import { AppShell } from '@/components/app-shell';
 import { Navbar } from '@/components/navbar';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -29,10 +30,22 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider>
+          {adsenseClient ? (
+            <Script
+              id="adsense"
+              async
+              strategy="afterInteractive"
+              src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
+                adsenseClient,
+              )}`}
+              crossOrigin="anonymous"
+            />
+          ) : null}
           <JsonLd
             data={{
               '@context': 'https://schema.org',

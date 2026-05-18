@@ -1,0 +1,5 @@
+# ViewTube ads.txt
+#
+# If you enable Google AdSense, Google will give you one or more lines to place
+# in this file. Replace this placeholder with the exact line(s) from AdSense.
+
