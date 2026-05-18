@@ -80,6 +80,8 @@ export function LiveStreamRoom({
   initialSource,
   initialHlsManifestUrl,
   initialPosterUrl,
+  initialPaused,
+  initialPauseReason,
   initialViewerCount,
   initialStartedAt,
   initialMessages,
@@ -96,6 +98,8 @@ export function LiveStreamRoom({
   initialSource: 'webrtc' | 'obs';
   initialHlsManifestUrl: string | null;
   initialPosterUrl: string | null;
+  initialPaused: boolean;
+  initialPauseReason: string | null;
   initialViewerCount: number;
   initialStartedAt: string;
   initialMessages: ChatMessage[];
@@ -130,6 +134,8 @@ export function LiveStreamRoom({
   const [liveEnded, setLiveEnded] = useState(false);
   const [starting, setStarting] = useState(isOwner && !isObs);
   const [ending, setEnding] = useState(false);
+  const [paused, setPaused] = useState(initialPaused);
+  const [pauseReason, setPauseReason] = useState<string | null>(initialPauseReason);
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -530,12 +536,14 @@ export function LiveStreamRoom({
     const res = await fetch(`/api/live/streams/${streamId}`, { cache: 'no-store' });
     if (!res.ok) return;
     const payload = (await res.json()) as {
-      stream?: { viewer_count?: number; is_live?: boolean };
+      stream?: { viewer_count?: number; is_live?: boolean; is_paused?: boolean; paused_reason?: string | null };
     };
     const next = payload.stream;
     if (!next) return;
     if (typeof next.viewer_count === 'number') setViewerCount(next.viewer_count);
     if (next.is_live === false) setLiveEnded(true);
+    if (typeof next.is_paused === 'boolean') setPaused(next.is_paused);
+    if (typeof next.paused_reason === 'string' || next.paused_reason === null) setPauseReason(next.paused_reason ?? null);
   }
 
   useEffect(() => {
@@ -930,6 +938,20 @@ export function LiveStreamRoom({
             ) : (
               <video ref={remoteVideoRef} autoPlay playsInline controls={false} className="aspect-video w-full object-cover" />
             )}
+
+            {paused && !liveEnded ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 p-6 text-center text-white">
+                <div className="rounded-full bg-red-600 px-3 py-1 text-xs font-bold tracking-wide">
+                  STREAM PAUSED
+                </div>
+                <p className="mt-3 text-sm text-white/90">
+                  This live stream was paused by an admin.
+                </p>
+                {pauseReason ? (
+                  <p className="mt-2 max-w-[520px] text-sm text-white/80">{pauseReason}</p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           {/* Live edge timeline (UI parity with regular player). */}

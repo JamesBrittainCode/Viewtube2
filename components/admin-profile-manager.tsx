@@ -136,6 +136,8 @@ type SiteAlertItem = {
   id: string;
   message: string;
   is_active: boolean;
+  expires_at?: string | null;
+  sound_enabled?: boolean;
   created_at: string;
 };
 
@@ -215,6 +217,8 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
   const [creatorPreview, setCreatorPreview] = useState<CreatorAccessPreview | null>(null);
   const [siteAlertMessage, setSiteAlertMessage] = useState('');
   const [siteAlertActive, setSiteAlertActive] = useState(true);
+  const [siteAlertDuration, setSiteAlertDuration] = useState(60);
+  const [siteAlertSound, setSiteAlertSound] = useState(true);
   const [siteAlerts, setSiteAlerts] = useState<SiteAlertItem[]>([]);
   const [siteAlertLoading, setSiteAlertLoading] = useState(false);
   const [siteAlertError, setSiteAlertError] = useState<string | null>(null);
@@ -435,6 +439,8 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
         body: JSON.stringify({
           message: siteAlertMessage,
           is_active: siteAlertActive,
+          duration_seconds: siteAlertDuration,
+          sound_enabled: siteAlertSound,
         }),
       });
       if (!res.ok) throw new Error(await parseApiError(res));
@@ -1202,6 +1208,27 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
               className="w-full rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-sm"
               required
             />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1 text-sm text-zinc-200">
+                <span className="block text-xs text-zinc-400">Auto-dismiss after (seconds)</span>
+                <input
+                  type="number"
+                  min={5}
+                  max={600}
+                  value={siteAlertDuration}
+                  onChange={(event) => setSiteAlertDuration(Number(event.target.value) || 60)}
+                  className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm text-zinc-200 sm:mt-6">
+                <input
+                  type="checkbox"
+                  checked={siteAlertSound}
+                  onChange={(event) => setSiteAlertSound(event.target.checked)}
+                />
+                Play sound
+              </label>
+            </div>
             <label className="flex items-center gap-2 text-sm text-zinc-200">
               <input
                 type="checkbox"
@@ -1236,6 +1263,11 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
                       <p className="text-sm text-zinc-200">{item.message}</p>
                       <p className="mt-1 text-xs text-zinc-500">{new Date(item.created_at).toLocaleString()}</p>
                       <p className="mt-1 text-xs text-zinc-500">Status: {item.is_active ? 'Active' : 'Inactive'}</p>
+                      {item.expires_at ? (
+                        <p className="mt-1 text-xs text-zinc-500">
+                          Expires: {new Date(item.expires_at).toLocaleString()}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="flex gap-2">
                       {item.is_active ? (

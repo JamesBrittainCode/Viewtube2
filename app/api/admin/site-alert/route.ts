@@ -17,7 +17,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('site_alerts')
-    .select('id,message,is_active,created_at')
+    .select('id,message,is_active,expires_at,sound_enabled,created_at')
     .order('created_at', { ascending: false })
     .limit(20);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -36,9 +36,15 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     message?: string;
     is_active?: boolean;
+    duration_seconds?: number;
+    sound_enabled?: boolean;
   };
   const message = String(body.message || '').trim().slice(0, 800);
   const isActive = body.is_active !== false;
+  const durationRaw = Number(body.duration_seconds);
+  const durationSeconds = Number.isFinite(durationRaw) ? Math.max(5, Math.min(600, Math.round(durationRaw))) : 60;
+  const expiresAt = new Date(Date.now() + durationSeconds * 1000).toISOString();
+  const soundEnabled = typeof body.sound_enabled === 'boolean' ? body.sound_enabled : true;
   if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 });
 
   const admin = createAdminClient();
@@ -47,8 +53,8 @@ export async function POST(request: Request) {
   }
   const { data, error } = await admin
     .from('site_alerts')
-    .insert({ message, is_active: isActive, created_by: user.id })
-    .select('id,message,is_active,created_at')
+    .insert({ message, is_active: isActive, created_by: user.id, expires_at: expiresAt, sound_enabled: soundEnabled })
+    .select('id,message,is_active,expires_at,sound_enabled,created_at')
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ alert: data });
@@ -66,10 +72,14 @@ export async function PATCH(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     id?: string;
     is_active?: boolean;
+    duration_seconds?: number;
   };
   const id = String(body.id || '').trim();
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
   const isActive = Boolean(body.is_active);
+  const durationRaw = Number(body.duration_seconds);
+  const durationSeconds = Number.isFinite(durationRaw) ? Math.max(5, Math.min(600, Math.round(durationRaw))) : null;
+  const expiresAt = durationSeconds ? new Date(Date.now() + durationSeconds * 1000).toISOString() : null;
 
   const admin = createAdminClient();
   if (isActive) {
@@ -77,11 +87,10 @@ export async function PATCH(request: Request) {
   }
   const { data, error } = await admin
     .from('site_alerts')
-    .update({ is_active: isActive })
+    .update({ is_active: isActive, ...(expiresAt ? { expires_at: expiresAt } : {}) })
     .eq('id', id)
-    .select('id,message,is_active,created_at')
+    .select('id,message,is_active,expires_at,sound_enabled,created_at')
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ alert: data });
 }
-

@@ -284,9 +284,16 @@ create table if not exists public.site_alerts (
   id uuid primary key default gen_random_uuid(),
   message text not null,
   is_active boolean not null default false,
+  expires_at timestamptz,
+  sound_enabled boolean not null default true,
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
+
+alter table public.site_alerts
+add column if not exists expires_at timestamptz;
+alter table public.site_alerts
+add column if not exists sound_enabled boolean not null default true;
 
 create table if not exists public.studio_feedback (
   id uuid primary key default gen_random_uuid(),
@@ -321,6 +328,10 @@ create table if not exists public.live_streams (
   -- `obs`: external RTMP ingest that produces HLS for playback.
   source text not null default 'webrtc',
   is_live boolean not null default true,
+  is_paused boolean not null default false,
+  paused_reason text,
+  paused_at timestamptz,
+  paused_by uuid references public.profiles(id) on delete set null,
   thumbnail_url text,
   -- For OBS/RTMP ingest, this is the RTMP "stream name" used to derive HLS playback.
   ingest_stream_name text,
@@ -331,6 +342,15 @@ create table if not exists public.live_streams (
   started_at timestamptz not null default now(),
   ended_at timestamptz
 );
+
+alter table public.live_streams
+add column if not exists is_paused boolean not null default false;
+alter table public.live_streams
+add column if not exists paused_reason text;
+alter table public.live_streams
+add column if not exists paused_at timestamptz;
+alter table public.live_streams
+add column if not exists paused_by uuid references public.profiles(id) on delete set null;
 
 -- OBS/RTMP stream keys (stored hashed; never store plaintext).
 create table if not exists public.live_stream_keys (
@@ -412,6 +432,7 @@ create index if not exists idx_moderation_events_user_id on public.moderation_ev
 create index if not exists idx_creator_spotlights_scheduled_for on public.creator_spotlights using btree(scheduled_for desc);
 create unique index if not exists idx_creator_spotlights_unique_slot on public.creator_spotlights(scheduled_for);
 create index if not exists idx_site_alerts_active_created on public.site_alerts using btree(is_active, created_at desc);
+create index if not exists idx_site_alerts_active_expires on public.site_alerts using btree(is_active, expires_at desc);
 create index if not exists idx_studio_feedback_user_created on public.studio_feedback using btree(user_id, created_at desc);
 create index if not exists idx_studio_feedback_status_created on public.studio_feedback using btree(status, created_at desc);
 create index if not exists idx_earn_applications_status_created on public.earn_applications using btree(status, created_at desc);
@@ -1226,7 +1247,14 @@ create policy "Stream owners can update own streams"
 on public.live_streams for update
 to authenticated
 using (user_id = (select auth.uid()))
-with check (user_id = (select auth.uid()));
+with check (
+  user_id = (select auth.uid())
+  -- Prevent creators from changing admin-controlled pause state.
+  and is_paused = (select s.is_paused from public.live_streams s where s.id = id)
+  and paused_reason is not distinct from (select s.paused_reason from public.live_streams s where s.id = id)
+  and paused_at is not distinct from (select s.paused_at from public.live_streams s where s.id = id)
+  and paused_by is not distinct from (select s.paused_by from public.live_streams s where s.id = id)
+);
 
 -- Stream keys: only the owner can manage/view their own key metadata (masked in UI).
 drop policy if exists "Users can manage own live stream key" on public.live_stream_keys;
@@ -1336,7 +1364,7 @@ with check (
 create policy "Active site alerts are viewable by everyone"
 on public.site_alerts for select
 to anon, authenticated
-using (is_active = true);
+using (is_active = true and (expires_at is null or expires_at > now()));
 
 -- Storage buckets
 insert into storage.buckets (id, name, public)
