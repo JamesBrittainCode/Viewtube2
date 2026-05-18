@@ -44,22 +44,51 @@ export function SitePopupModal({
   admin: { username: string; handle: string; avatar_url: string | null; verified: boolean } | null;
 }) {
   const [open, setOpen] = useState(true);
+  const [remainingNowMs, setRemainingNowMs] = useState<number | null>(null);
 
   const remainingMs = useMemo(() => {
     if (!expiresAt) return 60_000;
     const t = new Date(expiresAt).getTime();
     const now = Date.now();
     return Number.isFinite(t) ? Math.max(0, t - now) : 60_000;
-  }, [expiresAt, id]);
+  }, [expiresAt]);
+
+  const totalMs = useMemo(() => {
+    if (!expiresAt) return 60_000;
+    const t = new Date(expiresAt).getTime();
+    if (!Number.isFinite(t)) return 60_000;
+    const total = t - Date.now();
+    // If total is tiny/negative due to clock skew, fallback to remaining.
+    return Math.max(1_000, Math.max(total, remainingMs));
+  }, [expiresAt, remainingMs]);
 
   useEffect(() => {
     setOpen(true);
     if (soundEnabled) playPopupSound();
+    setRemainingNowMs(remainingMs);
     const t = window.setTimeout(() => setOpen(false), remainingMs);
     return () => window.clearTimeout(t);
   }, [id, remainingMs, soundEnabled]);
 
+  useEffect(() => {
+    if (!open) return;
+    setRemainingNowMs(remainingMs);
+    const interval = window.setInterval(() => {
+      setRemainingNowMs((prev) => {
+        const base = typeof prev === 'number' ? prev : remainingMs;
+        return Math.max(0, base - 100);
+      });
+    }, 100);
+    return () => window.clearInterval(interval);
+  }, [open, remainingMs]);
+
   if (!open) return null;
+
+  const progress = (() => {
+    const remaining = typeof remainingNowMs === 'number' ? remainingNowMs : remainingMs;
+    const ratio = 1 - Math.min(1, Math.max(0, remaining / totalMs));
+    return Math.round(ratio * 1000) / 1000;
+  })();
 
   return (
     <div
@@ -68,7 +97,7 @@ export function SitePopupModal({
       onClick={() => setOpen(false)}
     >
       <div
-        className="w-full max-w-[640px] rounded-2xl border border-zinc-200 bg-white shadow-xl shadow-black/10 ring-1 ring-black/5 dark:border-zinc-800 dark:bg-zinc-950 dark:ring-white/10 animate-in fade-in zoom-in-95 duration-200"
+        className="w-full max-w-[640px] overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl shadow-black/10 ring-1 ring-black/5 dark:border-zinc-800 dark:bg-zinc-950 dark:ring-white/10 animate-in fade-in zoom-in-95 duration-200"
         role="dialog"
         aria-modal="true"
         onClick={(event) => event.stopPropagation()}
@@ -108,6 +137,15 @@ export function SitePopupModal({
         </div>
         <div className="px-5 pb-5">
           <p className="whitespace-pre-wrap text-sm text-zinc-800 dark:text-zinc-100">{message}</p>
+        </div>
+        <div
+          className="h-1 w-full bg-zinc-100 dark:bg-zinc-900"
+          aria-hidden="true"
+        >
+          <div
+            className="h-full bg-red-600 transition-[width] duration-100 ease-linear"
+            style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
+          />
         </div>
       </div>
     </div>
