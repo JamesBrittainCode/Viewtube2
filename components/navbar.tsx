@@ -5,6 +5,7 @@ import { Logo } from '@/components/logo';
 import { NotificationMenu } from '@/components/notification-menu';
 import { ProfileMenu } from '@/components/profile-menu';
 import { SiteAlert } from '@/components/site-alert';
+import { SitePopup } from '@/components/site-popup';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { isAdminEmail } from '@/lib/admin';
 import { unwrapRelation } from '@/lib/profile';
@@ -78,6 +79,7 @@ export async function Navbar() {
   return (
     <>
       <SiteAlert />
+      <SitePopup />
       <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-2 px-3 sm:gap-4 sm:px-4 lg:px-6">
           <Logo />

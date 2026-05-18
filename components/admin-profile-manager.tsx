@@ -8,7 +8,7 @@ import { AD_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
 
-type AdminTab = 'subscribers' | 'verification' | 'suspension' | 'earn' | 'reported' | 'videos' | 'alert' | 'ads';
+type AdminTab = 'subscribers' | 'verification' | 'suspension' | 'earn' | 'reported' | 'videos' | 'alert' | 'popup' | 'ads';
 
 type AdItem = {
   id: string;
@@ -136,6 +136,13 @@ type SiteAlertItem = {
   id: string;
   message: string;
   is_active: boolean;
+  created_at: string;
+};
+
+type SitePopupItem = {
+  id: string;
+  message: string;
+  is_active: boolean;
   expires_at?: string | null;
   sound_enabled?: boolean;
   created_at: string;
@@ -217,12 +224,19 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
   const [creatorPreview, setCreatorPreview] = useState<CreatorAccessPreview | null>(null);
   const [siteAlertMessage, setSiteAlertMessage] = useState('');
   const [siteAlertActive, setSiteAlertActive] = useState(true);
-  const [siteAlertDuration, setSiteAlertDuration] = useState(60);
-  const [siteAlertSound, setSiteAlertSound] = useState(true);
   const [siteAlerts, setSiteAlerts] = useState<SiteAlertItem[]>([]);
   const [siteAlertLoading, setSiteAlertLoading] = useState(false);
   const [siteAlertError, setSiteAlertError] = useState<string | null>(null);
   const [siteAlertNotice, setSiteAlertNotice] = useState<string | null>(null);
+
+  const [sitePopupMessage, setSitePopupMessage] = useState('');
+  const [sitePopupActive, setSitePopupActive] = useState(true);
+  const [sitePopupDuration, setSitePopupDuration] = useState(60);
+  const [sitePopupSound, setSitePopupSound] = useState(true);
+  const [sitePopups, setSitePopups] = useState<SitePopupItem[]>([]);
+  const [sitePopupLoading, setSitePopupLoading] = useState(false);
+  const [sitePopupError, setSitePopupError] = useState<string | null>(null);
+  const [sitePopupNotice, setSitePopupNotice] = useState<string | null>(null);
   const [adVideoFile, setAdVideoFile] = useState<File | null>(null);
   const [adImageFile, setAdImageFile] = useState<File | null>(null);
   const [ads, setAds] = useState<AdItem[]>([]);
@@ -266,6 +280,7 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
             { id: 'reported', label: 'Reported' },
             { id: 'videos', label: 'Video Takedown' },
             { id: 'alert', label: 'Site Alert' },
+            { id: 'popup', label: 'Site Popup' },
             { id: 'ads', label: 'Ads' },
           ]
         : [
@@ -284,13 +299,14 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
       setVideoError(null);
       try {
         if (isAdmin) {
-          const [adsRes, submissionsRes, earnRes, reportsRes, videosRes, siteAlertRes] = await Promise.all([
+          const [adsRes, submissionsRes, earnRes, reportsRes, videosRes, siteAlertRes, sitePopupRes] = await Promise.all([
             fetch('/api/admin/ads', { cache: 'no-store' }),
             fetch('/api/admin/ad-submissions', { cache: 'no-store' }),
             fetch('/api/admin/earn-applications', { cache: 'no-store' }),
             fetch('/api/admin/video-reports', { cache: 'no-store' }),
             fetch('/api/admin/videos', { cache: 'no-store' }),
             fetch('/api/admin/site-alert', { cache: 'no-store' }),
+            fetch('/api/admin/site-popup', { cache: 'no-store' }),
           ]);
           if (!adsRes.ok) throw new Error(await parseApiError(adsRes));
           if (!submissionsRes.ok) throw new Error(await parseApiError(submissionsRes));
@@ -298,18 +314,21 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
           if (!reportsRes.ok) throw new Error(await parseApiError(reportsRes));
           if (!videosRes.ok) throw new Error(await parseApiError(videosRes));
           if (!siteAlertRes.ok) throw new Error(await parseApiError(siteAlertRes));
+          if (!sitePopupRes.ok) throw new Error(await parseApiError(sitePopupRes));
           const adsData = (await adsRes.json()) as { ads?: AdItem[] };
           const submissionsData = (await submissionsRes.json()) as { submissions?: AdSubmission[] };
           const earnData = (await earnRes.json()) as { applications?: EarnApplication[] };
           const reportData = (await reportsRes.json()) as { reports?: VideoReport[] };
           const videosData = (await videosRes.json()) as { videos?: AdminVideoItem[] };
           const siteAlertData = (await siteAlertRes.json()) as { alerts?: SiteAlertItem[] };
+          const sitePopupData = (await sitePopupRes.json()) as { popups?: SitePopupItem[] };
           setAds(adsData.ads || []);
           setSubmissions(submissionsData.submissions || []);
           setEarnApplications(earnData.applications || []);
           setReports(reportData.reports || []);
           setVideos(videosData.videos || []);
           setSiteAlerts(siteAlertData.alerts || []);
+          setSitePopups(sitePopupData.popups || []);
         } else {
           const [reportsRes, videosRes] = await Promise.all([
             fetch('/api/admin/video-reports', { cache: 'no-store' }),
@@ -439,8 +458,6 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
         body: JSON.stringify({
           message: siteAlertMessage,
           is_active: siteAlertActive,
-          duration_seconds: siteAlertDuration,
-          sound_enabled: siteAlertSound,
         }),
       });
       if (!res.ok) throw new Error(await parseApiError(res));
@@ -455,6 +472,65 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
       setSiteAlertError((err as Error).message);
     } finally {
       setSiteAlertLoading(false);
+    }
+  }
+
+  async function onPublishSitePopup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSitePopupLoading(true);
+    setSitePopupError(null);
+    setSitePopupNotice(null);
+    try {
+      const res = await fetch('/api/admin/site-popup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: sitePopupMessage,
+          is_active: sitePopupActive,
+          duration_seconds: sitePopupDuration,
+          sound_enabled: sitePopupSound,
+        }),
+      });
+      if (!res.ok) throw new Error(await parseApiError(res));
+      const data = (await res.json()) as { popup?: SitePopupItem };
+      if (data.popup) {
+        setSitePopups((prev) => [data.popup!, ...prev.map((row) => ({ ...row, is_active: false }))]);
+        setSitePopupMessage('');
+      }
+      setSitePopupNotice(sitePopupActive ? 'Popup published.' : 'Popup saved (inactive).');
+      router.refresh();
+    } catch (err) {
+      setSitePopupError((err as Error).message);
+    } finally {
+      setSitePopupLoading(false);
+    }
+  }
+
+  async function onToggleSitePopup(item: SitePopupItem, isActive: boolean) {
+    setSitePopupLoading(true);
+    setSitePopupError(null);
+    setSitePopupNotice(null);
+    try {
+      const res = await fetch('/api/admin/site-popup', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, is_active: isActive }),
+      });
+      if (!res.ok) throw new Error(await parseApiError(res));
+      const payload = (await res.json()) as { popup?: SitePopupItem };
+      if (payload.popup) {
+        setSitePopups((prev) =>
+          prev.map((row) =>
+            row.id === item.id ? payload.popup! : { ...row, is_active: isActive ? false : row.is_active },
+          ),
+        );
+      }
+      setSitePopupNotice(isActive ? 'Popup activated.' : 'Popup deactivated.');
+      router.refresh();
+    } catch (err) {
+      setSitePopupError((err as Error).message);
+    } finally {
+      setSitePopupLoading(false);
     }
   }
 
@@ -1208,27 +1284,6 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
               className="w-full rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-sm"
               required
             />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1 text-sm text-zinc-200">
-                <span className="block text-xs text-zinc-400">Auto-dismiss after (seconds)</span>
-                <input
-                  type="number"
-                  min={5}
-                  max={600}
-                  value={siteAlertDuration}
-                  onChange={(event) => setSiteAlertDuration(Number(event.target.value) || 60)}
-                  className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3"
-                />
-              </label>
-              <label className="flex items-center gap-2 text-sm text-zinc-200 sm:mt-6">
-                <input
-                  type="checkbox"
-                  checked={siteAlertSound}
-                  onChange={(event) => setSiteAlertSound(event.target.checked)}
-                />
-                Play sound
-              </label>
-            </div>
             <label className="flex items-center gap-2 text-sm text-zinc-200">
               <input
                 type="checkbox"
@@ -1263,11 +1318,6 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
                       <p className="text-sm text-zinc-200">{item.message}</p>
                       <p className="mt-1 text-xs text-zinc-500">{new Date(item.created_at).toLocaleString()}</p>
                       <p className="mt-1 text-xs text-zinc-500">Status: {item.is_active ? 'Active' : 'Inactive'}</p>
-                      {item.expires_at ? (
-                        <p className="mt-1 text-xs text-zinc-500">
-                          Expires: {new Date(item.expires_at).toLocaleString()}
-                        </p>
-                      ) : null}
                     </div>
                     <div className="flex gap-2">
                       {item.is_active ? (
@@ -1284,6 +1334,115 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
                           type="button"
                           disabled={siteAlertLoading}
                           onClick={() => void onToggleSiteAlert(item, true)}
+                          className="rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-500 disabled:opacity-60"
+                        >
+                          Activate
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'popup' && isAdmin && (
+        <div className="mt-5 space-y-4 rounded-xl border border-zinc-700 p-4">
+          <h3 className="text-sm font-semibold">Site Popup</h3>
+          <p className="text-xs text-zinc-500">
+            Shows a dismissible popup to everyone. It includes your admin profile (pfp, handle, verified badge) and auto-hides after the duration you set.
+          </p>
+
+          <form onSubmit={onPublishSitePopup} className="space-y-3">
+            <textarea
+              value={sitePopupMessage}
+              onChange={(event) => setSitePopupMessage(event.target.value)}
+              rows={4}
+              maxLength={800}
+              placeholder="Popup message"
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-sm"
+              required
+            />
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1 text-sm text-zinc-200">
+                <span className="block text-xs text-zinc-400">Auto-dismiss after (seconds)</span>
+                <input
+                  type="number"
+                  min={5}
+                  max={600}
+                  value={sitePopupDuration}
+                  onChange={(event) => setSitePopupDuration(Number(event.target.value) || 60)}
+                  className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm text-zinc-200 sm:mt-6">
+                <input
+                  type="checkbox"
+                  checked={sitePopupSound}
+                  onChange={(event) => setSitePopupSound(event.target.checked)}
+                />
+                Play sound
+              </label>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-zinc-200">
+              <input
+                type="checkbox"
+                checked={sitePopupActive}
+                onChange={(event) => setSitePopupActive(event.target.checked)}
+              />
+              Publish as active immediately
+            </label>
+
+            {sitePopupError ? <p className="text-sm text-red-400">{sitePopupError}</p> : null}
+            {sitePopupNotice ? <p className="text-sm text-green-400">{sitePopupNotice}</p> : null}
+
+            <button
+              type="submit"
+              disabled={sitePopupLoading}
+              className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-zinc-200 disabled:opacity-60"
+            >
+              {sitePopupLoading ? 'Saving…' : 'Publish Popup'}
+            </button>
+          </form>
+
+          <div className="rounded-xl border border-zinc-700 p-4">
+            <h4 className="text-sm font-semibold">Recent popups</h4>
+            {!sitePopups.length ? (
+              <p className="mt-2 text-sm text-zinc-400">No popups created yet.</p>
+            ) : null}
+            <div className="mt-3 space-y-2">
+              {sitePopups.map((item) => (
+                <div key={item.id} className="rounded-lg border border-zinc-700 p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm text-zinc-200">{item.message}</p>
+                      <p className="mt-1 text-xs text-zinc-500">{new Date(item.created_at).toLocaleString()}</p>
+                      <p className="mt-1 text-xs text-zinc-500">Status: {item.is_active ? 'Active' : 'Inactive'}</p>
+                      {item.expires_at ? (
+                        <p className="mt-1 text-xs text-zinc-500">
+                          Expires: {new Date(item.expires_at).toLocaleString()}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex gap-2">
+                      {item.is_active ? (
+                        <button
+                          type="button"
+                          disabled={sitePopupLoading}
+                          onClick={() => void onToggleSitePopup(item, false)}
+                          className="rounded-full border border-zinc-600 px-3 py-1 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 disabled:opacity-60"
+                        >
+                          Deactivate
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={sitePopupLoading}
+                          onClick={() => void onToggleSitePopup(item, true)}
                           className="rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-500 disabled:opacity-60"
                         >
                           Activate

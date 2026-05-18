@@ -295,6 +295,22 @@ add column if not exists expires_at timestamptz;
 alter table public.site_alerts
 add column if not exists sound_enabled boolean not null default true;
 
+-- Site-wide popups (distinct from the banner alerts)
+create table if not exists public.site_popups (
+  id uuid primary key default gen_random_uuid(),
+  message text not null,
+  is_active boolean not null default false,
+  expires_at timestamptz,
+  sound_enabled boolean not null default true,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.site_popups
+add column if not exists expires_at timestamptz;
+alter table public.site_popups
+add column if not exists sound_enabled boolean not null default true;
+
 create table if not exists public.studio_feedback (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -433,6 +449,8 @@ create index if not exists idx_creator_spotlights_scheduled_for on public.creato
 create unique index if not exists idx_creator_spotlights_unique_slot on public.creator_spotlights(scheduled_for);
 create index if not exists idx_site_alerts_active_created on public.site_alerts using btree(is_active, created_at desc);
 create index if not exists idx_site_alerts_active_expires on public.site_alerts using btree(is_active, expires_at desc);
+create index if not exists idx_site_popups_active_created on public.site_popups using btree(is_active, created_at desc);
+create index if not exists idx_site_popups_active_expires on public.site_popups using btree(is_active, expires_at desc);
 create index if not exists idx_studio_feedback_user_created on public.studio_feedback using btree(user_id, created_at desc);
 create index if not exists idx_studio_feedback_status_created on public.studio_feedback using btree(status, created_at desc);
 create index if not exists idx_earn_applications_status_created on public.earn_applications using btree(status, created_at desc);
@@ -847,6 +865,7 @@ alter table public.live_signals enable row level security;
 alter table public.live_chat_messages enable row level security;
 alter table public.live_stream_keys enable row level security;
 alter table public.live_stream_configs enable row level security;
+alter table public.site_popups enable row level security;
 
 -- profiles
 create policy "Profiles are viewable by everyone"
@@ -1363,6 +1382,11 @@ with check (
 
 create policy "Active site alerts are viewable by everyone"
 on public.site_alerts for select
+to anon, authenticated
+using (is_active = true and (expires_at is null or expires_at > now()));
+
+create policy "Active site popups are viewable by everyone"
+on public.site_popups for select
 to anon, authenticated
 using (is_active = true and (expires_at is null or expires_at > now()));
 

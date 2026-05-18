@@ -19,6 +19,7 @@ import {
 import { createClient } from '@/lib/supabase/server';
 import { isAdminEmail } from '@/lib/admin';
 import { SiteAlert } from '@/components/site-alert';
+import { SitePopup } from '@/components/site-popup';
 
 export const metadata = {
   robots: {
@@ -61,6 +62,7 @@ export default async function StudioLayout({ children }: { children: React.React
   return (
     <div className="min-h-screen bg-[#202124] text-zinc-100">
       <SiteAlert />
+      <SitePopup />
       <header className="sticky top-0 z-40 border-b border-zinc-800 bg-[#202124]/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-[1700px] items-center gap-4 px-4">
           <Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight sm:text-2xl">
