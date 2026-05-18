@@ -30,22 +30,22 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-  const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+  // Fallback client id is included so AdSense can verify ownership even before env vars are set.
+  // Override by setting NEXT_PUBLIC_ADSENSE_CLIENT_ID in Vercel.
+  const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-7440729603400218';
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider>
-          {adsenseClient ? (
-            <Script
-              id="adsense"
-              async
-              strategy="afterInteractive"
-              src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
-                adsenseClient,
-              )}`}
-              crossOrigin="anonymous"
-            />
-          ) : null}
+          <Script
+            id="adsense"
+            async
+            strategy="afterInteractive"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
+              adsenseClient,
+            )}`}
+            crossOrigin="anonymous"
+          />
           <JsonLd
             data={{
               '@context': 'https://schema.org',
