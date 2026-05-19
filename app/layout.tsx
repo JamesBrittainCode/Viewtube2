@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Script from 'next/script';
 import { AppShell } from '@/components/app-shell';
+import { AdblockGate } from '@/components/adblock-gate';
 import { Navbar } from '@/components/navbar';
 import { ThemeProvider } from '@/components/theme-provider';
 import { JsonLd } from '@/components/json-ld';
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider>
+          <AdblockGate />
           <Script
             id="adsense"
             async
