@@ -58,7 +58,7 @@ export function AdblockGate() {
   }, [adsenseClient]);
 
   const [checking, setChecking] = useState(enabled);
-  const [blocked, setBlocked] = useState(false);
+  const [blocked, setBlocked] = useState<boolean | null>(null);
 
   async function runCheck() {
     if (!enabled) return;
@@ -77,7 +77,8 @@ export function AdblockGate() {
   }, [enabled]);
 
   if (!enabled) return null;
-  if (!blocked && !checking) return null;
+  // Don't show anything unless we're confident an adblocker is active.
+  if (blocked !== true) return null;
 
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 px-4">
@@ -101,17 +102,8 @@ export function AdblockGate() {
           >
             {checking ? 'Checking…' : 'I disabled it'}
           </button>
-          <a
-            href="https://support.google.com/adsense/answer/9274015"
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900"
-          >
-            Learn more
-          </a>
         </div>
       </div>
     </div>
   );
 }
-
