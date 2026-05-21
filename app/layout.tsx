@@ -6,6 +6,7 @@ import { AdblockGate } from '@/components/adblock-gate';
 import { Navbar } from '@/components/navbar';
 import { ThemeProvider } from '@/components/theme-provider';
 import { JsonLd } from '@/components/json-ld';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }}
           />
           <AppShell navbar={<Navbar />}>{children}</AppShell>
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
