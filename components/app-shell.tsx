@@ -18,8 +18,14 @@ export function AppShell({
   const [collapsed, setCollapsed] = useState(false);
 
   const isStudio = pathname.startsWith('/studio') || pathname.startsWith('/admin');
+  const isAuthRoute =
+    pathname.startsWith('/sign-') ||
+    pathname.startsWith('/auth') ||
+    pathname === '/reset-password' ||
+    pathname === '/check-email' ||
+    pathname === '/email-confirmed';
 
-  if (isStudio) {
+  if (isStudio || isAuthRoute) {
     return <main className="min-h-screen bg-zinc-100 dark:bg-zinc-950">{children}</main>;
   }
 
