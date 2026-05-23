@@ -149,8 +149,6 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             <h1 className="mt-10 text-4xl font-extrabold leading-tight tracking-tight text-zinc-900 dark:text-white">
               {mode === 'sign-in' ? (
                 <>
-                  Holla,
-                  <br />
                   Welcome Back
                 </>
               ) : (
