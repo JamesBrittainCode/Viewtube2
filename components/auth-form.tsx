@@ -139,7 +139,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-100 px-4 py-10 dark:bg-zinc-950">
-      <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.12)] dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.12)] dark:border-zinc-800 dark:bg-zinc-950">
         <div className="grid md:grid-cols-2">
           <div className="p-8 md:p-12">
             <Link href="/" className="inline-flex items-center gap-2">
@@ -193,7 +193,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
                 type="email"
                 placeholder="Email address"
                 required
-                className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none ring-red-600/20 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-4 dark:border-zinc-800 dark:bg-zinc-950 dark:placeholder:text-zinc-600 dark:focus:border-zinc-700"
+                className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none ring-red-600/20 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-4 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-700"
               />
               <input
                 value={password}
@@ -202,7 +202,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
                 placeholder="Password"
                 required
                 minLength={6}
-                className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none ring-red-600/20 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-4 dark:border-zinc-800 dark:bg-zinc-950 dark:placeholder:text-zinc-600 dark:focus:border-zinc-700"
+                className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none ring-red-600/20 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-4 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-700"
               />
 
               {mode === 'sign-in' ? (
@@ -293,10 +293,10 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           </div>
 
           <div className="relative hidden md:block">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-fuchsia-500 to-indigo-500" />
-            <div className="absolute inset-0 opacity-20 [background:radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.9),transparent_45%),radial-gradient(circle_at_80%_60%,rgba(255,255,255,0.6),transparent_50%)]" />
+            <div className="absolute inset-0 bg-gradient-to-br from-red-600 via-rose-600 to-zinc-950" />
+            <div className="absolute inset-0 opacity-25 [background:radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.85),transparent_45%),radial-gradient(circle_at_80%_60%,rgba(255,255,255,0.55),transparent_50%)]" />
             <div className="relative h-full p-10">
-              <div className="relative h-full w-full overflow-hidden rounded-3xl bg-white/10 ring-1 ring-white/20">
+              <div className="relative h-full w-full overflow-hidden rounded-3xl bg-black/10 ring-1 ring-white/15">
                 <Image
                   src="/auth-phone.jpg"
                   alt="ViewTube on a phone"
@@ -305,7 +305,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
                   className="object-cover"
                   sizes="(min-width: 768px) 50vw, 0px"
                 />
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10" />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20" />
               </div>
             </div>
           </div>
