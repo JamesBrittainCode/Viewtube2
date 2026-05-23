@@ -26,6 +26,8 @@ export async function recordViewtubeActivity(
         advanced?: boolean;
         current_streak?: number;
         longest_streak?: number;
+        points_total?: number;
+        points_delta?: number;
         last_active_date?: string | null;
         champion_user_id?: string | null;
       };

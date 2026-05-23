@@ -11,6 +11,7 @@ type Row = {
   user_id: string;
   current_streak: number;
   longest_streak: number;
+  points: number;
   last_active_date: string | null;
   profiles?: {
     username?: string | null;
@@ -32,15 +33,16 @@ export default async function StreaksPage() {
     user
       ? supabase
           .from('viewtube_streaks')
-          .select('user_id,current_streak,longest_streak,last_active_date')
+          .select('user_id,current_streak,longest_streak,points,last_active_date')
           .eq('user_id', user.id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
     supabase
       .from('viewtube_streaks')
       .select(
-        'user_id,current_streak,longest_streak,last_active_date,profiles:profiles!viewtube_streaks_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)',
+        'user_id,current_streak,longest_streak,points,last_active_date,profiles:profiles!viewtube_streaks_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)',
       )
+      .order('points', { ascending: false })
       .order('current_streak', { ascending: false })
       .order('longest_streak', { ascending: false })
       .order('last_active_date', { ascending: false })
@@ -70,6 +72,12 @@ export default async function StreaksPage() {
               <div className="text-xs text-zinc-500 dark:text-zinc-400">Best</div>
               <div className="text-lg font-bold text-zinc-900 dark:text-white">
                 {myStreak?.longest_streak ?? 0} day{(myStreak?.longest_streak ?? 0) === 1 ? '' : 's'}
+              </div>
+            </div>
+            <div className="rounded-xl bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-800">
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">Points</div>
+              <div className="text-lg font-bold text-zinc-900 dark:text-white">
+                {myStreak?.points ?? 0}
               </div>
             </div>
             <div className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -132,8 +140,10 @@ export default async function StreaksPage() {
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-bold text-zinc-900 dark:text-white">{row.current_streak} days</div>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-400">best {row.longest_streak}</div>
+                    <div className="text-sm font-bold text-zinc-900 dark:text-white">{row.points} pts</div>
+                    <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {row.current_streak} day streak • best {row.longest_streak}
+                    </div>
                   </div>
                 </div>
               );
@@ -144,6 +154,14 @@ export default async function StreaksPage() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Prizes</h2>
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          Whoever is <span className="font-semibold">#1 on the leaderboard</span> by{' '}
+          <span className="font-semibold">July 1, 2026</span> wins a mystery prize bundle.
+        </p>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ create table if not exists public.viewtube_streaks (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   current_streak integer not null default 0 check (current_streak >= 0),
   longest_streak integer not null default 0 check (longest_streak >= 0),
+  points bigint not null default 0 check (points >= 0),
   last_active_date date,
   updated_at timestamptz not null default now()
 );
@@ -27,7 +28,7 @@ set streak_champion = true
 where id = (
   select s.user_id
   from public.viewtube_streaks s
-  order by s.current_streak desc, s.longest_streak desc, s.last_active_date desc nulls last, s.updated_at desc
+  order by s.points desc, s.current_streak desc, s.longest_streak desc, s.last_active_date desc nulls last, s.updated_at desc
   limit 1
 );
 
@@ -62,6 +63,7 @@ declare
   advanced boolean;
   champion_before uuid;
   champion_after uuid;
+  points_delta bigint;
 begin
   uid := auth.uid();
   if uid is null then
@@ -70,6 +72,16 @@ begin
 
   today_utc := (now() at time zone 'utc')::date;
 
+  points_delta := case coalesce(activity_type, '')
+    when 'upload_video' then 25
+    when 'go_live' then 20
+    when 'comment' then 8
+    when 'subscribe' then 6
+    when 'video_like' then 2
+    when 'comment_like' then 2
+    else 1
+  end;
+
   select last_active_date, current_streak
   into prev_last, prev_current
   from public.viewtube_streaks
@@ -77,8 +89,8 @@ begin
 
   advanced := coalesce(prev_last is distinct from today_utc, true);
 
-  insert into public.viewtube_streaks (user_id, current_streak, longest_streak, last_active_date, updated_at)
-  values (uid, 1, 1, today_utc, now())
+  insert into public.viewtube_streaks (user_id, current_streak, longest_streak, points, last_active_date, updated_at)
+  values (uid, 1, 1, points_delta, today_utc, now())
   on conflict (user_id) do update
   set
     current_streak = case
@@ -94,6 +106,7 @@ begin
         else 1
       end
     ),
+    points = public.viewtube_streaks.points + points_delta,
     last_active_date = greatest(coalesce(public.viewtube_streaks.last_active_date, date '1970-01-01'), today_utc),
     updated_at = now()
   returning * into updated;
@@ -107,7 +120,7 @@ begin
   select s.user_id
   into champion_after
   from public.viewtube_streaks s
-  order by s.current_streak desc, s.longest_streak desc, s.last_active_date desc nulls last, s.updated_at desc
+  order by s.points desc, s.current_streak desc, s.longest_streak desc, s.last_active_date desc nulls last, s.updated_at desc
   limit 1;
 
   if champion_after is not null and champion_before is distinct from champion_after then
@@ -121,6 +134,8 @@ begin
     'advanced', advanced,
     'current_streak', updated.current_streak,
     'longest_streak', updated.longest_streak,
+    'points_total', updated.points,
+    'points_delta', points_delta,
     'last_active_date', updated.last_active_date,
     'champion_user_id', champion_after
   );
