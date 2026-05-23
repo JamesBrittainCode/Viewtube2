@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { recordViewtubeActivity } from '@/lib/streaks';
 
 export const runtime = 'edge';
 
@@ -65,5 +66,6 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  await recordViewtubeActivity(supabase, 'go_live');
   return NextResponse.json({ stream: data });
 }

@@ -109,6 +109,17 @@ create table if not exists public.dislikes (
   unique (user_id, video_id)
 );
 
+create table if not exists public.viewtube_streaks (
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  current_streak integer not null default 0 check (current_streak >= 0),
+  longest_streak integer not null default 0 check (longest_streak >= 0),
+  last_active_date date,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_viewtube_streaks_current on public.viewtube_streaks using btree(current_streak);
+create index if not exists idx_viewtube_streaks_last_active on public.viewtube_streaks using btree(last_active_date);
+
 create table if not exists public.subscriptions (
   id uuid primary key default gen_random_uuid(),
   subscriber_id uuid not null references public.profiles(id) on delete cascade,
@@ -1062,6 +1073,62 @@ on public.dislikes for all
 to authenticated
 using ((select auth.uid()) = user_id)
 with check ((select auth.uid()) = user_id);
+
+alter table public.viewtube_streaks enable row level security;
+
+create policy "ViewTube streaks are viewable by everyone"
+on public.viewtube_streaks for select
+to anon, authenticated
+using (true);
+
+create policy "Users cannot directly modify viewtube streaks"
+on public.viewtube_streaks for all
+to authenticated
+using (false)
+with check (false);
+
+create or replace function public.record_viewtube_activity(activity_type text default null)
+returns public.viewtube_streaks
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid;
+  today_utc date;
+  updated public.viewtube_streaks;
+begin
+  uid := auth.uid();
+  if uid is null then
+    raise exception 'Unauthorized';
+  end if;
+
+  today_utc := (now() at time zone 'utc')::date;
+
+  insert into public.viewtube_streaks (user_id, current_streak, longest_streak, last_active_date, updated_at)
+  values (uid, 1, 1, today_utc, now())
+  on conflict (user_id) do update
+  set
+    current_streak = case
+      when public.viewtube_streaks.last_active_date = today_utc then public.viewtube_streaks.current_streak
+      when public.viewtube_streaks.last_active_date = (today_utc - 1) then public.viewtube_streaks.current_streak + 1
+      else 1
+    end,
+    longest_streak = greatest(
+      public.viewtube_streaks.longest_streak,
+      case
+        when public.viewtube_streaks.last_active_date = today_utc then public.viewtube_streaks.current_streak
+        when public.viewtube_streaks.last_active_date = (today_utc - 1) then public.viewtube_streaks.current_streak + 1
+        else 1
+      end
+    ),
+    last_active_date = greatest(coalesce(public.viewtube_streaks.last_active_date, date '1970-01-01'), today_utc),
+    updated_at = now()
+  returning * into updated;
+
+  return updated;
+end;
+$$;
 
 -- subscriptions
 create policy "Subscriptions are viewable by everyone"

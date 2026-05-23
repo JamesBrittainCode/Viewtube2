@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sendNotification } from '@/lib/notifications';
 import { createClient } from '@/lib/supabase/server';
+import { recordViewtubeActivity } from '@/lib/streaks';
 
 export const runtime = 'edge';
 
@@ -99,6 +100,8 @@ export async function POST(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+
+  await recordViewtubeActivity(supabase, 'comment');
 
   if (video.user_id !== user.id) {
     await sendNotification(supabase, {

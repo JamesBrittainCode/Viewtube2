@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { recordViewtubeActivity } from '@/lib/streaks';
 
 export const runtime = 'edge';
 
@@ -44,6 +45,10 @@ export async function POST(
   } else {
     await supabase.from('comment_likes').insert({ comment_id: commentId, user_id: user.id });
     liked = true;
+  }
+
+  if (liked) {
+    await recordViewtubeActivity(supabase, 'comment_like');
   }
 
   const { count } = await supabase

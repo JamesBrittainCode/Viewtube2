@@ -6,6 +6,7 @@ import { moderateUploadText } from '@/lib/moderation';
 import { sendNotification } from '@/lib/notifications';
 import { createClient } from '@/lib/supabase/server';
 import { getSupportEmail } from '@/lib/support';
+import { recordViewtubeActivity } from '@/lib/streaks';
 
 export const runtime = 'edge';
 
@@ -205,6 +206,8 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+
+  await recordViewtubeActivity(supabase, 'upload_video');
 
   return NextResponse.json({ id: data.id });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sendNotification } from '@/lib/notifications';
 import { createClient } from '@/lib/supabase/server';
+import { recordViewtubeActivity } from '@/lib/streaks';
 
 export const runtime = 'edge';
 
@@ -43,6 +44,8 @@ export async function POST(
       return NextResponse.json({ error: insertError.message }, { status: 400 });
     }
     subscribed = true;
+
+    await recordViewtubeActivity(supabase, 'subscribe');
 
     const { data: actorProfile } = await supabase
       .from('profiles')
