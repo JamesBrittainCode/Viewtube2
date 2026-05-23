@@ -71,7 +71,7 @@ export function HomeFeed({
           <div className="mx-auto max-w-[1200px]">
             <HomeContestBanner
               href="/streaks"
-              seconds={7}
+              seconds={20}
               onClosed={() => setShowContestBanner(false)}
             />
           </div>

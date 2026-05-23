@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'vtContestHomeBannerDismissed';
 
@@ -12,7 +12,7 @@ function emitAnnouncementShow() {
 }
 
 export function HomeContestBanner({
-  seconds = 7,
+  seconds = 20,
   href = '/streaks',
   onClosed,
 }: {
@@ -24,8 +24,6 @@ export function HomeContestBanner({
   const [progress, setProgress] = useState(0);
   const [closing, setClosing] = useState(false);
   const [closed, setClosed] = useState(false);
-
-  const segments = useMemo(() => 14, []);
 
   useEffect(() => {
     const dismissed = typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null;
@@ -79,21 +77,11 @@ export function HomeContestBanner({
       </Link>
 
       <div className="absolute inset-x-4 bottom-3">
-        <div className="flex items-center gap-1">
-          {Array.from({ length: segments }).map((_, idx) => {
-            const threshold = (idx + 1) / segments;
-            const on = progress >= threshold;
-            return (
-              <div
-                key={idx}
-                className={[
-                  'h-1 flex-1 rounded-full',
-                  on ? 'bg-white/90' : 'bg-white/35',
-                  'shadow-[0_1px_0_rgba(0,0,0,0.25)]',
-                ].join(' ')}
-              />
-            );
-          })}
+        <div className="h-1 w-full overflow-hidden rounded-full bg-white/30 shadow-[0_1px_0_rgba(0,0,0,0.25)]">
+          <div
+            className="h-full origin-left rounded-full bg-white/90"
+            style={{ transform: `scaleX(${progress})` }}
+          />
         </div>
       </div>
     </div>
