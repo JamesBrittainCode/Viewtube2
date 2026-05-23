@@ -289,13 +289,13 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             </p>
           </div>
 
-          <div className="relative hidden md:block">
+          <div className="relative hidden bg-zinc-100 md:block dark:bg-zinc-950">
             <Image
               src="/auth-phone.jpg"
               alt="ViewTube on a phone"
               fill
               priority
-              className="object-cover"
+              className="object-contain"
               sizes="(min-width: 768px) 50vw, 0px"
             />
           </div>
