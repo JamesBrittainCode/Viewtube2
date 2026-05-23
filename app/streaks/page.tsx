@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
+import { StreakEligibilityGate } from '@/components/streak-eligibility-gate';
 
 export const runtime = 'edge';
 
@@ -29,14 +31,46 @@ export default async function StreaksPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    redirect('/sign-in?redirect=/streaks');
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('age_confirmed_16')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!profile?.age_confirmed_16) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-6">
+        <StreakEligibilityGate />
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Prizes</h2>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            Whoever is <span className="font-semibold">#1 on the leaderboard</span> by{' '}
+            <span className="font-semibold">July 1, 2026</span> wins a mystery prize bundle.
+          </p>
+          <div className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+            <Link href="/streaks/rules" className="underline">
+              Rules
+            </Link>{' '}
+            •{' '}
+            <Link href="/streaks/terms" className="underline">
+              Terms & conditions
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const [{ data: myStreak }, { data: leaderboard }] = await Promise.all([
-    user
-      ? supabase
-          .from('viewtube_streaks')
-          .select('user_id,current_streak,longest_streak,points,last_active_date')
-          .eq('user_id', user.id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
+    supabase
+      .from('viewtube_streaks')
+      .select('user_id,current_streak,longest_streak,points,last_active_date')
+      .eq('user_id', user.id)
+      .maybeSingle(),
     supabase
       .from('viewtube_streaks')
       .select(
@@ -60,41 +94,40 @@ export default async function StreaksPage() {
           live).
         </p>
 
-        {user ? (
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <div className="rounded-xl bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-800">
-              <div className="text-xs text-zinc-500 dark:text-zinc-400">Current</div>
-              <div className="text-lg font-bold text-zinc-900 dark:text-white">
-                {myStreak?.current_streak ?? 0} day{(myStreak?.current_streak ?? 0) === 1 ? '' : 's'}
-              </div>
-            </div>
-            <div className="rounded-xl bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-800">
-              <div className="text-xs text-zinc-500 dark:text-zinc-400">Best</div>
-              <div className="text-lg font-bold text-zinc-900 dark:text-white">
-                {myStreak?.longest_streak ?? 0} day{(myStreak?.longest_streak ?? 0) === 1 ? '' : 's'}
-              </div>
-            </div>
-            <div className="rounded-xl bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-800">
-              <div className="text-xs text-zinc-500 dark:text-zinc-400">Points</div>
-              <div className="text-lg font-bold text-zinc-900 dark:text-white">
-                {myStreak?.points ?? 0}
-              </div>
-            </div>
-            <div className="text-xs text-zinc-500 dark:text-zinc-400">
-              Last active:{' '}
-              <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                {myStreak?.last_active_date ?? '—'}
-              </span>
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+          <Link href="/streaks/rules" className="underline">
+            Rules
+          </Link>
+          <span>•</span>
+          <Link href="/streaks/terms" className="underline">
+            Terms & conditions
+          </Link>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="rounded-xl bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-800">
+            <div className="text-xs text-zinc-500 dark:text-zinc-400">Current</div>
+            <div className="text-lg font-bold text-zinc-900 dark:text-white">
+              {myStreak?.current_streak ?? 0} day{(myStreak?.current_streak ?? 0) === 1 ? '' : 's'}
             </div>
           </div>
-        ) : (
-          <div className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-            <Link href="/sign-in" className="font-semibold text-zinc-900 underline dark:text-white">
-              Sign in
-            </Link>{' '}
-            to track your streak.
+          <div className="rounded-xl bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-800">
+            <div className="text-xs text-zinc-500 dark:text-zinc-400">Best</div>
+            <div className="text-lg font-bold text-zinc-900 dark:text-white">
+              {myStreak?.longest_streak ?? 0} day{(myStreak?.longest_streak ?? 0) === 1 ? '' : 's'}
+            </div>
           </div>
-        )}
+          <div className="rounded-xl bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-800">
+            <div className="text-xs text-zinc-500 dark:text-zinc-400">Points</div>
+            <div className="text-lg font-bold text-zinc-900 dark:text-white">{myStreak?.points ?? 0}</div>
+          </div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400">
+            Last active:{' '}
+            <span className="font-medium text-zinc-700 dark:text-zinc-300">
+              {myStreak?.last_active_date ?? '—'}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">

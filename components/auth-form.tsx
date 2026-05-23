@@ -6,7 +6,19 @@ import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
+function sanitizeRedirect(input?: string | null) {
+  if (!input) return '/';
+  if (!input.startsWith('/') || input.startsWith('//')) return '/';
+  return input;
+}
+
+export function AuthForm({
+  mode,
+  redirectTo,
+}: {
+  mode: 'sign-in' | 'sign-up';
+  redirectTo?: string;
+}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -17,6 +29,8 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [magicLoading, setMagicLoading] = useState(false);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const router = useRouter();
+  const nextPath = sanitizeRedirect(redirectTo);
+  const redirectQuery = nextPath && nextPath !== '/' ? `?redirect=${encodeURIComponent(nextPath)}` : '';
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -71,7 +85,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         }
       }
 
-      router.push('/');
+      router.push(nextPath);
       router.refresh();
     } catch (err) {
       setError((err as Error).message);
@@ -99,7 +113,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email: trimmed,
         options: {
-          emailRedirectTo: `${siteOrigin}/auth/callback?next=/`,
+          emailRedirectTo: `${siteOrigin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         },
       });
       if (otpError) throw otpError;
@@ -267,7 +281,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             <p className="mt-5 text-sm text-zinc-500 dark:text-zinc-400">
               {mode === 'sign-in' ? 'Don’t have an account?' : 'Already have an account?'}{' '}
               <Link
-                href={mode === 'sign-in' ? '/sign-up' : '/sign-in'}
+                href={mode === 'sign-in' ? `/sign-up${redirectQuery}` : `/sign-in${redirectQuery}`}
                 className="font-semibold text-zinc-900 hover:underline dark:text-white"
               >
                 {mode === 'sign-in' ? 'Sign Up' : 'Sign In'}
