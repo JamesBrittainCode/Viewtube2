@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { MobileBottomNav } from '@/components/mobile-bottom-nav';
+import { PointsCelebration } from '@/components/points-celebration';
 import { Sidebar } from '@/components/sidebar';
 import { SidebarProvider } from '@/components/sidebar-context';
 import { StreakCelebration } from '@/components/streak-celebration';
@@ -34,6 +35,7 @@ export function AppShell({
     <>
       <SidebarProvider value={{ collapsed, setCollapsed }}>
         <StreakCelebration />
+        <PointsCelebration />
         {navbar}
         <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
         <MobileBottomNav />

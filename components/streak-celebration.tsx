@@ -24,7 +24,7 @@ export function StreakCelebration() {
   const [days, setDays] = useState<number>(0);
   const [best, setBest] = useState<number>(0);
   const [pointsDelta, setPointsDelta] = useState<number>(0);
-  const [pointsTotal, setPointsTotal] = useState<number>(0);
+  const [pointsAnimated, setPointsAnimated] = useState<number>(0);
 
   const label = useMemo(() => getMilestoneLabel(days), [days]);
 
@@ -37,9 +37,24 @@ export function StreakCelebration() {
 
       setDays(nextDays);
       setBest(nextBest);
-      setPointsDelta(Number(detail.points_delta || 0));
-      setPointsTotal(Number(detail.points_total || 0));
+      const delta = Math.max(0, Number(detail.points_delta || 0));
+      const total = Math.max(0, Number(detail.points_total || 0));
+      setPointsDelta(delta);
+      setPointsAnimated(Math.max(0, total - delta));
       setOpen(true);
+
+      // Animate the points counter up to total.
+      const from = Math.max(0, total - delta);
+      const to = total;
+      const start = performance.now();
+      const ms = 900;
+      function tick(now: number) {
+        const t = Math.min(1, (now - start) / ms);
+        const eased = 1 - Math.pow(1 - t, 3);
+        setPointsAnimated(Math.round(from + (to - from) * eased));
+        if (t < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
     }
 
     window.addEventListener('viewtube-streak', onEvent);
@@ -68,7 +83,10 @@ export function StreakCelebration() {
                 <Flame className="h-8 w-8" />
               </div>
               <div>
-                <div className="text-lg font-bold text-zinc-900 dark:text-white">{label}</div>
+                <div className="text-lg font-bold text-zinc-900 dark:text-white">
+                  Congratulations!
+                </div>
+                <div className="mt-0.5 text-sm font-semibold text-zinc-900 dark:text-white">{label}</div>
                 <div className="text-sm text-zinc-500 dark:text-zinc-400">
                   Keep it going tomorrow to continue your streak.
                 </div>
@@ -106,7 +124,7 @@ export function StreakCelebration() {
                 +{Math.max(0, pointsDelta)}
               </div>
               <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                total {Math.max(0, pointsTotal)}
+                total <span className="font-semibold text-zinc-900 dark:text-white">{pointsAnimated}</span>
               </div>
             </div>
           </div>
