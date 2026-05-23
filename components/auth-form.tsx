@@ -140,7 +140,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-100 px-4 py-10 dark:bg-zinc-950">
       <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.12)] dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="grid md:grid-cols-2">
+        <div className="grid md:grid-cols-[1fr_560px]">
           <div className="p-8 md:p-12">
             <Link href="/" className="inline-flex items-center">
               <span className="text-sm font-semibold text-zinc-900 dark:text-white">ViewTube</span>
@@ -293,7 +293,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
               alt="ViewTube on a phone"
               fill
               priority
-              className="object-contain"
+              className="object-contain object-right"
               sizes="(min-width: 768px) 50vw, 0px"
             />
           </div>
