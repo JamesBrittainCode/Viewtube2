@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { formatCompactCount } from '@/lib/number';
+import { emitStreakEvent } from '@/lib/streak-events';
 
 type Props = {
   creatorId: string;
@@ -55,6 +56,7 @@ export function SubscribeButton({
       const data = await res.json();
       setSubscribed(data.subscribed);
       setCount(data.count);
+      if (data.subscribed) emitStreakEvent(data.streak);
     } finally {
       setLoading(false);
     }

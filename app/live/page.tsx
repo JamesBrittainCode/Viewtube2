@@ -9,7 +9,9 @@ export default async function LiveDirectoryPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from('live_streams')
-    .select('id,title,description,thumbnail_url,viewer_count,started_at,profiles:profiles!live_streams_user_id_fkey(username,handle,verified)')
+    .select(
+      'id,title,description,thumbnail_url,viewer_count,started_at,profiles:profiles!live_streams_user_id_fkey(username,handle,verified,top_streamer,streak_champion)',
+    )
     .eq('is_live', true)
     .order('started_at', { ascending: false })
     .limit(50);

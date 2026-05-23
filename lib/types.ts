@@ -7,6 +7,7 @@ export type Profile = {
   banner_url: string | null;
   verified: boolean;
   top_streamer?: boolean;
+  streak_champion?: boolean;
   can_stream_live?: boolean;
   can_moderate?: boolean;
   suspended?: boolean;
@@ -41,6 +42,9 @@ export type Comment = {
   likes_count?: number;
   liked_by_me?: boolean;
   created_at: string;
-  profile?: Pick<Profile, 'username' | 'handle' | 'avatar_url' | 'verified' | 'top_streamer'>;
+  profile?: Pick<
+    Profile,
+    'username' | 'handle' | 'avatar_url' | 'verified' | 'top_streamer' | 'streak_champion'
+  >;
   replies?: Comment[];
 };

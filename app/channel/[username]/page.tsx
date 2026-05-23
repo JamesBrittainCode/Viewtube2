@@ -6,6 +6,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { SubscribeButton } from '@/components/subscribe-button';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
+import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VideoGrid } from '@/components/video-grid';
 import { formatCompactCount } from '@/lib/number';
 import { createPublicClient } from '@/lib/supabase/public';
@@ -93,7 +94,7 @@ export default async function ChannelPage({
   const { data: videos } = await publicClient
     .from('videos')
     .select(
-      'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,top_streamer)'
+      'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)'
     )
     .eq('user_id', channel.id)
     .eq('is_removed', false)
@@ -164,6 +165,7 @@ export default async function ChannelPage({
           <div>
             <div className="flex items-center gap-1">
               <h1 className="text-2xl font-bold">{channel.username}</h1>
+              {channel.streak_champion ? <StreakFireBadge className="h-5 w-5" /> : null}
               {channel.verified && <VerifiedBadge className="h-5 w-5" />}
               {channel.top_streamer && <TopStreamerBadge className="h-5 w-5" />}
             </div>

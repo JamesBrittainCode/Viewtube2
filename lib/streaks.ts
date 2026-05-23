@@ -13,11 +13,20 @@ export async function recordViewtubeActivity(
   activityType: ViewtubeActivityType,
 ) {
   // Best-effort: if the database migration hasn't been applied yet, do not break the app.
-  const { error } = await supabase.rpc('record_viewtube_activity', {
+  const { data, error } = await supabase.rpc('record_viewtube_activity_v2', {
     activity_type: activityType,
   });
   if (error) {
     // Silently ignore. Once the SQL patch is applied, this starts working automatically.
+    return null;
   }
+  return data as
+    | null
+    | {
+        advanced?: boolean;
+        current_streak?: number;
+        longest_streak?: number;
+        last_active_date?: string | null;
+        champion_user_id?: string | null;
+      };
 }
-

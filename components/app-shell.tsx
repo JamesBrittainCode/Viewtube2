@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 import { Sidebar } from '@/components/sidebar';
 import { SidebarProvider } from '@/components/sidebar-context';
+import { StreakCelebration } from '@/components/streak-celebration';
 import { cn } from '@/lib/utils';
 
 export function AppShell({
@@ -32,6 +33,7 @@ export function AppShell({
   return (
     <>
       <SidebarProvider value={{ collapsed, setCollapsed }}>
+        <StreakCelebration />
         {navbar}
         <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
         <MobileBottomNav />

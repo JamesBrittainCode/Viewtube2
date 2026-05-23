@@ -32,6 +32,7 @@ export async function POST(
     .maybeSingle();
 
   let subscribed = false;
+  let streak: unknown = null;
 
   if (existing) {
     await supabase.from('subscriptions').delete().eq('id', existing.id);
@@ -45,7 +46,7 @@ export async function POST(
     }
     subscribed = true;
 
-    await recordViewtubeActivity(supabase, 'subscribe');
+    streak = await recordViewtubeActivity(supabase, 'subscribe');
 
     const { data: actorProfile } = await supabase
       .from('profiles')
@@ -71,5 +72,6 @@ export async function POST(
   return NextResponse.json({
     subscribed,
     count: profile?.subscribers_count || 0,
+    streak,
   });
 }

@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { unwrapRelation } from '@/lib/profile';
+import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { formatDuration } from '@/lib/format-duration';
@@ -21,6 +22,7 @@ type Props = {
           avatar_url?: string | null;
           verified?: boolean;
           top_streamer?: boolean;
+          streak_champion?: boolean;
         }
       | Array<{
           username?: string;
@@ -28,6 +30,7 @@ type Props = {
           avatar_url?: string | null;
           verified?: boolean;
           top_streamer?: boolean;
+          streak_champion?: boolean;
         }>;
   };
 };
@@ -75,6 +78,7 @@ export function VideoCard({ video }: Props) {
             <Link href={channelHref} className="hover:text-zinc-700 dark:hover:text-zinc-300">
               {profile?.username || 'Unknown channel'}
             </Link>
+            {profile?.streak_champion && <StreakFireBadge className="h-3.5 w-3.5" />}
             {profile?.verified && <VerifiedBadge className="h-3.5 w-3.5" />}
             {profile?.top_streamer && <TopStreamerBadge className="h-3.5 w-3.5" />}
           </div>

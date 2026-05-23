@@ -7,6 +7,7 @@ import { ProfileMenu } from '@/components/profile-menu';
 import { SiteAlert } from '@/components/site-alert';
 import { SitePopup } from '@/components/site-popup';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { StreakCounter } from '@/components/streak-counter';
 import { isAdminEmail } from '@/lib/admin';
 import { unwrapRelation } from '@/lib/profile';
 
@@ -76,6 +77,15 @@ export async function Navbar() {
     unreadCount = countRes.count || 0;
   }
 
+  const streakRes = user
+    ? await supabase
+        .from('viewtube_streaks')
+        .select('current_streak')
+        .eq('user_id', user.id)
+        .maybeSingle()
+    : null;
+  const currentStreak = user ? (streakRes?.data?.current_streak ?? 0) : 0;
+
   return (
     <>
       <SiteAlert />
@@ -95,6 +105,8 @@ export async function Navbar() {
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>
+
+          {user ? <StreakCounter initial={currentStreak} /> : null}
 
           <Link
             href="/advertise"

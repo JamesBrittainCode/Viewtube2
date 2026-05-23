@@ -37,14 +37,12 @@ export async function POST(
     liked = true;
   }
 
-  if (liked) {
-    await recordViewtubeActivity(supabase, 'video_like');
-  }
+  const streak = liked ? await recordViewtubeActivity(supabase, 'video_like') : null;
 
   const { count } = await supabase
     .from('likes')
     .select('*', { count: 'exact', head: true })
     .eq('video_id', id);
 
-  return NextResponse.json({ liked, count: count || 0 });
+  return NextResponse.json({ liked, count: count || 0, streak });
 }

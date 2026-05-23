@@ -8,6 +8,7 @@ import { LikeButton } from '@/components/like-button';
 import { SubscribeButton } from '@/components/subscribe-button';
 import { VideoGrid } from '@/components/video-grid';
 import { VideoPlayer } from '@/components/video-player';
+import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { SetSpotlightButton } from '@/components/set-spotlight-button';
@@ -152,12 +153,13 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-1">
-              <Link href={channelHref} className="font-semibold hover:underline">
-                {channelName}
-              </Link>
-              {channelProfile?.verified && <VerifiedBadge />}
-              {channelProfile?.top_streamer && <TopStreamerBadge />}
-            </div>
+            <Link href={channelHref} className="font-semibold hover:underline">
+              {channelName}
+            </Link>
+            {channelProfile?.streak_champion ? <StreakFireBadge className="h-4 w-4" /> : null}
+            {channelProfile?.verified && <VerifiedBadge />}
+            {channelProfile?.top_streamer && <TopStreamerBadge />}
+          </div>
             <p className="text-sm text-zinc-500">
               {video.views.toLocaleString()} views •{' '}
               {formatDistanceToNow(new Date(video.created_at), { addSuffix: true })}

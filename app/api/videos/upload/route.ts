@@ -207,7 +207,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  await recordViewtubeActivity(supabase, 'upload_video');
+  const streak = await recordViewtubeActivity(supabase, 'upload_video');
 
-  return NextResponse.json({ id: data.id });
+  return NextResponse.json({ id: data.id, streak });
 }

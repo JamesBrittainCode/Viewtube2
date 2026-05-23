@@ -8,7 +8,9 @@ export async function GET() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('live_streams')
-    .select('id,user_id,title,description,thumbnail_url,source,ingest_stream_name,is_live,viewer_count,started_at,profiles:profiles!live_streams_user_id_fkey(username,handle,avatar_url,verified,top_streamer)')
+    .select(
+      'id,user_id,title,description,thumbnail_url,source,ingest_stream_name,is_live,viewer_count,started_at,profiles:profiles!live_streams_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)',
+    )
     .eq('is_live', true)
     .order('started_at', { ascending: false })
     .limit(50);
@@ -66,6 +68,6 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  await recordViewtubeActivity(supabase, 'go_live');
-  return NextResponse.json({ stream: data });
+  const streak = await recordViewtubeActivity(supabase, 'go_live');
+  return NextResponse.json({ stream: data, streak });
 }

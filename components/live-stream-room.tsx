@@ -25,6 +25,7 @@ import { createClient } from '@/lib/supabase/client';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { LiveHlsPlayer } from '@/components/live-hls-player';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
+import { StreakFireBadge } from '@/components/streak-fire-badge';
 
 type ProfileLite = {
   username?: string | null;
@@ -32,6 +33,7 @@ type ProfileLite = {
   avatar_url?: string | null;
   verified?: boolean | null;
   top_streamer?: boolean | null;
+  streak_champion?: boolean | null;
 };
 
 type ChatMessage = {
@@ -50,12 +52,14 @@ type ChatMessage = {
     avatar_url?: string | null;
     verified?: boolean | null;
     top_streamer?: boolean | null;
+    streak_champion?: boolean | null;
   }[] | {
     username?: string | null;
     handle?: string | null;
     avatar_url?: string | null;
     verified?: boolean | null;
     top_streamer?: boolean | null;
+    streak_champion?: boolean | null;
   } | null;
 };
 
@@ -470,7 +474,7 @@ export function LiveStreamRoom({
     const { data, error } = await supabase
       .from('live_chat_messages')
       .select(
-        'id,stream_id,user_id,content,pinned,is_deleted,deleted_at,deleted_by,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified,top_streamer)',
+        'id,stream_id,user_id,content,pinned,is_deleted,deleted_at,deleted_by,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)',
       )
       .eq('stream_id', streamId)
       .gt('created_at', lastMessageAtRef.current)
@@ -1130,6 +1134,7 @@ export function LiveStreamRoom({
                       >
                         {name}
                       </Link>
+                      {profile?.streak_champion ? <StreakFireBadge className="h-4 w-4" /> : null}
                       {profile?.verified ? <VerifiedBadge className="h-4 w-4 text-zinc-500" /> : null}
                       {profile?.top_streamer ? <TopStreamerBadge className="h-4 w-4" /> : null}
                       {handle ? <span className="text-[11px] text-zinc-500">{handle}</span> : null}
@@ -1192,6 +1197,7 @@ export function LiveStreamRoom({
                     >
                       {name}
                     </Link>
+                    {profile?.streak_champion ? <StreakFireBadge className="h-4 w-4" /> : null}
                     {profile?.verified ? <VerifiedBadge className="h-4 w-4 text-zinc-500" /> : null}
                     {profile?.top_streamer ? <TopStreamerBadge className="h-4 w-4" /> : null}
                     {isHost ? (

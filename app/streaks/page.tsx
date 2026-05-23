@@ -18,6 +18,7 @@ type Row = {
     avatar_url?: string | null;
     verified?: boolean | null;
     top_streamer?: boolean | null;
+    streak_champion?: boolean | null;
   } | null;
 };
 
@@ -38,7 +39,7 @@ export default async function StreaksPage() {
     supabase
       .from('viewtube_streaks')
       .select(
-        'user_id,current_streak,longest_streak,last_active_date,profiles:profiles!viewtube_streaks_user_id_fkey(username,handle,avatar_url,verified,top_streamer)',
+        'user_id,current_streak,longest_streak,last_active_date,profiles:profiles!viewtube_streaks_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)',
       )
       .order('current_streak', { ascending: false })
       .order('longest_streak', { ascending: false })
@@ -97,7 +98,7 @@ export default async function StreaksPage() {
             rows.map((row, index) => {
               const profile = row.profiles || {};
               const handle = profile.handle || null;
-              const isChampion = index === 0;
+              const isChampion = Boolean(profile.streak_champion) || index === 0;
               return (
                 <div key={row.user_id} className="flex items-center gap-4 px-5 py-4">
                   <div className="w-8 text-center text-sm font-semibold text-zinc-500 dark:text-zinc-400">
@@ -147,4 +148,3 @@ export default async function StreaksPage() {
     </div>
   );
 }
-

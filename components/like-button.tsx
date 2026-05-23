@@ -2,6 +2,7 @@
 
 import { ThumbsUp } from 'lucide-react';
 import { useState } from 'react';
+import { emitStreakEvent } from '@/lib/streak-events';
 
 export function LikeButton({
   videoId,
@@ -25,6 +26,7 @@ export function LikeButton({
       const data = await res.json();
       setLiked(data.liked);
       setCount(data.count);
+      emitStreakEvent(data.streak);
     } finally {
       setLoading(false);
     }

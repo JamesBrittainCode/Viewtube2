@@ -6,6 +6,8 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageCircle, Pin, Reply, ThumbsUp, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { emitStreakEvent } from '@/lib/streak-events';
+import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import type { Comment } from '@/lib/types';
@@ -17,6 +19,7 @@ type FlatComment = Comment & {
     avatar_url: string | null;
     verified: boolean;
     top_streamer?: boolean;
+    streak_champion?: boolean;
   };
 };
 
@@ -33,6 +36,7 @@ function nestComments(comments: FlatComment[]): Comment[] {
         avatar_url: item.profiles?.avatar_url || null,
         verified: item.profiles?.verified || false,
         top_streamer: Boolean(item.profiles?.top_streamer),
+        streak_champion: Boolean(item.profiles?.streak_champion),
       },
       replies: [],
     });
@@ -101,6 +105,7 @@ function CommentItem({
               <Link href={`/channel/${item.profile?.handle || item.profile?.username}`} className="font-medium text-zinc-800 hover:underline dark:text-zinc-200">
                 @{item.profile?.username}
               </Link>
+              {item.profile?.streak_champion && <StreakFireBadge className="h-3.5 w-3.5" />}
               {item.profile?.verified && <VerifiedBadge className="h-3.5 w-3.5" />}
               {item.profile?.top_streamer && <TopStreamerBadge className="h-3.5 w-3.5" />}
             </span>{' '}
@@ -250,6 +255,8 @@ export function CommentSection({
     });
 
     if (res.ok) {
+      const data = (await res.json().catch(() => null)) as { streak?: unknown } | null;
+      emitStreakEvent(data?.streak);
       setValue('');
       await loadComments();
     }
@@ -279,7 +286,11 @@ export function CommentSection({
     const res = await fetch(`/api/videos/${videoId}/comments/${commentId}/like`, {
       method: 'POST',
     });
-    if (res.ok) await loadComments();
+    if (res.ok) {
+      const data = (await res.json().catch(() => null)) as { streak?: unknown } | null;
+      emitStreakEvent(data?.streak);
+      await loadComments();
+    }
   }
 
   const tree = useMemo(() => nestComments(comments), [comments]);

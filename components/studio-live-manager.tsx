@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { THUMBNAIL_BUCKET } from '@/lib/constants';
+import { emitStreakEvent } from '@/lib/streak-events';
 
 type LiveStream = {
   id: string;
@@ -182,8 +183,9 @@ export function StudioLiveManager({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description }),
       });
-      const data = (await res.json()) as { stream?: LiveStream; error?: string };
+      const data = (await res.json()) as { stream?: LiveStream; error?: string; streak?: unknown };
       if (!res.ok || !data.stream) throw new Error(data.error || 'Could not start stream.');
+      emitStreakEvent(data.streak);
 
       if (thumbnailFile) {
         await uploadStreamThumbnail(data.stream.id, thumbnailFile);

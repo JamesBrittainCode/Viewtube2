@@ -17,7 +17,9 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('comments')
-    .select('id,video_id,user_id,parent_id,content,pinned,created_at,profiles:profiles!comments_user_id_fkey(username,handle,avatar_url,verified,top_streamer)')
+    .select(
+      'id,video_id,user_id,parent_id,content,pinned,created_at,profiles:profiles!comments_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)',
+    )
     .eq('video_id', id)
     .order('pinned', { ascending: false })
     .order('created_at', { ascending: true });
@@ -101,7 +103,7 @@ export async function POST(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  await recordViewtubeActivity(supabase, 'comment');
+  const streak = await recordViewtubeActivity(supabase, 'comment');
 
   if (video.user_id !== user.id) {
     await sendNotification(supabase, {
@@ -113,7 +115,7 @@ export async function POST(
     });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, streak });
 }
 
 export async function PATCH(

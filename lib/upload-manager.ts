@@ -3,6 +3,7 @@
 import { THUMBNAIL_BUCKET, VIDEO_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
+import { emitStreakEvent } from '@/lib/streak-events';
 import { compressVideoIfNeeded } from '@/lib/video-compress';
 import { getVideoDurationSeconds } from '@/lib/video-metadata';
 
@@ -149,7 +150,7 @@ export async function startVideoUploadTask(input: {
     });
 
     const text = await res.text();
-    let payload: { id?: string; error?: string } = {};
+    let payload: { id?: string; error?: string; streak?: unknown } = {};
     try {
       payload = JSON.parse(text) as typeof payload;
     } catch {
@@ -158,6 +159,8 @@ export async function startVideoUploadTask(input: {
     if (!res.ok || !payload.id) {
       throw new Error(payload.error || 'Upload failed');
     }
+
+    emitStreakEvent(payload.streak);
 
     setState({ stage: 'done', overall: 1, detail: 'Done', videoId: payload.id, error: null });
   } catch (err) {

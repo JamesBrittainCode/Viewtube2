@@ -21,6 +21,7 @@ const baseVideoSelect = `
     avatar_url,
     verified,
     top_streamer,
+    streak_champion,
     subscribers_count
   )
 `;
