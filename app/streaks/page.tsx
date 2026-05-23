@@ -158,10 +158,21 @@ export default async function StreaksPage() {
 
       <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Prizes</h2>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-          Whoever is <span className="font-semibold">#1 on the leaderboard</span> by{' '}
-          <span className="font-semibold">July 1, 2026</span> wins a mystery prize bundle.
-        </p>
+        <div className="mt-3 grid gap-4 sm:grid-cols-[140px_1fr] sm:items-center">
+          <div className="relative mx-auto aspect-square w-32 overflow-hidden rounded-2xl bg-zinc-100 p-2 dark:bg-zinc-800 sm:mx-0">
+            <Image
+              src="/streak-mystery-box.png"
+              alt="Mystery prize bundle"
+              fill
+              className="object-contain"
+              sizes="128px"
+            />
+          </div>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Whoever is <span className="font-semibold">#1 on the leaderboard</span> by{' '}
+            <span className="font-semibold">July 1, 2026</span> wins a mystery prize bundle.
+          </p>
+        </div>
       </div>
     </div>
   );
