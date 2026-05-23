@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -10,6 +11,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [acceptedLegal, setAcceptedLegal] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [magicLoading, setMagicLoading] = useState(false);
@@ -136,131 +138,179 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   }
 
   return (
-    <div className="mx-auto mt-16 w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <h1 className="text-2xl font-bold">
-        {mode === 'sign-in' ? 'Sign in to ViewTube' : 'Create your ViewTube account'}
-      </h1>
+    <div className="flex min-h-screen items-center justify-center bg-zinc-100 px-4 py-10 dark:bg-zinc-950">
+      <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.12)] dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="grid md:grid-cols-2">
+          <div className="p-8 md:p-12">
+            <Link href="/" className="inline-flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-xl bg-red-600 text-sm font-extrabold text-white">
+                V
+              </span>
+              <span className="text-sm font-semibold text-zinc-900 dark:text-white">ViewTube</span>
+            </Link>
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
-        {mode === 'sign-up' && (
-          <div className="space-y-1">
-            <input
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              placeholder="Username"
-              required
-              minLength={3}
-              className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
-            />
-            <p className="text-xs text-zinc-500">
-              A unique handle is auto-generated from your username (you can edit it later).
+            <h1 className="mt-10 text-4xl font-extrabold leading-tight tracking-tight text-zinc-900 dark:text-white">
+              {mode === 'sign-in' ? (
+                <>
+                  Holla,
+                  <br />
+                  Welcome Back
+                </>
+              ) : (
+                <>
+                  Create your
+                  <br />
+                  account
+                </>
+              )}
+            </h1>
+            <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
+              {mode === 'sign-in'
+                ? 'Sign in to continue watching, uploading, and sharing videos.'
+                : 'Join ViewTube to subscribe, upload, and build your channel.'}
             </p>
-          </div>
-        )}
-        <input
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          type="email"
-          placeholder="Email"
-          required
-          className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
-        />
-        <input
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          type="password"
-          placeholder="Password"
-          required
-          minLength={6}
-          className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950"
-        />
-        {mode === 'sign-in' && (
-          <div className="flex items-center justify-between gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => void sendPasswordRecovery()}
-              disabled={recoveryLoading}
-              className="font-medium text-zinc-700 hover:underline disabled:opacity-60 dark:text-zinc-300"
-            >
-              {recoveryLoading ? 'Sending...' : 'Forgot password?'}
-            </button>
-            <button
-              type="button"
-              onClick={() => void sendMagicLink()}
-              disabled={magicLoading}
-              className="font-medium text-zinc-700 hover:underline disabled:opacity-60 dark:text-zinc-300"
-            >
-              {magicLoading ? 'Sending...' : 'Email me a magic link'}
-            </button>
-          </div>
-        )}
 
-        {mode === 'sign-up' && (
-          <label className="flex items-start gap-2 rounded-lg border border-zinc-200 p-3 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
-            <input
-              type="checkbox"
-              checked={acceptedLegal}
-              onChange={(event) => setAcceptedLegal(event.target.checked)}
-              className="mt-0.5 h-4 w-4"
-            />
-            <span>
-              I agree to the{' '}
-              <Link href="/terms" target="_blank" className="font-medium underline">
-                Terms & Conditions
+            <form onSubmit={onSubmit} className="mt-8 space-y-4">
+              {mode === 'sign-up' && (
+                <div className="space-y-1">
+                  <input
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    placeholder="Username"
+                    required
+                    minLength={3}
+                    className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none ring-red-600/20 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-4 dark:border-zinc-800 dark:bg-zinc-950 dark:placeholder:text-zinc-600 dark:focus:border-zinc-700"
+                  />
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    A unique handle is auto-generated from your username (you can edit it later).
+                  </p>
+                </div>
+              )}
+
+              <input
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                type="email"
+                placeholder="Email address"
+                required
+                className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none ring-red-600/20 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-4 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-700"
+              />
+              <input
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                type="password"
+                placeholder="Password"
+                required
+                minLength={6}
+                className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none ring-red-600/20 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-4 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-700"
+              />
+
+              {mode === 'sign-in' ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
+                  <label className="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-300">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(event) => setRememberMe(event.target.checked)}
+                      className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-600/20 dark:border-zinc-700"
+                    />
+                    <span>Remember me</span>
+                  </label>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => void sendPasswordRecovery()}
+                      disabled={recoveryLoading}
+                      className="font-medium text-zinc-700 hover:underline disabled:opacity-60 dark:text-zinc-300"
+                    >
+                      {recoveryLoading ? 'Sending...' : 'Forgot password?'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void sendMagicLink()}
+                      disabled={magicLoading}
+                      className="font-medium text-zinc-700 hover:underline disabled:opacity-60 dark:text-zinc-300"
+                    >
+                      {magicLoading ? 'Sending...' : 'Magic link'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label className="flex items-start gap-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={acceptedLegal}
+                    onChange={(event) => setAcceptedLegal(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-600/20 dark:border-zinc-700"
+                  />
+                  <span>
+                    I agree to the{' '}
+                    <Link href="/terms" target="_blank" className="font-medium underline">
+                      Terms & Conditions
+                    </Link>{' '}
+                    and{' '}
+                    <Link href="/privacy" target="_blank" className="font-medium underline">
+                      Privacy Policy
+                    </Link>
+                    .
+                  </span>
+                </label>
+              )}
+
+              {error && <p className="text-sm text-red-600">{error}</p>}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="h-11 w-full rounded-xl bg-red-600 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-70"
+              >
+                {loading ? 'Please wait...' : mode === 'sign-in' ? 'Sign In' : 'Sign Up'}
+              </button>
+            </form>
+
+            <p className="mt-5 text-sm text-zinc-500 dark:text-zinc-400">
+              {mode === 'sign-in' ? 'Don’t have an account?' : 'Already have an account?'}{' '}
+              <Link
+                href={mode === 'sign-in' ? '/sign-up' : '/sign-in'}
+                className="font-semibold text-zinc-900 hover:underline dark:text-white"
+              >
+                {mode === 'sign-in' ? 'Sign Up' : 'Sign In'}
+              </Link>
+            </p>
+
+            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
+              By continuing you agree to our{' '}
+              <Link href="/terms" className="underline">
+                Terms
               </Link>{' '}
               and{' '}
-              <Link href="/privacy" target="_blank" className="font-medium underline">
+              <Link href="/privacy" className="underline">
                 Privacy Policy
               </Link>
               .
-            </span>
-          </label>
-        )}
+            </p>
+          </div>
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="h-11 w-full rounded-xl bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-70 dark:bg-white dark:text-zinc-900"
-        >
-          {loading ? 'Please wait...' : mode === 'sign-in' ? 'Sign in' : 'Sign up'}
-        </button>
-      </form>
-
-      <button
-        type="button"
-        disabled
-        aria-disabled="true"
-        className="mt-3 flex h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-zinc-100 text-sm font-medium text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400"
-      >
-        <span>Continue with Google</span>
-        <span className="rounded-full border border-zinc-400 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:border-zinc-500 dark:text-zinc-300">
-          Deprecated
-        </span>
-      </button>
-
-      <p className="mt-4 text-sm text-zinc-500">
-        {mode === 'sign-in' ? 'No account yet?' : 'Already have an account?'}{' '}
-        <Link
-          href={mode === 'sign-in' ? '/sign-up' : '/sign-in'}
-          className="font-medium text-zinc-900 dark:text-zinc-100"
-        >
-          {mode === 'sign-in' ? 'Sign up' : 'Sign in'}
-        </Link>
-      </p>
-
-      <p className="mt-2 text-xs text-zinc-500">
-        ViewTube legal:{' '}
-        <Link href="/terms" className="underline">
-          Terms
-        </Link>{' '}
-        and{' '}
-        <Link href="/privacy" className="underline">
-          Privacy
-        </Link>
-        .
-      </p>
+          <div className="relative hidden md:block">
+            <div className="absolute inset-0 bg-gradient-to-br from-red-600 via-rose-600 to-zinc-950" />
+            <div className="absolute inset-0 opacity-25 [background:radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.85),transparent_45%),radial-gradient(circle_at_80%_60%,rgba(255,255,255,0.55),transparent_50%)]" />
+            <div className="relative h-full p-10">
+              <div className="relative h-full w-full overflow-hidden rounded-3xl bg-black/10 ring-1 ring-white/15">
+                <Image
+                  src="/auth-phone.jpg"
+                  alt="ViewTube on a phone"
+                  fill
+                  priority
+                  className="object-cover"
+                  sizes="(min-width: 768px) 50vw, 0px"
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
