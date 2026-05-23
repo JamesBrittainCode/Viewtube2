@@ -13,6 +13,12 @@ create table if not exists public.viewtube_streaks (
   updated_at timestamptz not null default now()
 );
 
+-- If the table already existed (from an earlier migration), ensure new columns are present.
+alter table public.viewtube_streaks
+add column if not exists points bigint;
+
+update public.viewtube_streaks set points = 0 where points is null;
+
 create index if not exists idx_viewtube_streaks_current on public.viewtube_streaks using btree(current_streak);
 create index if not exists idx_viewtube_streaks_last_active on public.viewtube_streaks using btree(last_active_date);
 
