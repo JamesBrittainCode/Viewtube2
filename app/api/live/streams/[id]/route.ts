@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { recordViewtubeActivity } from '@/lib/streaks';
 
 export const runtime = 'edge';
 
@@ -54,7 +55,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   const { data: stream, error: streamError } = await supabase
     .from('live_streams')
-    .select('id,user_id,is_live')
+    .select('id,user_id,is_live,started_at')
     .eq('id', id)
     .maybeSingle();
   if (streamError || !stream) {
@@ -94,7 +95,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       .eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     await supabase.from('live_stream_viewers').delete().eq('stream_id', id);
-    return NextResponse.json({ ok: true });
+    // Award go-live points only if the stream ran for at least 5 minutes.
+    let streak: unknown = null;
+    const startedAt = stream.started_at ? new Date(stream.started_at).getTime() : NaN;
+    const minutesLive = Number.isFinite(startedAt) ? (Date.now() - startedAt) / (1000 * 60) : 0;
+    if (Number.isFinite(minutesLive) && minutesLive >= 5) {
+      const { error: awardErr } = await supabase.from('viewtube_activity_awards').insert({
+        user_id: user.id,
+        activity_type: 'go_live',
+        target_id: id,
+      });
+      const pointsOk = !awardErr;
+      streak = await recordViewtubeActivity(supabase, 'go_live', { targetId: id, pointsOk });
+    }
+    return NextResponse.json({ ok: true, streak });
   }
 
   if (action === 'settings') {

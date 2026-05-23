@@ -11,10 +11,13 @@ export type ViewtubeActivityType =
 export async function recordViewtubeActivity(
   supabase: SupabaseClient,
   activityType: ViewtubeActivityType,
+  opts?: { targetId?: string; pointsOk?: boolean },
 ) {
   // Best-effort: if the database migration hasn't been applied yet, do not break the app.
   const { data, error } = await supabase.rpc('record_viewtube_activity_v2', {
     activity_type: activityType,
+    target_id: opts?.targetId ?? null,
+    points_ok: opts?.pointsOk ?? true,
   });
   if (error) {
     // Silently ignore. Once the SQL patch is applied, this starts working automatically.

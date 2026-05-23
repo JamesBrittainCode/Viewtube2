@@ -46,7 +46,14 @@ export async function POST(
     }
     subscribed = true;
 
-    streak = await recordViewtubeActivity(supabase, 'subscribe');
+    // Award points only once per user+creator.
+    const { error: awardErr } = await supabase.from('viewtube_activity_awards').insert({
+      user_id: user.id,
+      activity_type: 'subscribe',
+      target_id: creatorId,
+    });
+    const pointsOk = !awardErr;
+    streak = await recordViewtubeActivity(supabase, 'subscribe', { targetId: creatorId, pointsOk });
 
     const { data: actorProfile } = await supabase
       .from('profiles')

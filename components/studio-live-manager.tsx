@@ -217,8 +217,9 @@ export function StudioLiveManager({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'end', title, description }),
       });
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as { error?: string; streak?: unknown };
       if (!res.ok) throw new Error(data.error || 'Could not end stream.');
+      emitStreakEvent(data.streak);
       router.refresh();
     } catch (err) {
       setError((err as Error).message);

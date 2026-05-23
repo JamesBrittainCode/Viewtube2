@@ -22,6 +22,34 @@ update public.viewtube_streaks set points = 0 where points is null;
 create index if not exists idx_viewtube_streaks_current on public.viewtube_streaks using btree(current_streak);
 create index if not exists idx_viewtube_streaks_last_active on public.viewtube_streaks using btree(last_active_date);
 
+-- Tracks whether a user has already earned points for a specific toggle-able interaction,
+-- preventing point farming by like/unlike/like loops.
+create table if not exists public.viewtube_activity_awards (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  activity_type text not null,
+  target_id text not null,
+  created_at timestamptz not null default now(),
+  unique (user_id, activity_type, target_id)
+);
+
+create index if not exists idx_viewtube_activity_awards_user on public.viewtube_activity_awards using btree(user_id);
+
+alter table public.viewtube_activity_awards enable row level security;
+
+drop policy if exists "ViewTube activity awards are viewable by everyone" on public.viewtube_activity_awards;
+create policy "ViewTube activity awards are viewable by everyone"
+on public.viewtube_activity_awards
+for select
+using (true);
+
+drop policy if exists "Users cannot directly modify viewtube activity awards" on public.viewtube_activity_awards;
+create policy "Users cannot directly modify viewtube activity awards"
+on public.viewtube_activity_awards
+for all
+using (false)
+with check (false);
+
 alter table public.profiles
 add column if not exists streak_champion boolean not null default false;
 
@@ -54,7 +82,11 @@ for all
 using (false)
 with check (false);
 
-create or replace function public.record_viewtube_activity_v2(activity_type text default null)
+create or replace function public.record_viewtube_activity_v2(
+  activity_type text default null,
+  target_id text default null,
+  points_ok boolean default true
+)
 returns jsonb
 language plpgsql
 security definer
@@ -87,6 +119,10 @@ begin
     when 'comment_like' then 2
     else 1
   end;
+
+  if points_ok is not true then
+    points_delta := 0;
+  end if;
 
   select last_active_date, current_streak
   into prev_last, prev_current
@@ -160,7 +196,7 @@ declare
   uid uuid;
   row public.viewtube_streaks;
 begin
-  payload := public.record_viewtube_activity_v2(activity_type);
+  payload := public.record_viewtube_activity_v2(activity_type, null, true);
   uid := auth.uid();
   select * into row from public.viewtube_streaks where user_id = uid;
   return row;

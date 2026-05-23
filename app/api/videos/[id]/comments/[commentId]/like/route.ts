@@ -47,7 +47,16 @@ export async function POST(
     liked = true;
   }
 
-  const streak = liked ? await recordViewtubeActivity(supabase, 'comment_like') : null;
+  let streak: unknown = null;
+  if (liked) {
+    const { error: awardErr } = await supabase.from('viewtube_activity_awards').insert({
+      user_id: user.id,
+      activity_type: 'comment_like',
+      target_id: commentId,
+    });
+    const pointsOk = !awardErr;
+    streak = await recordViewtubeActivity(supabase, 'comment_like', { targetId: commentId, pointsOk });
+  }
 
   const { count } = await supabase
     .from('comment_likes')

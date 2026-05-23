@@ -27,6 +27,7 @@ export async function POST(
     .maybeSingle();
 
   let liked = false;
+  let streak: unknown = null;
 
   if (existing) {
     await supabase.from('likes').delete().eq('id', existing.id);
@@ -37,7 +38,16 @@ export async function POST(
     liked = true;
   }
 
-  const streak = liked ? await recordViewtubeActivity(supabase, 'video_like') : null;
+  if (liked) {
+    // Award points only once per user+video (prevents like/unlike/like farming).
+    const { error: awardErr } = await supabase.from('viewtube_activity_awards').insert({
+      user_id: user.id,
+      activity_type: 'video_like',
+      target_id: id,
+    });
+    const pointsOk = !awardErr;
+    streak = await recordViewtubeActivity(supabase, 'video_like', { targetId: id, pointsOk });
+  }
 
   const { count } = await supabase
     .from('likes')

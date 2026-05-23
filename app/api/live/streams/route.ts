@@ -68,6 +68,7 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  const streak = await recordViewtubeActivity(supabase, 'go_live');
+  // Only award go-live points after the stream has been live for at least 5 minutes (enforced on end).
+  const streak = await recordViewtubeActivity(supabase, 'go_live', { targetId: data.id, pointsOk: false });
   return NextResponse.json({ stream: data, streak });
 }
