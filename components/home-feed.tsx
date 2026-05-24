@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { VideoGrid } from '@/components/video-grid';
 import { Spinner } from '@/components/spinner';
 import { AdsenseSlot } from '@/components/adsense-slot';
@@ -12,8 +12,6 @@ type FeedPayload = {
   error?: string;
 };
 
-const CONTEST_BANNER_STORAGE_KEY = 'vtContestHomeBannerDismissed';
-
 export function HomeFeed({
   initialVideos,
   initialHasMore,
@@ -22,17 +20,12 @@ export function HomeFeed({
   initialHasMore: boolean;
 }) {
   const homeAdSlot = process.env.NEXT_PUBLIC_ADSENSE_HOME_SLOT;
-  const [showContestBanner, setShowContestBanner] = useState<boolean | null>(null);
+  const [showContestBanner, setShowContestBanner] = useState(true);
   const [videos, setVideos] = useState(initialVideos);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const dismissed = window.localStorage.getItem(CONTEST_BANNER_STORAGE_KEY) === '1';
-    setShowContestBanner(!dismissed);
-  }, []);
 
   async function loadMore() {
     if (loading || !hasMore) return;
@@ -66,7 +59,7 @@ export function HomeFeed({
 
   return (
     <section>
-      {showContestBanner === null ? null : showContestBanner ? (
+      {showContestBanner ? (
         <div className="mb-4">
           <div className="mx-auto max-w-[1200px]">
             <HomeContestBanner

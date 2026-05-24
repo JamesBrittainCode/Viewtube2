@@ -4,8 +4,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'vtContestHomeBannerDismissed';
-
 function emitAnnouncementShow() {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new Event('vt-contest-announcement-show'));
@@ -26,12 +24,6 @@ export function HomeContestBanner({
   const [closed, setClosed] = useState(false);
 
   useEffect(() => {
-    const dismissed = typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null;
-    if (dismissed === '1') {
-      setClosed(true);
-      return;
-    }
-
     let raf = 0;
     const start = performance.now();
 
@@ -43,7 +35,6 @@ export function HomeContestBanner({
         setClosing(true);
         emitAnnouncementShow();
         window.setTimeout(() => {
-          window.localStorage.setItem(STORAGE_KEY, '1');
           setClosed(true);
           onClosed?.();
         }, 420);
