@@ -5,6 +5,7 @@ import { VideoGrid } from '@/components/video-grid';
 import { Spinner } from '@/components/spinner';
 import { AdsenseSlot } from '@/components/adsense-slot';
 import { HomeContestBanner } from '@/components/home-contest-banner';
+import { ShortsShelf } from '@/components/shorts-shelf';
 
 type FeedPayload = {
   videos: Array<Record<string, unknown>>;
@@ -15,9 +16,11 @@ type FeedPayload = {
 export function HomeFeed({
   initialVideos,
   initialHasMore,
+  initialShorts,
 }: {
   initialVideos: Array<Record<string, unknown>>;
   initialHasMore: boolean;
+  initialShorts: Array<Record<string, unknown>>;
 }) {
   const homeAdSlot = process.env.NEXT_PUBLIC_ADSENSE_HOME_SLOT;
   const [showContestBanner, setShowContestBanner] = useState(true);
@@ -79,7 +82,9 @@ export function HomeFeed({
         </div>
       ) : null}
 
-      <VideoGrid videos={videos as never[]} />
+      <VideoGrid videos={(videos.slice(0, 8) as never[])} />
+      <ShortsShelf shorts={initialShorts as never[]} />
+      {videos.length > 8 ? <VideoGrid videos={(videos.slice(8) as never[])} /> : null}
 
       <div className="mt-8 flex flex-col items-center justify-center gap-3">
         {error ? <p className="text-sm text-red-500">{error}</p> : null}

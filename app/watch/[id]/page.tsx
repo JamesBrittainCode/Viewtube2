@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { CommentSection } from '@/components/comment-section';
 import { DislikeButton } from '@/components/dislike-button';
@@ -57,6 +57,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
   const video = await getVideoById(id);
 
   if (!video) notFound();
+  if (video.is_short) redirect(`/shorts/${id}`);
 
   const recommendations = await getRecommendations(video.id, video.tags || []);
 

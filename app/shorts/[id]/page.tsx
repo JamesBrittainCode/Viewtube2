@@ -1,11 +1,16 @@
 import { notFound } from 'next/navigation';
 import { createPublicClient } from '@/lib/supabase/public';
 import { ShortsFeed } from '@/components/shorts-feed';
+import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
 
 export default async function ShortPermalinkPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const supabaseAuthed = await createClient();
+  const {
+    data: { user },
+  } = await supabaseAuthed.auth.getUser();
   const supabase = createPublicClient();
 
   const { data: current } = await supabase
@@ -13,8 +18,10 @@ export default async function ShortPermalinkPage({ params }: { params: Promise<{
     .select(
       `
         id,
+        user_id,
         title,
         video_url,
+        comments_enabled,
         is_short,
         created_at,
         profiles:profiles!videos_user_id_fkey ( username, handle )
@@ -31,8 +38,10 @@ export default async function ShortPermalinkPage({ params }: { params: Promise<{
     .select(
       `
         id,
+        user_id,
         title,
         video_url,
+        comments_enabled,
         is_short,
         created_at,
         profiles:profiles!videos_user_id_fkey ( username, handle )
@@ -45,6 +54,5 @@ export default async function ShortPermalinkPage({ params }: { params: Promise<{
 
   const list = [current, ...(more || []).filter((v) => v.id !== current.id)];
 
-  return <ShortsFeed initialShorts={list as never[]} />;
+  return <ShortsFeed initialShorts={list as never[]} currentUserId={user?.id || null} />;
 }
-

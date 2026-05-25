@@ -1,4 +1,4 @@
-import { getHomeVideos, getPersonalizedHomeVideos } from '@/lib/data';
+import { getHomeVideos, getPersonalizedHomeVideos, getShortsVideos } from '@/lib/data';
 import { HomeFeed } from '@/components/home-feed';
 import { createClient } from '@/lib/supabase/server';
 
@@ -17,9 +17,10 @@ export default async function Home({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { videos, hasMore } = user?.id
-    ? await getPersonalizedHomeVideos(page, user.id)
-    : await getHomeVideos(page);
+  const [{ videos, hasMore }, { videos: shorts }] = await Promise.all([
+    user?.id ? getPersonalizedHomeVideos(page, user.id) : getHomeVideos(page),
+    getShortsVideos(1),
+  ]);
 
-  return <HomeFeed initialVideos={videos as never[]} initialHasMore={hasMore} />;
+  return <HomeFeed initialVideos={videos as never[]} initialHasMore={hasMore} initialShorts={shorts.slice(0, 12) as never[]} />;
 }
