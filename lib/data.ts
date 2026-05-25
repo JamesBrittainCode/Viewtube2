@@ -11,6 +11,9 @@ const baseVideoSelect = `
   thumbnail_url,
   video_url,
   duration_seconds,
+  is_short,
+  video_width,
+  video_height,
   tags,
   views,
   created_at,
@@ -36,6 +39,7 @@ export const getHomeVideos = unstable_cache(
       .from('videos')
       .select(baseVideoSelect, { count: 'exact' })
       .eq('is_removed', false)
+      .eq('is_short', false)
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -136,6 +140,7 @@ export async function getPersonalizedHomeVideos(page: number, userId: string) {
           .select(baseVideoSelect)
           .in('user_id', Array.from(subscribedCreatorIds))
           .eq('is_removed', false)
+          .eq('is_short', false)
           .order('created_at', { ascending: false })
           .limit(250)
       : Promise.resolve({ data: [], error: null }),
@@ -145,6 +150,7 @@ export async function getPersonalizedHomeVideos(page: number, userId: string) {
           .select(baseVideoSelect)
           .overlaps('tags', topTags)
           .eq('is_removed', false)
+          .eq('is_short', false)
           .order('views', { ascending: false })
           .limit(300)
       : Promise.resolve({ data: [], error: null }),
@@ -152,6 +158,7 @@ export async function getPersonalizedHomeVideos(page: number, userId: string) {
       .from('videos')
       .select(baseVideoSelect)
       .eq('is_removed', false)
+      .eq('is_short', false)
       .order('views', { ascending: false })
       .limit(200),
   ]);
@@ -225,6 +232,7 @@ export async function getTrendingVideos() {
     .from('videos')
     .select(baseVideoSelect)
     .eq('is_removed', false)
+    .eq('is_short', false)
     .gte('created_at', since)
     .order('views', { ascending: false })
     .limit(24);
@@ -232,3 +240,28 @@ export async function getTrendingVideos() {
   if (error) throw error;
   return data ?? [];
 }
+
+export const getShortsVideos = unstable_cache(
+  async (page: number) => {
+    const supabase = createPublicClient();
+    const from = (page - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    const { data, error, count } = await supabase
+      .from('videos')
+      .select(baseVideoSelect, { count: 'exact' })
+      .eq('is_removed', false)
+      .eq('is_short', true)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+
+    return {
+      videos: data ?? [],
+      hasMore: (count ?? 0) > page * PAGE_SIZE,
+    };
+  },
+  ['shorts-videos'],
+  { revalidate: 30 },
+);

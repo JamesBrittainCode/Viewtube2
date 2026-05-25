@@ -13,6 +13,7 @@ type Props = {
     title: string;
     thumbnail_url: string | null;
     duration_seconds?: number | null;
+    is_short?: boolean | null;
     views: number;
     created_at: string;
     profiles?:
@@ -41,11 +42,18 @@ export function VideoCard({ video }: Props) {
   });
   const profile = unwrapRelation(video.profiles);
   const channelHref = profile?.handle ? `/channel/${profile.handle}` : '/';
+  const isShort = Boolean(video.is_short);
+  const videoHref = isShort ? `/shorts/${video.id}` : `/watch/${video.id}`;
 
   return (
     <article className="group">
-      <Link href={`/watch/${video.id}`}>
-        <div className="relative aspect-video overflow-hidden rounded-xl bg-zinc-200 dark:bg-zinc-800">
+      <Link href={videoHref}>
+        <div
+          className={[
+            'relative overflow-hidden rounded-xl bg-zinc-200 dark:bg-zinc-800',
+            isShort ? 'aspect-[9/16]' : 'aspect-video',
+          ].join(' ')}
+        >
           <Image
             src={video.thumbnail_url || '/thumbnail-placeholder.svg'}
             alt={video.title}
@@ -53,6 +61,11 @@ export function VideoCard({ video }: Props) {
             className="object-cover transition duration-300 group-hover:scale-[1.02]"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
+          {isShort ? (
+            <span className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-1 text-[11px] font-semibold leading-none text-white">
+              Short
+            </span>
+          ) : null}
           {video.duration_seconds && video.duration_seconds > 0 && (
             <span className="absolute bottom-2 right-2 rounded-md bg-black/80 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">
               {formatDuration(video.duration_seconds)}
@@ -71,7 +84,7 @@ export function VideoCard({ video }: Props) {
         />
 
         <div className="min-w-0">
-          <Link href={`/watch/${video.id}`} className="line-clamp-2 text-sm font-semibold">
+          <Link href={videoHref} className="line-clamp-2 text-sm font-semibold">
             {video.title}
           </Link>
           <div className="mt-1 flex items-center gap-1 text-xs text-zinc-500">

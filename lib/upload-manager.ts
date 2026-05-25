@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
 import { emitStreakEvent } from '@/lib/streak-events';
 import { compressVideoIfNeeded } from '@/lib/video-compress';
-import { getVideoDurationSeconds } from '@/lib/video-metadata';
+import { getVideoMetadata } from '@/lib/video-metadata';
 
 export type UploadStage =
   | 'idle'
@@ -101,7 +101,8 @@ export async function startVideoUploadTask(input: {
     }
 
     setState({ stage: 'preparing', overall: 0.34, detail: 'Reading video details…' });
-    const durationSeconds = await getVideoDurationSeconds(video);
+    const meta = await getVideoMetadata(video);
+    const durationSeconds = meta.durationSeconds;
 
     const videoExt = video.name.split('.').pop() || 'mp4';
     const thumbExt = input.thumbnail.name.split('.').pop() || 'jpg';
@@ -146,6 +147,8 @@ export async function startVideoUploadTask(input: {
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl,
         duration_seconds: Math.round(durationSeconds || 0),
+        video_width: meta.width || null,
+        video_height: meta.height || null,
       }),
     });
 

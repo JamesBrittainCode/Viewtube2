@@ -10,6 +10,19 @@ import { recordViewtubeActivity } from '@/lib/streaks';
 
 export const runtime = 'edge';
 
+function inferIsShort(input: { width: number | null; height: number | null; durationSeconds: number | null }) {
+  const { width, height, durationSeconds } = input;
+  if (!width || !height) return false;
+  if (!durationSeconds || durationSeconds <= 0) return false;
+  if (durationSeconds > 180) return false;
+
+  const ratio = width / height;
+  const target = 9 / 16; // 0.5625
+  const tolerance = 0.07; // allow for small crops/encodes
+  const isPortrait = height > width;
+  return isPortrait && Math.abs(ratio - target) <= tolerance;
+}
+
 function parseTags(raw: string | null): string[] {
   if (!raw) return [];
   return raw
@@ -50,6 +63,8 @@ export async function POST(request: Request) {
     video_url?: string;
     thumbnail_url?: string;
     duration_seconds?: number;
+    video_width?: number | null;
+    video_height?: number | null;
   };
   const title = String(body.title || '').trim();
   const description = String(body.description || '').trim();
@@ -66,6 +81,12 @@ export async function POST(request: Request) {
   const durationSeconds = Number.isFinite(durationSecondsRaw) && durationSecondsRaw > 0
     ? Math.min(60 * 60 * 24, Math.round(durationSecondsRaw))
     : null;
+
+  const widthRaw = body.video_width == null ? null : Number(body.video_width);
+  const heightRaw = body.video_height == null ? null : Number(body.video_height);
+  const videoWidth = Number.isFinite(widthRaw as number) && (widthRaw as number) > 0 ? Math.round(widthRaw as number) : null;
+  const videoHeight = Number.isFinite(heightRaw as number) && (heightRaw as number) > 0 ? Math.round(heightRaw as number) : null;
+  const isShort = inferIsShort({ width: videoWidth, height: videoHeight, durationSeconds });
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -199,6 +220,9 @@ export async function POST(request: Request) {
       thumbnail_url: thumbnailUrl,
       video_url: videoUrl,
       duration_seconds: durationSeconds,
+      video_width: videoWidth,
+      video_height: videoHeight,
+      is_short: isShort,
     })
     .select('id')
     .single();
