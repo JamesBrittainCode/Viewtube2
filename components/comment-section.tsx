@@ -59,6 +59,7 @@ function CommentItem({
   item,
   currentUserId,
   videoOwnerId,
+  canModerate,
   commentsEnabled,
   onReply,
   onDelete,
@@ -68,6 +69,7 @@ function CommentItem({
   item: Comment;
   currentUserId: string | null;
   videoOwnerId: string;
+  canModerate: boolean;
   commentsEnabled: boolean;
   onReply: (parentId: string, content: string) => Promise<void>;
   onDelete: (commentId: string) => Promise<void>;
@@ -78,7 +80,9 @@ function CommentItem({
   const [value, setValue] = useState('');
 
   const canReply = commentsEnabled;
-  const canDelete = Boolean(currentUserId && (currentUserId === item.user_id || currentUserId === videoOwnerId));
+  const canDelete = Boolean(
+    canModerate || (currentUserId && (currentUserId === item.user_id || currentUserId === videoOwnerId)),
+  );
   const canPin = Boolean(currentUserId && currentUserId === videoOwnerId && !item.parent_id);
 
   async function submitReply(event: FormEvent<HTMLFormElement>) {
@@ -185,6 +189,7 @@ function CommentItem({
                   item={reply}
                   currentUserId={currentUserId}
                   videoOwnerId={videoOwnerId}
+                  canModerate={canModerate}
                   commentsEnabled={commentsEnabled}
                   onReply={onReply}
                   onDelete={onDelete}
@@ -205,11 +210,13 @@ export function CommentSection({
   commentsEnabled,
   currentUserId,
   videoOwnerId,
+  canModerate = false,
 }: {
   videoId: string;
   commentsEnabled: boolean;
   currentUserId: string | null;
   videoOwnerId: string;
+  canModerate?: boolean;
 }) {
   const [comments, setComments] = useState<FlatComment[]>([]);
   const [value, setValue] = useState('');
@@ -349,6 +356,7 @@ export function CommentSection({
               item={comment}
               currentUserId={currentUserId}
               videoOwnerId={videoOwnerId}
+              canModerate={canModerate}
               commentsEnabled={commentsEnabled}
               onReply={(parentId, content) => postComment(parentId, content)}
               onDelete={deleteComment}

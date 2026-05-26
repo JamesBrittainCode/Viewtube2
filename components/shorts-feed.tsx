@@ -73,9 +73,11 @@ function readBoolean(payload: unknown, key: string) {
 export function ShortsFeed({
   initialShorts,
   currentUserId,
+  canModerate = false,
 }: {
   initialShorts: ShortRow[];
   currentUserId: string | null;
+  canModerate?: boolean;
 }) {
   const shorts = useMemo(() => initialShorts || [], [initialShorts]);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -464,6 +466,7 @@ export function ShortsFeed({
                           commentsEnabled={item.comments_enabled !== false}
                           currentUserId={currentUserId}
                           videoOwnerId={item.user_id}
+                          canModerate={canModerate}
                         />
                       </div>
                     </div>
@@ -497,6 +500,7 @@ export function ShortsFeed({
                   commentsEnabled={active?.comments_enabled !== false}
                   currentUserId={currentUserId}
                   videoOwnerId={active?.user_id || ''}
+                  canModerate={canModerate}
                 />
               </div>
             </div>
