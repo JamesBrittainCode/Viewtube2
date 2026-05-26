@@ -128,6 +128,18 @@ export default async function StreaksPage() {
             </span>
           </div>
         </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <Link
+            href="/streaks/ad"
+            className="rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500"
+          >
+            Watch an ad for +30 points
+          </Link>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400">
+            One claim per day (UTC). You must stay on the ad screen for 60 seconds.
+          </div>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
@@ -205,6 +217,61 @@ export default async function StreaksPage() {
             Whoever is <span className="font-semibold">#1 on the leaderboard</span> by{' '}
             <span className="font-semibold">July 1, 2026</span> wins a mystery prize bundle.
           </p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Points tiers</h2>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Points are awarded for eligible actions. Values may change to prevent abuse and keep the contest fair.
+        </p>
+        <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-zinc-50 text-xs text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+              <tr>
+                <th className="px-4 py-3 font-semibold">Action</th>
+                <th className="px-4 py-3 font-semibold">Points</th>
+                <th className="px-4 py-3 font-semibold">Notes</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
+              <tr>
+                <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Upload a video</td>
+                <td className="px-4 py-3 font-semibold">+25</td>
+                <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">Eligible uploads only.</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Go live</td>
+                <td className="px-4 py-3 font-semibold">+20</td>
+                <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">Must be live for at least 5 minutes.</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Comment</td>
+                <td className="px-4 py-3 font-semibold">+8</td>
+                <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">Spam and abuse may be removed.</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Subscribe</td>
+                <td className="px-4 py-3 font-semibold">+6</td>
+                <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">Points awarded once per creator.</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Like a video</td>
+                <td className="px-4 py-3 font-semibold">+2</td>
+                <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">Points awarded once per video.</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Like a comment</td>
+                <td className="px-4 py-3 font-semibold">+2</td>
+                <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">Points awarded once per comment.</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Watch an ad</td>
+                <td className="px-4 py-3 font-semibold">+30</td>
+                <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">One claim per day (UTC).</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

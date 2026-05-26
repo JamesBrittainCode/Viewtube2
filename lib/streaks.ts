@@ -6,7 +6,8 @@ export type ViewtubeActivityType =
   | 'video_like'
   | 'subscribe'
   | 'upload_video'
-  | 'go_live';
+  | 'go_live'
+  | 'ad_watch';
 
 export async function recordViewtubeActivity(
   supabase: SupabaseClient,
