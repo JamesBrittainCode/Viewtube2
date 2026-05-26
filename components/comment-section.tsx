@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { MessageCircle, Pin, Reply, ThumbsUp, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, MessageCircle, Pin, Reply, ThumbsUp, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { emitStreakEvent } from '@/lib/streak-events';
 import { StreakFireBadge } from '@/components/streak-fire-badge';
@@ -77,6 +77,8 @@ function CommentItem({
   onToggleLike: (commentId: string) => Promise<void>;
 }) {
   const [showReply, setShowReply] = useState(false);
+  const [showReplies, setShowReplies] = useState(false);
+  const [showAllReplies, setShowAllReplies] = useState(false);
   const [value, setValue] = useState('');
 
   const canReply = commentsEnabled;
@@ -84,6 +86,8 @@ function CommentItem({
     canModerate || (currentUserId && (currentUserId === item.user_id || currentUserId === videoOwnerId)),
   );
   const canPin = Boolean(currentUserId && currentUserId === videoOwnerId && !item.parent_id);
+  const repliesCount = item.replies?.length || 0;
+  const visibleReplies = showAllReplies ? item.replies || [] : (item.replies || []).slice(0, 3);
 
   async function submitReply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -144,6 +148,17 @@ function CommentItem({
               </button>
             )}
 
+            {repliesCount ? (
+              <button
+                type="button"
+                onClick={() => setShowReplies((state) => !state)}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                {showReplies ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                {repliesCount} {repliesCount === 1 ? 'reply' : 'replies'}
+              </button>
+            ) : null}
+
             {canPin && (
               <button
                 type="button"
@@ -181,9 +196,9 @@ function CommentItem({
             </form>
           )}
 
-          {!!item.replies?.length && (
+          {showReplies && !!item.replies?.length && (
             <div className="ml-4 mt-3 space-y-2 border-l border-zinc-200 pl-3 dark:border-zinc-800">
-              {item.replies?.map((reply) => (
+              {visibleReplies.map((reply) => (
                 <CommentItem
                   key={reply.id}
                   item={reply}
@@ -197,6 +212,15 @@ function CommentItem({
                   onToggleLike={onToggleLike}
                 />
               ))}
+              {repliesCount > 3 && !showAllReplies ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllReplies(true)}
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  See more
+                </button>
+              ) : null}
             </div>
           )}
         </div>
