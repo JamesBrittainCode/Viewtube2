@@ -6,6 +6,7 @@ import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { StreakEligibilityGate } from '@/components/streak-eligibility-gate';
+import { EarnActionButtons } from '@/components/earn-action-buttons';
 
 export const runtime = 'edge';
 
@@ -88,9 +89,9 @@ export default async function StreaksPage() {
   const referralLink =
     profile?.handle ? `${siteOrigin || ''}/ref/${encodeURIComponent(profile.handle)}` : null;
 
-  return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+	return (
+		<div className="mx-auto max-w-4xl space-y-6">
+			<div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="text-xl font-bold text-zinc-900 dark:text-white">ViewTube Streak</h1>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Keep a streak by logging in and doing at least one interaction per day (comment, like, subscribe, upload, go
@@ -107,7 +108,7 @@ export default async function StreaksPage() {
           </Link>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+				<div className="mt-4 flex flex-wrap items-center gap-3">
           <div className="rounded-xl bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-800">
             <div className="text-xs text-zinc-500 dark:text-zinc-400">Current</div>
             <div className="text-lg font-bold text-zinc-900 dark:text-white">
@@ -124,15 +125,17 @@ export default async function StreaksPage() {
             <div className="text-xs text-zinc-500 dark:text-zinc-400">Points</div>
             <div className="text-lg font-bold text-zinc-900 dark:text-white">{myStreak?.points ?? 0}</div>
           </div>
-          <div className="text-xs text-zinc-500 dark:text-zinc-400">
-            Last active:{' '}
-            <span className="font-medium text-zinc-700 dark:text-zinc-300">
-              {myStreak?.last_active_date ?? '—'}
-            </span>
-          </div>
-        </div>
+					<div className="text-xs text-zinc-500 dark:text-zinc-400">
+						Last active:{' '}
+						<span className="font-medium text-zinc-700 dark:text-zinc-300">
+							{myStreak?.last_active_date ?? '—'}
+						</span>
+					</div>
+				</div>
 
-      </div>
+        <EarnActionButtons referralLink={referralLink} />
+
+			</div>
 
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
@@ -212,24 +215,13 @@ export default async function StreaksPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Points tiers</h2>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Points are awarded for eligible actions. Values may change to prevent abuse and keep the contest fair.
-        </p>
-        {referralLink ? (
-          <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950/60">
-            <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Your referral link</div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <code className="rounded-lg bg-white px-3 py-2 text-xs text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100">
-                {referralLink}
-              </code>
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">Share this to earn +50 when they join.</span>
-            </div>
-          </div>
-        ) : null}
-        <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
-          <table className="w-full text-left text-sm">
+			<div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+				<h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Points tiers</h2>
+				<p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+					Points are awarded for eligible actions. Values may change to prevent abuse and keep the contest fair.
+				</p>
+				<div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
+					<table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
               <tr>
                 <th className="px-4 py-3 font-semibold">Action</th>
