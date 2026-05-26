@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 import { PointsCelebration } from '@/components/points-celebration';
@@ -19,6 +19,7 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const prevCollapsedRef = useRef<boolean | null>(null);
 
   const isStudio = pathname.startsWith('/studio') || pathname.startsWith('/admin');
   const isAuthRoute =
@@ -27,6 +28,19 @@ export function AppShell({
     pathname === '/reset-password' ||
     pathname === '/check-email' ||
     pathname === '/email-confirmed';
+
+  useEffect(() => {
+    const onShorts = pathname.startsWith('/shorts');
+    if (onShorts) {
+      if (prevCollapsedRef.current === null) prevCollapsedRef.current = collapsed;
+      setCollapsed(true);
+      return;
+    }
+    if (prevCollapsedRef.current !== null) {
+      setCollapsed(prevCollapsedRef.current);
+      prevCollapsedRef.current = null;
+    }
+  }, [collapsed, pathname]);
 
   if (isStudio || isAuthRoute) {
     return <main className="min-h-screen bg-zinc-100 dark:bg-zinc-950">{children}</main>;

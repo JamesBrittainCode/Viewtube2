@@ -389,59 +389,59 @@ export function ShortsFeed({
                         </button>
                       </div>
                     ) : null}
-                  </div>
 
-                  {/* Right action rail */}
-                  <div className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-4 text-white">
-                    <button
-                      type="button"
-                      onClick={() => void toggleLike(item.id)}
-                      className={[
-                        'flex w-16 flex-col items-center gap-1 rounded-2xl p-2 hover:bg-white/10',
-                        state.likedByMe ? 'text-white' : '',
-                      ].join(' ')}
-                      aria-label="Like"
-                      title="Like"
-                    >
-                      <ThumbsUp className="h-6 w-6" />
-                      <span className="text-xs font-semibold">{formatCount(state.likes)}</span>
-                    </button>
+                    {/* Action rail (over video) */}
+                    <div className="pointer-events-none absolute bottom-24 right-3 z-10 flex flex-col items-center gap-4 text-white">
+                      <button
+                        type="button"
+                        onClick={() => void toggleLike(item.id)}
+                        className={[
+                          'pointer-events-auto flex w-16 flex-col items-center gap-1 rounded-2xl p-2 hover:bg-white/10',
+                          state.likedByMe ? 'text-white' : '',
+                        ].join(' ')}
+                        aria-label="Like"
+                        title="Like"
+                      >
+                        <ThumbsUp className="h-6 w-6" />
+                        <span className="text-xs font-semibold">{formatCount(state.likes)}</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => void toggleDislike(item.id)}
-                      className={[
-                        'flex w-16 flex-col items-center gap-1 rounded-2xl p-2 hover:bg-white/10',
-                        state.dislikedByMe ? 'text-white' : '',
-                      ].join(' ')}
-                      aria-label="Dislike"
-                      title="Dislike"
-                    >
-                      <ThumbsDown className="h-6 w-6" />
-                      <span className="text-xs font-semibold">{formatCount(state.dislikes)}</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => void toggleDislike(item.id)}
+                        className={[
+                          'pointer-events-auto flex w-16 flex-col items-center gap-1 rounded-2xl p-2 hover:bg-white/10',
+                          state.dislikedByMe ? 'text-white' : '',
+                        ].join(' ')}
+                        aria-label="Dislike"
+                        title="Dislike"
+                      >
+                        <ThumbsDown className="h-6 w-6" />
+                        <span className="text-xs font-semibold">{formatCount(state.dislikes)}</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setCommentsOpenFor(item.id)}
-                      className="flex w-16 flex-col items-center gap-1 rounded-2xl p-2 hover:bg-white/10"
-                      aria-label="Comments"
-                      title="Comments"
-                    >
-                      <MessageCircle className="h-6 w-6" />
-                      <span className="text-xs font-semibold">{formatCount(state.comments)}</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setCommentsOpenFor(item.id)}
+                        className="pointer-events-auto flex w-16 flex-col items-center gap-1 rounded-2xl p-2 hover:bg-white/10"
+                        aria-label="Comments"
+                        title="Comments"
+                      >
+                        <MessageCircle className="h-6 w-6" />
+                        <span className="text-xs font-semibold">{formatCount(state.comments)}</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => void share(item.id)}
-                      className="flex w-16 flex-col items-center gap-1 rounded-2xl p-2 hover:bg-white/10"
-                      aria-label="Share"
-                      title="Share"
-                    >
-                      <Share2 className="h-6 w-6" />
-                      <span className="text-xs font-semibold">Share</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => void share(item.id)}
+                        className="pointer-events-auto flex w-16 flex-col items-center gap-1 rounded-2xl p-2 hover:bg-white/10"
+                        aria-label="Share"
+                        title="Share"
+                      >
+                        <Share2 className="h-6 w-6" />
+                        <span className="text-xs font-semibold">Share</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Right comments panel (desktop) */}
