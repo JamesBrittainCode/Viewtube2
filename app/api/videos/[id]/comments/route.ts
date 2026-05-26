@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import { sendNotification } from '@/lib/notifications';
+import { canModerateUser } from '@/lib/admin';
 import { createClient } from '@/lib/supabase/server';
 import { recordViewtubeActivity } from '@/lib/streaks';
 
 export const runtime = 'edge';
+
+function minutesFromNow(mins: number) {
+  return new Date(Date.now() + mins * 60 * 1000).toISOString();
+}
 
 export async function GET(
   _request: Request,
@@ -69,6 +74,91 @@ export async function POST(
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { data: me } = await supabase
+    .from('profiles')
+    .select('id,comment_suspended_until,comment_spam_strikes,can_moderate')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const suspendedUntil = me?.comment_suspended_until ? new Date(me.comment_suspended_until).getTime() : 0;
+  if (suspendedUntil && Date.now() < suspendedUntil) {
+    const secondsLeft = Math.max(1, Math.ceil((suspendedUntil - Date.now()) / 1000));
+    return NextResponse.json(
+      {
+        error: `You’re temporarily suspended from commenting for ${Math.ceil(secondsLeft / 60)} minute(s).`,
+        code: 'comment_suspended',
+        seconds_left: secondsLeft,
+      },
+      { status: 429 },
+    );
+  }
+
+  // Basic spam heuristic: too many comments in a short window → 15 minute suspension.
+  // (We use a small window so normal engagement is unaffected.)
+  const windowSeconds = 20;
+  const limit = 4;
+  const sinceIso = new Date(Date.now() - windowSeconds * 1000).toISOString();
+  const { count: recentCount } = await supabase
+    .from('comments')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .gte('created_at', sinceIso);
+
+  const wouldExceed = (recentCount || 0) >= limit;
+  if (wouldExceed) {
+    const newStrikes = (me?.comment_spam_strikes || 0) + 1;
+    const until = minutesFromNow(15);
+
+    await supabase
+      .from('profiles')
+      .update({
+        comment_suspended_until: until,
+        comment_spam_strikes: newStrikes,
+      })
+      .eq('id', user.id);
+
+    await sendNotification(supabase, {
+      userId: user.id,
+      type: 'comment_suspension',
+      message:
+        newStrikes >= 2
+          ? 'You have been temporarily suspended from commenting for 15 minutes due to spam. This incident has been reported to moderators.'
+          : 'You have been temporarily suspended from commenting for 15 minutes due to spam. If this happens again, it will be reported to moderators.',
+      targetUrl: `/watch/${id}#comments`,
+    });
+
+    if (newStrikes >= 2) {
+      // Notify moderators/admins.
+      const { data: mods } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('can_moderate', true)
+        .limit(50);
+      for (const mod of mods || []) {
+        if (!mod?.id) continue;
+        await sendNotification(supabase, {
+          userId: mod.id,
+          type: 'comment_spam_report',
+          message: 'A user was auto-suspended for comment spam (repeat offense).',
+          actorId: user.id,
+          targetUrl: `/watch/${id}#comments`,
+        });
+      }
+    }
+
+    return NextResponse.json(
+      {
+        error:
+          newStrikes >= 2
+            ? 'You’re temporarily suspended from commenting for 15 minutes due to spam. This was reported to moderators.'
+            : 'You’re temporarily suspended from commenting for 15 minutes due to spam. If you do it again, it will be reported to moderators.',
+        code: 'comment_suspended',
+        seconds_left: 15 * 60,
+      },
+      { status: 429 },
+    );
   }
 
   const { data: video, error: videoError } = await supabase
@@ -204,7 +294,8 @@ export async function DELETE(
     return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
   }
 
-  const canDelete = comment.user_id === user.id || video.user_id === user.id;
+  const canModerate = await canModerateUser(supabase, { id: user.id, email: user.email });
+  const canDelete = comment.user_id === user.id || video.user_id === user.id || canModerate;
   if (!canDelete) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }

@@ -214,6 +214,7 @@ export function CommentSection({
   const [comments, setComments] = useState<FlatComment[]>([]);
   const [value, setValue] = useState('');
   const [loading, setLoading] = useState(true);
+  const [postError, setPostError] = useState<string | null>(null);
 
   async function loadComments() {
     const res = await fetch(`/api/videos/${videoId}/comments`, { cache: 'no-store' });
@@ -248,6 +249,7 @@ export function CommentSection({
   }, [videoId]);
 
   async function postComment(parentId: string | null, content: string) {
+    setPostError(null);
     const res = await fetch(`/api/videos/${videoId}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -259,6 +261,15 @@ export function CommentSection({
       emitStreakEvent(data?.streak);
       setValue('');
       await loadComments();
+      return;
+    }
+
+    const text = await res.text();
+    try {
+      const parsed = JSON.parse(text) as { error?: string };
+      setPostError(parsed.error || 'Failed to post comment.');
+    } catch {
+      setPostError(text || 'Failed to post comment.');
     }
   }
 
@@ -326,6 +337,7 @@ export function CommentSection({
           Comments are turned off for this video.
         </p>
       )}
+      {postError ? <p className="mt-2 text-sm text-red-500">{postError}</p> : null}
 
       <div className="mt-5 space-y-3">
         {loading ? (

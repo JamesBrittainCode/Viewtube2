@@ -8,6 +8,7 @@ import { VerifiedBadge } from '@/components/verified-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VideoGrid } from '@/components/video-grid';
+import { ShortsShelf } from '@/components/shorts-shelf';
 import { formatCompactCount } from '@/lib/number';
 import { createPublicClient } from '@/lib/supabase/public';
 import { createClient } from '@/lib/supabase/server';
@@ -94,11 +95,14 @@ export default async function ChannelPage({
   const { data: videos } = await publicClient
     .from('videos')
     .select(
-      'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)'
+      'id,title,thumbnail_url,views,created_at,is_short,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)'
     )
     .eq('user_id', channel.id)
     .eq('is_removed', false)
     .order('created_at', { ascending: false });
+
+  const normalVideos = (videos || []).filter((v) => !v.is_short);
+  const shorts = (videos || []).filter((v) => v.is_short);
 
   const supabase = await createClient();
   const {
@@ -225,8 +229,15 @@ export default async function ChannelPage({
         </div>
       ) : null}
 
+      {shorts.length ? (
+        <div className="mt-8">
+          <h2 className="mb-4 text-lg font-semibold">Shorts</h2>
+          <ShortsShelf shorts={(shorts as never[]).slice(0, 18)} />
+        </div>
+      ) : null}
+
       <h2 className="mb-5 mt-8 text-lg font-semibold">Videos</h2>
-      <VideoGrid videos={(videos || []) as never[]} />
+      <VideoGrid videos={(normalVideos || []) as never[]} />
     </section>
   );
 }

@@ -309,7 +309,8 @@ export function ShortsFeed({
                   <div className="relative mx-auto flex h-full items-center justify-center px-4">
                     <div
                       className={[
-                        'relative h-full w-full max-w-[420px] overflow-hidden rounded-3xl bg-black transition-[transform,margin] duration-300 ease-out',
+                        'relative aspect-[9/16] w-[min(420px,78vw)] overflow-hidden rounded-3xl bg-black',
+                        'max-h-[80vh]',
                         showComments ? 'lg:mr-[440px]' : '',
                       ].join(' ')}
                     >
