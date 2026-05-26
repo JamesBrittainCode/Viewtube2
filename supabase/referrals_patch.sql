@@ -154,6 +154,14 @@ begin
   if points_ok then
     perform public.award_viewtube_points(inviter, 'referral', new.id::text, 50);
     update public.profiles set referral_credits = referral_credits + 1 where id = inviter;
+    insert into public.notifications (user_id, actor_id, type, message, target_url)
+    values (
+      inviter,
+      null,
+      'referral_signup',
+      'Someone signed up using your referral link. +50 points!',
+      '/streaks'
+    );
   end if;
 
   return new;
@@ -164,4 +172,3 @@ drop trigger if exists on_auth_user_created_referral on auth.users;
 create trigger on_auth_user_created_referral
 after insert on auth.users
 for each row execute function public.handle_referral_on_auth_user_created();
-
