@@ -37,7 +37,7 @@ export default async function StreaksPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('age_confirmed_16')
+    .select('age_confirmed_16,handle')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -84,6 +84,9 @@ export default async function StreaksPage() {
   ]);
 
   const rows = (leaderboard || []) as Row[];
+  const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || '';
+  const referralLink =
+    profile?.handle ? `${siteOrigin || ''}/ref/${encodeURIComponent(profile.handle)}` : null;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -129,17 +132,6 @@ export default async function StreaksPage() {
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <Link
-            href="/streaks/ad"
-            className="rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500"
-          >
-            Watch an ad for +30 points
-          </Link>
-          <div className="text-xs text-zinc-500 dark:text-zinc-400">
-            One claim per day (UTC). You must stay on the ad screen for 60 seconds.
-          </div>
-        </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
@@ -225,6 +217,17 @@ export default async function StreaksPage() {
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Points are awarded for eligible actions. Values may change to prevent abuse and keep the contest fair.
         </p>
+        {referralLink ? (
+          <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950/60">
+            <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Your referral link</div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <code className="rounded-lg bg-white px-3 py-2 text-xs text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100">
+                {referralLink}
+              </code>
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Share this to earn +50 when they join.</span>
+            </div>
+          </div>
+        ) : null}
         <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
@@ -235,6 +238,23 @@ export default async function StreaksPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
+              <tr>
+                <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Invite a friend</td>
+                <td className="px-4 py-3 font-semibold">+50</td>
+                <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  Earned when they create an account using your referral link.
+                </td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Watch an ad</td>
+                <td className="px-4 py-3 font-semibold">+30</td>
+                <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  <Link href="/streaks/ad" className="font-semibold underline">
+                    Watch an ad
+                  </Link>{' '}
+                  (one claim per day UTC; 60 seconds).
+                </td>
+              </tr>
               <tr>
                 <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Upload a video</td>
                 <td className="px-4 py-3 font-semibold">+25</td>
@@ -264,11 +284,6 @@ export default async function StreaksPage() {
                 <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Like a comment</td>
                 <td className="px-4 py-3 font-semibold">+2</td>
                 <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">Points awarded once per comment.</td>
-              </tr>
-              <tr>
-                <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Watch an ad</td>
-                <td className="px-4 py-3 font-semibold">+30</td>
-                <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">One claim per day (UTC).</td>
               </tr>
             </tbody>
           </table>

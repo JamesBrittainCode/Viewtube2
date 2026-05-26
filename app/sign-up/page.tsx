@@ -3,8 +3,8 @@ import { AuthForm } from '@/components/auth-form';
 export default async function SignUpPage({
   searchParams,
 }: {
-  searchParams: Promise<{ redirect?: string }>;
+  searchParams: Promise<{ redirect?: string; ref?: string }>;
 }) {
-  const { redirect } = await searchParams;
-  return <AuthForm mode="sign-up" redirectTo={redirect} />;
+  const { redirect, ref } = await searchParams;
+  return <AuthForm mode="sign-up" redirectTo={redirect} referral={ref} />;
 }

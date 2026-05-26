@@ -15,9 +15,11 @@ function sanitizeRedirect(input?: string | null) {
 export function AuthForm({
   mode,
   redirectTo,
+  referral,
 }: {
   mode: 'sign-in' | 'sign-up';
   redirectTo?: string;
+  referral?: string;
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,6 +33,7 @@ export function AuthForm({
   const router = useRouter();
   const nextPath = sanitizeRedirect(redirectTo);
   const redirectQuery = nextPath && nextPath !== '/' ? `?redirect=${encodeURIComponent(nextPath)}` : '';
+  const referralCode = (referral || '').trim();
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,6 +60,7 @@ export function AuthForm({
               username: username.trim(),
               terms_accepted: true,
               terms_accepted_at: new Date().toISOString(),
+              ...(referralCode ? { referral: referralCode } : {}),
             },
             emailRedirectTo: `${siteOrigin}/email-confirmed`,
           },
