@@ -79,6 +79,8 @@ export function ShortsFeed({
 }) {
   const shorts = useMemo(() => initialShorts || [], [initialShorts]);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const wheelLockRef = useRef<number>(0);
+  const touchStartYRef = useRef<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [muted, setMuted] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -89,24 +91,52 @@ export function ShortsFeed({
   useEffect(() => {
     const root = containerRef.current;
     if (!root) return;
-    const items = Array.from(root.querySelectorAll<HTMLElement>('[data-short-item="1"]'));
-    if (!items.length) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => (b.intersectionRatio || 0) - (a.intersectionRatio || 0))[0];
-        if (!visible) return;
-        const idx = Number((visible.target as HTMLElement).dataset.index || 0);
-        if (Number.isFinite(idx)) setActiveIndex(idx);
-      },
-      { threshold: [0.6, 0.75, 0.9] },
-    );
+    function move(delta: 1 | -1) {
+      setMenuOpenFor(null);
+      setCommentsOpenFor(null);
+      setPaused(false);
+      setActiveIndex((idx) => {
+        const next = idx + delta;
+        if (next < 0) return shorts.length ? shorts.length - 1 : 0;
+        if (next >= shorts.length) return 0;
+        return next;
+      });
+    }
 
-    for (const item of items) observer.observe(item);
-    return () => observer.disconnect();
-  }, [shorts.length]);
+    function onWheel(e: WheelEvent) {
+      // Prevent the page from scrolling; create an "infinite" Shorts feel.
+      e.preventDefault();
+      const now = Date.now();
+      if (now < wheelLockRef.current) return;
+      const dy = e.deltaY;
+      if (Math.abs(dy) < 28) return;
+      wheelLockRef.current = now + 450;
+      move(dy > 0 ? 1 : -1);
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      touchStartYRef.current = e.touches?.[0]?.clientY ?? null;
+    }
+    function onTouchEnd(e: TouchEvent) {
+      const startY = touchStartYRef.current;
+      touchStartYRef.current = null;
+      const endY = e.changedTouches?.[0]?.clientY ?? null;
+      if (startY == null || endY == null) return;
+      const dy = startY - endY;
+      if (Math.abs(dy) < 40) return;
+      move(dy > 0 ? 1 : -1);
+    }
+
+    root.addEventListener('wheel', onWheel, { passive: false });
+    root.addEventListener('touchstart', onTouchStart, { passive: true });
+    root.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => {
+      root.removeEventListener('wheel', onWheel);
+      root.removeEventListener('touchstart', onTouchStart);
+      root.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [shorts.length, shorts]);
 
   useEffect(() => {
     const root = containerRef.current;
@@ -249,29 +279,40 @@ export function ShortsFeed({
     );
   }
 
+  const active = shorts[activeIndex];
+  const activeId = active?.id || null;
+
   return (
     <>
-      <div className="mx-auto max-w-[980px]">
-        <div
-          ref={containerRef}
-          className="h-[calc(100vh-7rem)] snap-y snap-mandatory overflow-y-auto overscroll-contain rounded-3xl border border-zinc-200 bg-black shadow-sm dark:border-zinc-800"
-        >
-          {shorts.map((item, idx) => {
-            const profile = unwrapRelation(item.profiles);
-            const handle = profile?.handle || null;
-            const channelHref = handle ? `/channel/${handle}` : '/';
-            const state = counts[item.id] || {
-              likes: 0,
-              dislikes: 0,
-              comments: 0,
-              likedByMe: false,
-              dislikedByMe: false,
-            };
+      <div className="mx-auto max-w-[1200px]">
+        <div ref={containerRef} className="relative h-[calc(100vh-7rem)] overflow-hidden">
+          <div
+            className="h-full transition-transform duration-300 ease-out"
+            style={{ transform: `translateY(${-activeIndex * 100}%)` }}
+          >
+            {shorts.map((item) => {
+              const profile = unwrapRelation(item.profiles);
+              const handle = profile?.handle || null;
+              const channelHref = handle ? `/channel/${handle}` : '/';
+              const state = counts[item.id] || {
+                likes: 0,
+                dislikes: 0,
+                comments: 0,
+                likedByMe: false,
+                dislikedByMe: false,
+              };
 
-            return (
-              <div key={item.id} data-short-item="1" data-index={idx} className="relative h-[calc(100vh-7rem)] snap-start">
-                <div className="relative mx-auto flex h-full max-w-[520px] items-center justify-center px-4">
-                  <div className="relative h-full w-full max-w-[420px] overflow-hidden rounded-3xl bg-black">
+              const showComments = commentsOpenFor === item.id;
+
+              return (
+                <div key={item.id} className="relative h-[calc(100vh-7rem)]">
+                  <div className="relative mx-auto flex h-full items-center justify-center px-4">
+                    <div
+                      className={[
+                        'relative h-full w-full max-w-[420px] overflow-hidden rounded-3xl bg-black transition-[transform,margin] duration-300 ease-out',
+                        showComments ? 'lg:mr-[440px]' : '',
+                      ].join(' ')}
+                    >
                     <video
                       data-short-video="1"
                       src={item.video_url}
@@ -351,13 +392,13 @@ export function ShortsFeed({
                   </div>
 
                   {/* Right action rail */}
-                  <div className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-4">
+                  <div className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-4 text-white">
                     <button
                       type="button"
                       onClick={() => void toggleLike(item.id)}
                       className={[
-                        'flex w-16 flex-col items-center gap-1 rounded-2xl bg-black/35 p-3 text-white backdrop-blur hover:bg-black/55',
-                        state.likedByMe ? 'ring-2 ring-white/30' : '',
+                        'flex w-16 flex-col items-center gap-1 rounded-2xl p-2 hover:bg-white/10',
+                        state.likedByMe ? 'text-white' : '',
                       ].join(' ')}
                       aria-label="Like"
                       title="Like"
@@ -370,8 +411,8 @@ export function ShortsFeed({
                       type="button"
                       onClick={() => void toggleDislike(item.id)}
                       className={[
-                        'flex w-16 flex-col items-center gap-1 rounded-2xl bg-black/35 p-3 text-white backdrop-blur hover:bg-black/55',
-                        state.dislikedByMe ? 'ring-2 ring-white/30' : '',
+                        'flex w-16 flex-col items-center gap-1 rounded-2xl p-2 hover:bg-white/10',
+                        state.dislikedByMe ? 'text-white' : '',
                       ].join(' ')}
                       aria-label="Dislike"
                       title="Dislike"
@@ -383,7 +424,7 @@ export function ShortsFeed({
                     <button
                       type="button"
                       onClick={() => setCommentsOpenFor(item.id)}
-                      className="flex w-16 flex-col items-center gap-1 rounded-2xl bg-black/35 p-3 text-white backdrop-blur hover:bg-black/55"
+                      className="flex w-16 flex-col items-center gap-1 rounded-2xl p-2 hover:bg-white/10"
                       aria-label="Comments"
                       title="Comments"
                     >
@@ -394,7 +435,7 @@ export function ShortsFeed({
                     <button
                       type="button"
                       onClick={() => void share(item.id)}
-                      className="flex w-16 flex-col items-center gap-1 rounded-2xl bg-black/35 p-3 text-white backdrop-blur hover:bg-black/55"
+                      className="flex w-16 flex-col items-center gap-1 rounded-2xl p-2 hover:bg-white/10"
                       aria-label="Share"
                       title="Share"
                     >
@@ -402,17 +443,43 @@ export function ShortsFeed({
                       <span className="text-xs font-semibold">Share</span>
                     </button>
                   </div>
+
+                  {/* Right comments panel (desktop) */}
+                  {showComments ? (
+                    <div className="absolute right-4 top-1/2 hidden h-[calc(100vh-9rem)] w-[420px] -translate-y-1/2 overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 lg:block">
+                      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+                        <div className="text-sm font-semibold text-white">Comments</div>
+                        <button
+                          type="button"
+                          onClick={() => setCommentsOpenFor(null)}
+                          className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white hover:bg-white/20"
+                        >
+                          Close
+                        </button>
+                      </div>
+                      <div className="h-[calc(100%-3rem)] overflow-y-auto p-4">
+                        <CommentSection
+                          videoId={item.id}
+                          commentsEnabled={item.comments_enabled !== false}
+                          currentUserId={currentUserId}
+                          videoOwnerId={item.user_id}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             );
           })}
+          </div>
         </div>
       </div>
 
-      {commentsOpenFor ? (
-        <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur">
-          <div className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-3xl border-t border-zinc-800 bg-zinc-950 p-4">
-            <div className="mx-auto max-w-3xl">
+      {/* Mobile fallback: open comments as full-screen modal */}
+      {commentsOpenFor && activeId === commentsOpenFor ? (
+        <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur lg:hidden">
+          <div className="absolute inset-0 bg-zinc-950 p-4">
+            <div className="mx-auto flex h-full max-w-3xl flex-col">
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-semibold text-white">Comments</h3>
                 <button
@@ -423,19 +490,13 @@ export function ShortsFeed({
                   Close
                 </button>
               </div>
-              <div className="mt-4">
-                {(() => {
-                  const video = shorts.find((s) => s.id === commentsOpenFor);
-                  if (!video) return null;
-                  return (
-                    <CommentSection
-                      videoId={video.id}
-                      commentsEnabled={video.comments_enabled !== false}
-                      currentUserId={currentUserId}
-                      videoOwnerId={video.user_id}
-                    />
-                  );
-                })()}
+              <div className="mt-4 flex-1 overflow-y-auto">
+                <CommentSection
+                  videoId={commentsOpenFor}
+                  commentsEnabled={active?.comments_enabled !== false}
+                  currentUserId={currentUserId}
+                  videoOwnerId={active?.user_id || ''}
+                />
               </div>
             </div>
           </div>
