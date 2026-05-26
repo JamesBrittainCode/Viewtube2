@@ -6,7 +6,7 @@ import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { StreakEligibilityGate } from '@/components/streak-eligibility-gate';
-import { EarnActionButtons } from '@/components/earn-action-buttons';
+import { ReferralTierAction, WatchAdTierAction } from '@/components/points-tier-actions';
 
 export const runtime = 'edge';
 
@@ -133,9 +133,7 @@ export default async function StreaksPage() {
 					</div>
 				</div>
 
-        <EarnActionButtons referralLink={referralLink} />
-
-			</div>
+      </div>
 
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
@@ -232,19 +230,26 @@ export default async function StreaksPage() {
             <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
               <tr>
                 <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Invite a friend</td>
-                <td className="px-4 py-3 font-semibold">+50</td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="font-semibold">+50</span>
+                    <ReferralTierAction referralLink={referralLink} />
+                  </div>
+                </td>
                 <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                   Earned when they create an account using your referral link.
                 </td>
               </tr>
               <tr>
                 <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Watch an ad</td>
-                <td className="px-4 py-3 font-semibold">+30</td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="font-semibold">+30</span>
+                    <WatchAdTierAction />
+                  </div>
+                </td>
                 <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                  <Link href="/streaks/ad" className="font-semibold underline">
-                    Watch an ad
-                  </Link>{' '}
-                  (one claim per day UTC; 60 seconds).
+                  One claim per day (UTC). You must stay on the ad screen for 60 seconds.
                 </td>
               </tr>
               <tr>
