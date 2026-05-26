@@ -92,7 +92,14 @@ export function AdRewardWatch({
               Already claimed today. Come back tomorrow for another +30.
             </div>
           ) : null}
-          {error ? <div className="mt-2 text-xs text-red-500">{error}</div> : null}
+          {error ? (
+            <div className="mt-2 text-xs text-red-500">
+              {error}
+              <div className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                If this keeps happening, make sure the `viewtube_activity_awards` table allows inserts for signed-in users.
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 

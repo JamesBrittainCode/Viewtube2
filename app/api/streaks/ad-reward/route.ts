@@ -23,13 +23,21 @@ export async function POST() {
     target_id: todayUtc,
   });
 
-  const pointsOk = !awardErr;
-  const streak = await recordViewtubeActivity(supabase, 'ad_watch', { targetId: todayUtc, pointsOk });
+  // If the insert fails because the user already claimed today (unique violation), report claimed=false.
+  // If it fails for any other reason (e.g. RLS), surface an error instead of misreporting.
+  if (awardErr) {
+    const code = (awardErr as unknown as { code?: string }).code || '';
+    if (code === '23505') {
+      return NextResponse.json({ ok: true, claimed: false, streak: null });
+    }
+    return NextResponse.json({ error: awardErr.message }, { status: 400 });
+  }
+
+  const streak = await recordViewtubeActivity(supabase, 'ad_watch', { targetId: todayUtc, pointsOk: true });
 
   return NextResponse.json({
     ok: true,
-    claimed: pointsOk,
+    claimed: true,
     streak,
   });
 }
-
