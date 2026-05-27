@@ -69,7 +69,6 @@ export async function PUT(request: Request) {
 
   const normalized = incoming
     .map((s, idx) => ({
-      id: readString(s.id) || undefined,
       user_id: user.id,
       section_type: readString(s.section_type) || 'videos',
       position: Number.isFinite(Number(s.position)) ? Number(s.position) : idx,
@@ -83,7 +82,16 @@ export async function PUT(request: Request) {
   if (delError) return NextResponse.json({ error: delError.message }, { status: 400 });
 
   if (normalized.length) {
-    const { error: insError } = await supabase.from('channel_home_sections').insert(normalized);
+    // IMPORTANT: omit `id` so Postgres can use the default gen_random_uuid().
+    // (Supabase may serialize `undefined` to `null` and violate NOT NULL.)
+    const { error: insError } = await supabase.from('channel_home_sections').insert(
+      normalized.map((row) => ({
+        user_id: row.user_id,
+        section_type: row.section_type,
+        position: row.position,
+        config: row.config,
+      })),
+    );
     if (insError) {
       const msg = insError.message || 'Failed to save sections.';
       if (msg.toLowerCase().includes('does not exist') && msg.toLowerCase().includes('channel_home_sections')) {
