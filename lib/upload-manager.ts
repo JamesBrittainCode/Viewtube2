@@ -14,6 +14,7 @@ export type UploadStage =
   | 'uploading_video'
   | 'uploading_thumbnail'
   | 'publishing'
+  | 'copyright_checking'
   | 'done'
   | 'error';
 
@@ -23,6 +24,12 @@ export type UploadState = {
   detail: string;
   error: string | null;
   videoId: string | null;
+  copyright: null | {
+    status: 'clean' | 'matched' | 'error' | 'skipped';
+    title?: string | null;
+    artist?: string | null;
+    message: string;
+  };
 };
 
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
@@ -33,6 +40,7 @@ let state: UploadState = {
   detail: '',
   error: null,
   videoId: null,
+  copyright: null,
 };
 
 const listeners = new Set<() => void>();
@@ -71,6 +79,7 @@ export async function startVideoUploadTask(input: {
   if (state.stage !== 'idle' && state.stage !== 'done' && state.stage !== 'error') return;
 
   setState({ stage: 'preparing', overall: 0.02, detail: 'Preparing upload…', error: null, videoId: null });
+  setState({ copyright: null });
 
   try {
     const supabase = createClient();
@@ -165,6 +174,55 @@ export async function startVideoUploadTask(input: {
 
     emitStreakEvent(payload.streak);
 
+    // Best-effort copyright/music recognition (non-blocking for upload success).
+    try {
+      setState({ stage: 'copyright_checking', overall: 0.97, detail: 'Checking for copyrighted music…' });
+      const checkRes = await fetch(`/api/videos/${payload.id}/copyright-check`, { method: 'POST' });
+      const checkText = await checkRes.text();
+      let checkPayload: { matched?: boolean; song?: { title?: string | null; artist?: string | null } | null; error?: string } =
+        {};
+      try {
+        checkPayload = JSON.parse(checkText) as typeof checkPayload;
+      } catch {
+        checkPayload = { error: checkText || 'Copyright check failed' };
+      }
+
+      if (checkRes.ok) {
+        if (checkPayload.matched && checkPayload.song) {
+          setState({
+            copyright: {
+              status: 'matched',
+              title: checkPayload.song.title ?? null,
+              artist: checkPayload.song.artist ?? null,
+              message: `Copyrighted music detected: ${checkPayload.song.title || 'Unknown'}${checkPayload.song.artist ? ` — ${checkPayload.song.artist}` : ''}. You can still upload, but this video may be ineligible for monetization.`,
+            },
+          });
+        } else {
+          setState({
+            copyright: {
+              status: 'clean',
+              message: 'No recognized copyrighted music detected. You’re good to go.',
+            },
+          });
+        }
+      } else {
+        // If checker is misconfigured/unavailable, don't block upload.
+        setState({
+          copyright: {
+            status: 'skipped',
+            message: 'Copyright check unavailable right now. Upload completed.',
+          },
+        });
+      }
+    } catch {
+      setState({
+        copyright: {
+          status: 'error',
+          message: 'Copyright check failed. Upload completed.',
+        },
+      });
+    }
+
     setState({ stage: 'done', overall: 1, detail: 'Done', videoId: payload.id, error: null });
   } catch (err) {
     setState({
@@ -177,5 +235,5 @@ export async function startVideoUploadTask(input: {
 }
 
 export function resetVideoUploadTask() {
-  setState({ stage: 'idle', overall: 0, detail: '', error: null, videoId: null });
+  setState({ stage: 'idle', overall: 0, detail: '', error: null, videoId: null, copyright: null });
 }

@@ -15,10 +15,13 @@ export function UploadProcessing() {
 
   useEffect(() => {
     if (state.stage === 'done' && state.videoId) {
-      router.replace(`/watch/${state.videoId}`);
-      router.refresh();
+      const timeout = window.setTimeout(() => {
+        router.replace(`/watch/${state.videoId}`);
+        router.refresh();
+      }, state.copyright?.message ? 1800 : 0);
+      return () => window.clearTimeout(timeout);
     }
-  }, [router, state.stage, state.videoId]);
+  }, [router, state.stage, state.videoId, state.copyright?.message]);
 
   const pct = Math.round((state.overall || 0) * 100);
 
@@ -45,6 +48,21 @@ export function UploadProcessing() {
         </div>
       </div>
 
+      {state.copyright?.message ? (
+        <div
+          className={[
+            'rounded-2xl border p-4 text-sm',
+            state.copyright.status === 'matched'
+              ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200'
+              : state.copyright.status === 'clean'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200'
+                : 'border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300',
+          ].join(' ')}
+        >
+          {state.copyright.message}
+        </div>
+      ) : null}
+
       {state.stage === 'error' && state.error ? (
         <div className="space-y-3">
           <p className="text-sm text-red-500">{state.error}</p>
@@ -63,4 +81,3 @@ export function UploadProcessing() {
     </div>
   );
 }
-

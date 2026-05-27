@@ -8,11 +8,20 @@ export async function GET() {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { data: profile } = await supabase
+  const [{ data: profile }, { count: copyrightCount }] = await Promise.all([
+    supabase
     .from('profiles')
     .select('id,username,subscribers_count')
     .eq('id', user.id)
-    .maybeSingle();
+    .maybeSingle(),
+    // If any uploads are flagged for copyrighted music, don't show as eligible.
+    supabase
+      .from('videos')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_removed', false)
+      .eq('copyright_detected', true),
+  ]);
 
   const { data: application, error } = await supabase
     .from('earn_applications')
@@ -24,7 +33,8 @@ export async function GET() {
 
   return NextResponse.json({
     profile: profile || null,
-    eligible: Number(profile?.subscribers_count || 0) >= 500,
+    eligible: Number(profile?.subscribers_count || 0) >= 500 && Number(copyrightCount || 0) === 0,
+    copyright_blocked: Number(copyrightCount || 0) > 0,
     application: application || null,
   });
 }
@@ -36,14 +46,27 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('subscribers_count')
-    .eq('id', user.id)
-    .maybeSingle();
+  const [{ data: profile }, { count: copyrightCount }] = await Promise.all([
+    supabase.from('profiles').select('subscribers_count').eq('id', user.id).maybeSingle(),
+    supabase
+      .from('videos')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_removed', false)
+      .eq('copyright_detected', true),
+  ]);
 
   if (Number(profile?.subscribers_count || 0) < 500) {
     return NextResponse.json({ error: 'You need at least 500 subscribers to apply.' }, { status: 400 });
+  }
+  if (Number(copyrightCount || 0) > 0) {
+    return NextResponse.json(
+      {
+        error:
+          'Your channel has videos flagged for copyrighted music. Remove/replace the copyrighted audio before applying for monetization.',
+      },
+      { status: 400 },
+    );
   }
 
   const body = (await request.json().catch(() => ({}))) as {
@@ -96,4 +119,3 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ application: data });
 }
-
