@@ -29,6 +29,7 @@ export default function StudioFeedbackPage() {
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'support' | 'feedback'>('all');
   const [saving, setSaving] = useState(false);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -84,16 +85,24 @@ export default function StudioFeedbackPage() {
   }
 
   const heading = useMemo(
-    () => (isAdmin ? 'Feedback (All Submissions)' : 'Feedback'),
+    () => (isAdmin ? 'Feedback & Support (All Submissions)' : 'Feedback & Support'),
     [isAdmin],
   );
+
+  const filtered = useMemo(() => {
+    if (!isAdmin) return feedback;
+    if (filter === 'all') return feedback;
+    const isSupport = (item: FeedbackItem) => (item.subject || '').toLowerCase().startsWith('support (');
+    if (filter === 'support') return feedback.filter((item) => isSupport(item));
+    return feedback.filter((item) => !isSupport(item));
+  }, [feedback, filter, isAdmin]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <section className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
         <h1 className="text-3xl font-bold">{heading}</h1>
         <p className="mt-2 text-sm text-zinc-400">
-          Share what you want added to ViewTube Studio.
+          Send feedback, or review support messages sent from the Support page.
         </p>
 
         <form onSubmit={onSubmit} className="mt-5 space-y-3">
@@ -126,13 +135,31 @@ export default function StudioFeedbackPage() {
       </section>
 
       <section className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
-        <h2 className="text-lg font-semibold">{isAdmin ? 'All feedback submissions' : 'Your submissions'}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">{isAdmin ? 'All messages' : 'Your messages'}</h2>
+          {isAdmin ? (
+            <div className="flex items-center gap-2 text-xs">
+              {(['all', 'support', 'feedback'] as const).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFilter(key)}
+                  className={`rounded-full border px-3 py-1.5 ${
+                    filter === key ? 'border-white bg-white text-zinc-900' : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'
+                  }`}
+                >
+                  {key === 'all' ? 'All' : key === 'support' ? 'Support' : 'Feedback'}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
         {loading ? <p className="mt-3 text-sm text-zinc-400">Loading feedback...</p> : null}
-        {!loading && !feedback.length ? (
+        {!loading && !filtered.length ? (
           <p className="mt-3 text-sm text-zinc-400">No feedback submissions yet.</p>
         ) : null}
         <div className="mt-4 space-y-3">
-          {feedback.map((item) => (
+          {filtered.map((item) => (
             <article key={item.id} className="rounded-xl border border-zinc-700 bg-zinc-950/70 p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
@@ -154,4 +181,3 @@ export default function StudioFeedbackPage() {
     </div>
   );
 }
-

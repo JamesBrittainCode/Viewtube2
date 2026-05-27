@@ -37,7 +37,7 @@ const baseNavLinks = [
   { href: '/studio/spotlight', label: 'Creator Spotlight', icon: Sparkles },
   { href: '/studio/earn', label: 'Earn', icon: DollarSign },
   { href: '/studio/settings', label: 'Settings', icon: Settings },
-  { href: '/studio/feedback', label: 'Feedback', icon: MessageSquareMore },
+  { href: '/studio/feedback', label: 'Feedback & Support', icon: MessageSquareMore },
 ] as const;
 
 export default async function StudioLayout({ children }: { children: React.ReactNode }) {
