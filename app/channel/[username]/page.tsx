@@ -146,8 +146,14 @@ export default async function ChannelPage({
     if (!playlistId) return;
     playlistCount.set(playlistId, (playlistCount.get(playlistId) || 0) + 1);
     if (!playlistCover.has(playlistId)) {
-      const thumb = (row as any).video;
-      const url = Array.isArray(thumb) ? (thumb[0]?.thumbnail_url ?? null) : (thumb?.thumbnail_url ?? null);
+      const videoRelation = (
+        row as unknown as {
+          video?: { thumbnail_url?: string | null }[] | { thumbnail_url?: string | null } | null;
+        }
+      ).video;
+      const url = Array.isArray(videoRelation)
+        ? videoRelation[0]?.thumbnail_url ?? null
+        : videoRelation?.thumbnail_url ?? null;
       playlistCover.set(playlistId, url);
     }
   });

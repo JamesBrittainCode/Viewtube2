@@ -30,6 +30,12 @@ async function safeJson(res: Response): Promise<unknown> {
   }
 }
 
+function readStringProp(payload: unknown, key: string) {
+  if (!payload || typeof payload !== 'object') return '';
+  const value = (payload as Record<string, unknown>)[key];
+  return typeof value === 'string' ? value : '';
+}
+
 export function ChannelCustomization({
   initialProfile,
 }: {
@@ -142,8 +148,7 @@ export function ChannelCustomization({
       );
     }
     const key = kind === 'avatar' ? 'avatar_url' : 'banner_url';
-    const url =
-      payload && typeof payload === 'object' && key in payload ? String((payload as any)[key] || '') : '';
+    const url = readStringProp(payload, key);
     setProfile((prev) => ({ ...prev, [key]: url || null } as ProfileDraft));
   }
 
@@ -504,4 +509,3 @@ export function ChannelCustomization({
     </div>
   );
 }
-

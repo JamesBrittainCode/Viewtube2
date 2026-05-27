@@ -50,10 +50,14 @@ export default async function PlaylistsPage() {
     if (!playlistId) return;
     countByPlaylist.set(playlistId, (countByPlaylist.get(playlistId) || 0) + 1);
     if (!coverByPlaylist.has(playlistId)) {
-      const thumb = (row as unknown as { video?: { thumbnail_url?: string | null }[] | { thumbnail_url?: string | null } | null })
-        .video as any;
-      const url =
-        Array.isArray(thumb) ? (thumb[0]?.thumbnail_url ?? null) : (thumb?.thumbnail_url ?? null);
+      const videoRelation = (
+        row as unknown as {
+          video?: { thumbnail_url?: string | null }[] | { thumbnail_url?: string | null } | null;
+        }
+      ).video;
+      const url = Array.isArray(videoRelation)
+        ? videoRelation[0]?.thumbnail_url ?? null
+        : videoRelation?.thumbnail_url ?? null;
       coverByPlaylist.set(playlistId, url);
     }
   });
