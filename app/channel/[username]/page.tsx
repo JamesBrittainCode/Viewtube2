@@ -9,6 +9,7 @@ import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VideoGrid } from '@/components/video-grid';
 import { ShortsShelf } from '@/components/shorts-shelf';
+import { PlaylistCard, type PlaylistCardData } from '@/components/playlist-card';
 import { formatCompactCount } from '@/lib/number';
 import { createPublicClient } from '@/lib/supabase/public';
 import { createClient } from '@/lib/supabase/server';
@@ -108,6 +109,59 @@ export default async function ChannelPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const isOwner = Boolean(user?.id && user.id === channel.id);
+  const featuredClient = isOwner ? supabase : publicClient;
+  const { data: featuredRows } = await featuredClient
+    .from('channel_featured_playlists')
+    .select(
+      `
+        position,
+        playlist:playlists!channel_featured_playlists_playlist_id_fkey(
+          id,title,is_public,is_watch_later,updated_at
+        )
+      `,
+    )
+    .eq('user_id', channel.id)
+    .order('position', { ascending: true });
+
+  const featuredPlaylists = (featuredRows || [])
+    .map((row) => (row as unknown as { playlist?: Record<string, unknown> | null }).playlist)
+    .filter(Boolean) as Array<Record<string, unknown>>;
+
+  const featuredIds = featuredPlaylists.map((p) => String(p.id));
+  const { data: featuredItems } = featuredIds.length
+    ? await featuredClient
+        .from('playlist_items')
+        .select('playlist_id,created_at,video:videos(thumbnail_url)')
+        .in('playlist_id', featuredIds)
+        .order('created_at', { ascending: false })
+        .limit(500)
+    : { data: [] as unknown[] };
+
+  const playlistCount = new Map<string, number>();
+  const playlistCover = new Map<string, string | null>();
+  (featuredItems || []).forEach((row) => {
+    const playlistId = String((row as { playlist_id?: unknown }).playlist_id || '');
+    if (!playlistId) return;
+    playlistCount.set(playlistId, (playlistCount.get(playlistId) || 0) + 1);
+    if (!playlistCover.has(playlistId)) {
+      const thumb = (row as any).video;
+      const url = Array.isArray(thumb) ? (thumb[0]?.thumbnail_url ?? null) : (thumb?.thumbnail_url ?? null);
+      playlistCover.set(playlistId, url);
+    }
+  });
+
+  const featuredCards: PlaylistCardData[] = featuredPlaylists
+    .filter((p) => !Boolean(p.is_watch_later))
+    .map((p) => ({
+      id: String(p.id),
+      title: String(p.title || 'Playlist'),
+      is_public: Boolean(p.is_public),
+      updated_at: String(p.updated_at || ''),
+      videoCount: playlistCount.get(String(p.id)) || 0,
+      coverThumbnailUrl: playlistCover.get(String(p.id)) ?? null,
+    }));
 
   let subscribed = false;
 
@@ -233,6 +287,17 @@ export default async function ChannelPage({
         <div className="mt-8">
           <h2 className="mb-4 text-lg font-semibold">Shorts</h2>
           <ShortsShelf shorts={(shorts as never[]).slice(0, 18)} />
+        </div>
+      ) : null}
+
+      {featuredCards.length ? (
+        <div className="mt-8">
+          <h2 className="mb-4 text-lg font-semibold">Playlists</h2>
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-4">
+            {featuredCards.map((p) => (
+              <PlaylistCard key={p.id} playlist={p} />
+            ))}
+          </div>
         </div>
       ) : null}
 

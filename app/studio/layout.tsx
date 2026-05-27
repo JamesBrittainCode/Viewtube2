@@ -15,6 +15,7 @@ import {
   Sparkles,
   Video,
   Radio,
+  Paintbrush,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { isAdminEmail } from '@/lib/admin';
@@ -31,6 +32,7 @@ export const metadata = {
 
 const baseNavLinks = [
   { href: '/studio', label: 'Dashboard', icon: Compass },
+  { href: '/studio/customization', label: 'Channel customization', icon: Paintbrush },
   { href: '/studio/content', label: 'Content', icon: Video },
   { href: '/studio/live', label: 'Live', icon: Radio },
   { href: '/studio/analytics', label: 'Analytics', icon: BarChart3 },

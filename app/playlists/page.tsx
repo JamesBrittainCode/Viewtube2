@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { PlaylistCard, type PlaylistCardData } from '@/components/playlist-card';
 
 export const runtime = 'edge';
 
@@ -31,45 +32,80 @@ export default async function PlaylistsPage() {
   const watchLater = list.find((p) => p.is_watch_later);
   const others = list.filter((p) => !p.is_watch_later);
 
+  const playlistIds = others.map((p) => p.id);
+  const { data: items } = playlistIds.length
+    ? await supabase
+        .from('playlist_items')
+        .select('playlist_id,created_at,video:videos(thumbnail_url)')
+        .in('playlist_id', playlistIds)
+        .order('created_at', { ascending: false })
+        .limit(500)
+    : { data: [] as unknown[] };
+
+  const countByPlaylist = new Map<string, number>();
+  const coverByPlaylist = new Map<string, string | null>();
+
+  (items || []).forEach((row) => {
+    const playlistId = String((row as { playlist_id?: unknown }).playlist_id || '');
+    if (!playlistId) return;
+    countByPlaylist.set(playlistId, (countByPlaylist.get(playlistId) || 0) + 1);
+    if (!coverByPlaylist.has(playlistId)) {
+      const thumb = (row as unknown as { video?: { thumbnail_url?: string | null }[] | { thumbnail_url?: string | null } | null })
+        .video as any;
+      const url =
+        Array.isArray(thumb) ? (thumb[0]?.thumbnail_url ?? null) : (thumb?.thumbnail_url ?? null);
+      coverByPlaylist.set(playlistId, url);
+    }
+  });
+
+  const cards: PlaylistCardData[] = others.map((p) => ({
+    id: p.id,
+    title: p.title,
+    is_public: p.is_public,
+    updated_at: p.updated_at,
+    videoCount: countByPlaylist.get(p.id) || 0,
+    coverThumbnailUrl: coverByPlaylist.get(p.id) ?? null,
+  }));
+
   return (
-    <section>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Playlists</h1>
+    <section className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight">Playlists</h1>
+          <p className="mt-2 text-sm text-zinc-500">Your playlists and saved videos.</p>
+        </div>
         {watchLater ? (
           <Link
             href="/watch-later"
-            className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900"
+            className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900"
           >
             Watch later
           </Link>
         ) : null}
       </div>
 
-      {others.length ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {others.map((p) => (
-            <Link
-              key={p.id}
-              href={`/playlists/${p.id}`}
-              className="group rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-950"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="truncate text-base font-semibold group-hover:underline">{p.title}</div>
-                  <div className="mt-1 text-xs text-zinc-500">{p.is_public ? 'Public' : 'Private'}</div>
-                </div>
-                <span
-                  className={[
-                    'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                    p.is_public
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                      : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200',
-                  ].join(' ')}
-                >
-                  {p.is_public ? 'Public' : 'Private'}
-                </span>
-              </div>
-            </Link>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900"
+        >
+          Recently added ▾
+        </button>
+        <span className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white dark:bg-white dark:text-zinc-900">
+          Playlists
+        </span>
+        <span className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950">
+          Owned
+        </span>
+        <span className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950">
+          Saved
+        </span>
+      </div>
+
+      {cards.length ? (
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-4">
+          {cards.map((p) => (
+            <PlaylistCard key={p.id} playlist={p} />
           ))}
         </div>
       ) : (
@@ -80,4 +116,3 @@ export default async function PlaylistsPage() {
     </section>
   );
 }
-
