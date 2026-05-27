@@ -68,7 +68,7 @@ export function ProfileMenu({ avatarUrl, handle, isAdmin = false, isModerator = 
         <div className="absolute right-0 mt-2 w-52 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
           <div className="px-3 py-2 text-sm text-zinc-500">{handle || '@user'}</div>
           <Link
-            href="/studio/customization"
+            href="/studio/settings/customization"
             className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             Channel customization

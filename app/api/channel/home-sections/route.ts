@@ -39,7 +39,19 @@ export async function GET(request: Request) {
     .order('position', { ascending: true })
     .order('updated_at', { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    const msg = error.message || 'Failed to load sections.';
+    if (msg.toLowerCase().includes('does not exist') && msg.toLowerCase().includes('channel_home_sections')) {
+      return NextResponse.json(
+        {
+          error:
+            'Channel customization database tables are missing. Run the Supabase SQL patch: supabase/channel_home_customization_patch.sql',
+        },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
   return NextResponse.json({ sections: data || [] });
 }
 
@@ -72,9 +84,20 @@ export async function PUT(request: Request) {
 
   if (normalized.length) {
     const { error: insError } = await supabase.from('channel_home_sections').insert(normalized);
-    if (insError) return NextResponse.json({ error: insError.message }, { status: 400 });
+    if (insError) {
+      const msg = insError.message || 'Failed to save sections.';
+      if (msg.toLowerCase().includes('does not exist') && msg.toLowerCase().includes('channel_home_sections')) {
+        return NextResponse.json(
+          {
+            error:
+              'Channel customization database tables are missing. Run the Supabase SQL patch: supabase/channel_home_customization_patch.sql',
+          },
+          { status: 500 },
+        );
+      }
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
   }
 
   return NextResponse.json({ ok: true });
 }
-

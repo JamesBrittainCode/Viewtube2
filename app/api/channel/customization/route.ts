@@ -92,7 +92,18 @@ export async function PUT(request: Request) {
     .select('user_id,home_enabled,trailer_video_id,featured_video_id,updated_at')
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    const msg = error.message || 'Failed to save customization.';
+    if (msg.toLowerCase().includes('does not exist') && msg.toLowerCase().includes('channel_home_settings')) {
+      return NextResponse.json(
+        {
+          error:
+            'Channel customization database tables are missing. Run the Supabase SQL patch: supabase/channel_home_customization_patch.sql',
+        },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
   return NextResponse.json({ settings: data });
 }
-
