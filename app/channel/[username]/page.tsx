@@ -57,11 +57,14 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
 
 export default async function ChannelPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ username: string }>;
+  searchParams?: Promise<{ tab?: string }>;
 }) {
   const { username } = await params;
   const channelKey = decodeURIComponent(username);
+  const requestedTab = (await searchParams)?.tab ? String((await searchParams)?.tab || '') : '';
   const publicClient = createPublicClient();
 
   let { data: channel, error } = await publicClient
@@ -112,6 +115,35 @@ export default async function ChannelPage({
 
   const isOwner = Boolean(user?.id && user.id === channel.id);
   const featuredClient = isOwner ? supabase : publicClient;
+
+  const { data: tabSettings, error: tabError } = await featuredClient
+    .from('channel_tab_settings')
+    .select('show_home,show_videos,show_shorts,show_playlists')
+    .eq('user_id', channel.id)
+    .maybeSingle();
+
+  const tabs = {
+    show_home: tabError ? true : (tabSettings?.show_home ?? true),
+    show_videos: tabError ? true : (tabSettings?.show_videos ?? true),
+    show_shorts: tabError ? true : (tabSettings?.show_shorts ?? true),
+    show_playlists: tabError ? true : (tabSettings?.show_playlists ?? true),
+  };
+
+  const visibleTabs = [
+    tabs.show_home ? ('home' as const) : null,
+    tabs.show_videos ? ('videos' as const) : null,
+    tabs.show_shorts ? ('shorts' as const) : null,
+    tabs.show_playlists ? ('playlists' as const) : null,
+  ].filter(Boolean) as Array<'home' | 'videos' | 'shorts' | 'playlists'>;
+
+  function isValidTab(value: string): value is 'home' | 'videos' | 'shorts' | 'playlists' {
+    return value === 'home' || value === 'videos' || value === 'shorts' || value === 'playlists';
+  }
+
+  const activeTab =
+    isValidTab(requestedTab) && visibleTabs.includes(requestedTab)
+      ? requestedTab
+      : visibleTabs[0] || 'videos';
 
   const [{ data: homeSettings }, { data: homeSections }] = await Promise.all([
     featuredClient
@@ -367,8 +399,42 @@ export default async function ChannelPage({
         )}
       </div>
 
+      {/* Channel tabs */}
+      {visibleTabs.length ? (
+        <div className="mt-6 border-b border-zinc-200 dark:border-zinc-800">
+          <nav className="flex items-center gap-6 overflow-x-auto pb-2 text-sm font-semibold">
+            {visibleTabs.map((tab) => {
+              const label =
+                tab === 'home'
+                  ? 'Home'
+                  : tab === 'videos'
+                    ? 'Videos'
+                    : tab === 'shorts'
+                      ? 'Shorts'
+                      : 'Playlists';
+              const href = `/channel/${encodeURIComponent(channel.handle)}?tab=${tab}`;
+              const isActive = tab === activeTab;
+              return (
+                <Link
+                  key={tab}
+                  href={href}
+                  className={[
+                    'shrink-0 pb-2',
+                    isActive
+                      ? 'border-b-2 border-white text-white dark:border-white'
+                      : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300',
+                  ].join(' ')}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      ) : null}
+
       {/* Trailer / featured videos */}
-      {homeEnabled && homeSettings?.trailer_video_id && !subscribed ? (
+      {activeTab === 'home' && homeEnabled && homeSettings?.trailer_video_id && !subscribed ? (
         <div className="mt-6">
           <h2 className="mb-3 text-lg font-semibold">Channel trailer</h2>
           {(() => {
@@ -380,36 +446,48 @@ export default async function ChannelPage({
             const createdAt = typeof video.created_at === 'string' ? video.created_at : '';
             const views = Number(video.views || 0);
             return (
-              <Link
-                href={`/watch/${id}`}
-                className="group block overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
-              >
-                <div className="relative aspect-video w-full bg-zinc-200 dark:bg-zinc-800">
-                  <Image
-                    src={thumb || channel.banner_url || '/thumbnail-placeholder.svg'}
-                    alt={title}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 1024px) 100vw, 900px"
-                    priority
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="line-clamp-2 text-base font-semibold group-hover:underline">{title}</h3>
-                  {createdAt ? (
-                    <p className="mt-1 text-sm text-zinc-500">
-                      {views.toLocaleString()} views •{' '}
-                      {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
+              <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start">
+                  <Link
+                    href={`/watch/${id}`}
+                    className="group block overflow-hidden rounded-2xl bg-zinc-200 dark:bg-zinc-800"
+                  >
+                    <div className="relative aspect-video w-full">
+                      <Image
+                        src={thumb || channel.banner_url || '/thumbnail-placeholder.svg'}
+                        alt={title}
+                        fill
+                        className="object-cover transition duration-300 group-hover:scale-[1.01]"
+                        sizes="(max-width: 1024px) 100vw, 720px"
+                        priority
+                      />
+                    </div>
+                  </Link>
+                  <div className="flex flex-col justify-start">
+                    <Link
+                      href={`/watch/${id}`}
+                      className="line-clamp-2 text-base font-semibold hover:underline"
+                    >
+                      {title}
+                    </Link>
+                    {createdAt ? (
+                      <p className="mt-2 text-sm text-zinc-500">
+                        {views.toLocaleString()} views •{' '}
+                        {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
+                      </p>
+                    ) : null}
+                    <p className="mt-3 line-clamp-3 text-sm text-zinc-600 dark:text-zinc-300">
+                      Welcome to {channel.username}
                     </p>
-                  ) : null}
+                  </div>
                 </div>
-              </Link>
+              </div>
             );
           })()}
         </div>
       ) : null}
 
-      {homeEnabled && homeSettings?.featured_video_id && subscribed ? (
+      {activeTab === 'home' && homeEnabled && homeSettings?.featured_video_id && subscribed ? (
         <div className="mt-6">
           <h2 className="mb-3 text-lg font-semibold">Featured for returning subscribers</h2>
           {(() => {
@@ -451,7 +529,9 @@ export default async function ChannelPage({
       ) : null}
 
       {/* Live now card shows here only if not configured as a section */}
-      {(!homeEnabled || !sections.some((s) => s.section_type === 'live_now')) && liveStream?.id ? (
+      {activeTab === 'home' &&
+      (!homeEnabled || !sections.some((s) => s.section_type === 'live_now')) &&
+      liveStream?.id ? (
         <div className="mt-6">
           <h2 className="mb-3 text-lg font-semibold">Live now</h2>
           <Link
@@ -491,7 +571,7 @@ export default async function ChannelPage({
         </div>
       ) : null}
 
-      {homeEnabled && sections.length ? (
+      {activeTab === 'home' && homeEnabled && sections.length ? (
         <div className="mt-8 space-y-8">
           {sections.map((s) => {
             if (s.section_type === 'live_now') {
@@ -596,14 +676,14 @@ export default async function ChannelPage({
         </div>
       ) : (
         <>
-          {shorts.length ? (
+          {activeTab === 'home' && shorts.length ? (
             <div className="mt-8">
               <h2 className="mb-4 text-lg font-semibold">Shorts</h2>
               <ShortsShelf shorts={(shorts as never[]).slice(0, 18)} />
             </div>
           ) : null}
 
-          {featuredCards.length ? (
+          {activeTab === 'home' && featuredCards.length ? (
             <div className="mt-8">
               <h2 className="mb-4 text-lg font-semibold">Playlists</h2>
               <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-4">
@@ -614,10 +694,42 @@ export default async function ChannelPage({
             </div>
           ) : null}
 
-          <h2 className="mb-5 mt-8 text-lg font-semibold">Videos</h2>
-          <VideoGrid videos={(normalVideos || []) as never[]} />
+          {activeTab === 'home' ? (
+            <>
+              <h2 className="mb-5 mt-8 text-lg font-semibold">Videos</h2>
+              <VideoGrid videos={(normalVideos || []) as never[]} />
+            </>
+          ) : null}
         </>
       )}
+
+      {activeTab === 'videos' ? (
+        <div className="mt-6">
+          <VideoGrid videos={(normalVideos || []) as never[]} />
+        </div>
+      ) : null}
+
+      {activeTab === 'shorts' ? (
+        <div className="mt-6">
+          {shorts.length ? <ShortsShelf shorts={(shorts as never[]).slice(0, 60)} /> : null}
+        </div>
+      ) : null}
+
+      {activeTab === 'playlists' ? (
+        <div className="mt-6">
+          {featuredCards.length ? (
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-4">
+              {featuredCards.map((p) => (
+                <PlaylistCard key={p.id} playlist={p} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+              No playlists to show yet.
+            </div>
+          )}
+        </div>
+      ) : null}
     </section>
   );
 }

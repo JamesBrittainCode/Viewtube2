@@ -50,6 +50,13 @@ type HomeSettings = {
   featured_video_id: string | null;
 };
 
+type TabSettings = {
+  show_home: boolean;
+  show_videos: boolean;
+  show_shorts: boolean;
+  show_playlists: boolean;
+};
+
 type SectionType =
   | 'videos'
   | 'popular_videos'
@@ -142,6 +149,12 @@ export function ChannelCustomization({ initialProfile }: { initialProfile: Profi
     trailer_video_id: null,
     featured_video_id: null,
   });
+  const [tabSettings, setTabSettings] = useState<TabSettings>({
+    show_home: true,
+    show_videos: true,
+    show_shorts: true,
+    show_playlists: true,
+  });
   const [sections, setSections] = useState<HomeSection[]>([
     { id: uuid(), section_type: 'videos', position: 0, config: {} },
     { id: uuid(), section_type: 'short_videos', position: 1, config: {} },
@@ -181,10 +194,12 @@ export function ChannelCustomization({ initialProfile }: { initialProfile: Profi
         fetch('/api/channel/my-videos', { cache: 'no-store' }),
         fetch('/api/playlists', { cache: 'no-store' }),
       ]);
+      const tabsRes = await fetch('/api/channel/tabs', { cache: 'no-store' });
       const sPayload = await safeJson(sRes);
       const secPayload = await safeJson(secRes);
       const vidsPayload = await safeJson(vidsRes);
       const plsPayload = await safeJson(plsRes);
+      const tabsPayload = await safeJson(tabsRes);
 
       if (!sRes.ok) {
         setHomeError(readStringProp(sPayload, 'error') || 'Failed to load customization.');
@@ -203,6 +218,11 @@ export function ChannelCustomization({ initialProfile }: { initialProfile: Profi
       }
       if (!plsRes.ok) {
         setHomeError(readStringProp(plsPayload, 'error') || 'Failed to load playlists.');
+        setHomeLoading(false);
+        return;
+      }
+      if (!tabsRes.ok) {
+        setHomeError(readStringProp(tabsPayload, 'error') || 'Failed to load tab settings.');
         setHomeLoading(false);
         return;
       }
@@ -249,6 +269,16 @@ export function ChannelCustomization({ initialProfile }: { initialProfile: Profi
           : [];
       setPlaylists(pls.filter((p) => !p.is_watch_later));
 
+      const tabsObj = readObjectProp(tabsPayload, 'tabs');
+      if (tabsObj) {
+        setTabSettings({
+          show_home: Boolean(tabsObj.show_home ?? true),
+          show_videos: Boolean(tabsObj.show_videos ?? true),
+          show_shorts: Boolean(tabsObj.show_shorts ?? true),
+          show_playlists: Boolean(tabsObj.show_playlists ?? true),
+        });
+      }
+
       setHomeLoading(false);
     })();
   }, [topTab]);
@@ -294,7 +324,13 @@ export function ChannelCustomization({ initialProfile }: { initialProfile: Profi
     setHomeError(null);
     setHomeOk(false);
 
-    const [sRes, secRes] = await Promise.all([
+    if (!tabSettings.show_home && !tabSettings.show_videos && !tabSettings.show_shorts && !tabSettings.show_playlists) {
+      setHomeError('At least one tab must be enabled.');
+      setHomeSaving(false);
+      return;
+    }
+
+    const [sRes, secRes, tabsRes] = await Promise.all([
       fetch('/api/channel/customization', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -315,10 +351,21 @@ export function ChannelCustomization({ initialProfile }: { initialProfile: Profi
           })),
         }),
       }),
+      fetch('/api/channel/tabs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          showHome: tabSettings.show_home,
+          showVideos: tabSettings.show_videos,
+          showShorts: tabSettings.show_shorts,
+          showPlaylists: tabSettings.show_playlists,
+        }),
+      }),
     ]);
 
     const sPayload = await safeJson(sRes);
     const secPayload = await safeJson(secRes);
+    const tabsPayload = await safeJson(tabsRes);
     if (!sRes.ok) {
       setHomeError(readStringProp(sPayload, 'error') || 'Failed to save.');
       setHomeSaving(false);
@@ -326,6 +373,11 @@ export function ChannelCustomization({ initialProfile }: { initialProfile: Profi
     }
     if (!secRes.ok) {
       setHomeError(readStringProp(secPayload, 'error') || 'Failed to save sections.');
+      setHomeSaving(false);
+      return;
+    }
+    if (!tabsRes.ok) {
+      setHomeError(readStringProp(tabsPayload, 'error') || 'Failed to save tab settings.');
       setHomeSaving(false);
       return;
     }
@@ -468,6 +520,36 @@ export function ChannelCustomization({ initialProfile }: { initialProfile: Profi
               <p className="mt-4 text-sm text-zinc-400">Loading…</p>
             ) : (
               <div className="mt-5 space-y-3">
+                <div className="rounded-2xl border border-zinc-800 bg-black/20 p-4">
+                  <div className="text-sm font-semibold text-white">Tabs</div>
+                  <div className="mt-1 text-sm text-zinc-400">Choose which tabs show on your channel.</div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {(
+                      [
+                        { key: 'show_home', label: 'Home' },
+                        { key: 'show_videos', label: 'Videos' },
+                        { key: 'show_shorts', label: 'Shorts' },
+                        { key: 'show_playlists', label: 'Playlists' },
+                      ] as const
+                    ).map((t) => (
+                      <label
+                        key={t.key}
+                        className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-200"
+                      >
+                        <span className="font-semibold">{t.label}</span>
+                        <input
+                          type="checkbox"
+                          checked={tabSettings[t.key]}
+                          onChange={(e) =>
+                            setTabSettings((prev) => ({ ...prev, [t.key]: e.target.checked } as TabSettings))
+                          }
+                          className="h-4 w-4 accent-red-500"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Trailer */}
                 <div className="rounded-2xl border border-zinc-800 bg-black/20 p-4">
                   <div className="flex items-center gap-2 text-sm font-semibold text-white">
