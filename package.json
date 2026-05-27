@@ -16,6 +16,7 @@
     "@ffmpeg/util": "^0.12.2",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.57.4",
+    "@unimusic/chromaprint": "^0.1.4",
     "@vercel/analytics": "^2.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

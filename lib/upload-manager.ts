@@ -6,6 +6,7 @@ import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
 import { emitStreakEvent } from '@/lib/streak-events';
 import { compressVideoIfNeeded } from '@/lib/video-compress';
 import { getVideoMetadata } from '@/lib/video-metadata';
+import { computeAcoustIdFingerprintFromVideo } from '@/lib/music-fingerprint';
 
 export type UploadStage =
   | 'idle'
@@ -177,7 +178,20 @@ export async function startVideoUploadTask(input: {
     // Best-effort copyright/music recognition (non-blocking for upload success).
     try {
       setState({ stage: 'copyright_checking', overall: 0.97, detail: 'Checking for copyrighted music…' });
-      const checkRes = await fetch(`/api/videos/${payload.id}/copyright-check`, { method: 'POST' });
+
+      const { fingerprint, durationSeconds: sampleDurationSeconds } = await computeAcoustIdFingerprintFromVideo({
+        videoFile: video,
+        durationSeconds,
+        maxSampleSeconds: 30,
+        onProgress: (message) => setState({ detail: message }),
+      });
+
+      setState({ detail: 'Matching song…' });
+      const checkRes = await fetch(`/api/videos/${payload.id}/copyright-check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint, durationSeconds: sampleDurationSeconds }),
+      });
       const checkText = await checkRes.text();
       let checkPayload: { matched?: boolean; song?: { title?: string | null; artist?: string | null } | null; error?: string } =
         {};
@@ -218,7 +232,7 @@ export async function startVideoUploadTask(input: {
       setState({
         copyright: {
           status: 'error',
-          message: 'Copyright check failed. Upload completed.',
+          message: 'Could not analyze this upload for copyrighted music. Upload completed.',
         },
       });
     }
