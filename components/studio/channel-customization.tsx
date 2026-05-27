@@ -166,6 +166,8 @@ export function ChannelCustomization({ initialProfile }: { initialProfile: Profi
   const [homeSaving, setHomeSaving] = useState(false);
   const [homeError, setHomeError] = useState<string | null>(null);
   const [homeOk, setHomeOk] = useState(false);
+  const [draggingSectionId, setDraggingSectionId] = useState<string | null>(null);
+  const [dragOverSectionId, setDragOverSectionId] = useState<string | null>(null);
 
   // Add section popover
   const [addOpen, setAddOpen] = useState(false);
@@ -395,14 +397,15 @@ export function ChannelCustomization({ initialProfile }: { initialProfile: Profi
     setSections((prev) => normalizeSections(prev.filter((s) => s.id !== id)));
   }
 
-  function move(id: string, dir: -1 | 1) {
+  function reorderSections(dragId: string, overId: string) {
+    if (!dragId || !overId || dragId === overId) return;
     setSections((prev) => {
-      const idx = prev.findIndex((s) => s.id === id);
-      if (idx < 0) return prev;
+      const from = prev.findIndex((s) => s.id === dragId);
+      const to = prev.findIndex((s) => s.id === overId);
+      if (from < 0 || to < 0) return prev;
       const next = [...prev];
-      const swap = idx + dir;
-      if (swap < 0 || swap >= next.length) return prev;
-      [next[idx], next[swap]] = [next[swap], next[idx]];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
       return normalizeSections(next);
     });
   }
@@ -633,11 +636,51 @@ export function ChannelCustomization({ initialProfile }: { initialProfile: Profi
                 {/* Sections list */}
                 {sections.map((s) => {
                   const Icon = iconForSection(s.section_type);
+                  const isDragging = draggingSectionId === s.id;
+                  const isOver = dragOverSectionId === s.id && draggingSectionId && draggingSectionId !== s.id;
                   return (
-                    <div key={s.id} className="rounded-2xl border border-zinc-800 bg-black/20 p-4">
+                    <div
+                      key={s.id}
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggingSectionId(s.id);
+                        setDragOverSectionId(null);
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', s.id);
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (draggingSectionId && draggingSectionId !== s.id) setDragOverSectionId(s.id);
+                        e.dataTransfer.dropEffect = 'move';
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverSectionId === s.id) setDragOverSectionId(null);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const dragId = e.dataTransfer.getData('text/plain') || draggingSectionId;
+                        if (dragId) reorderSections(dragId, s.id);
+                        setDraggingSectionId(null);
+                        setDragOverSectionId(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggingSectionId(null);
+                        setDragOverSectionId(null);
+                      }}
+                      className={[
+                        'rounded-2xl border bg-black/20 p-4 transition',
+                        isOver ? 'border-red-600' : 'border-zinc-800',
+                        isDragging ? 'opacity-70' : '',
+                      ].join(' ')}
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <GripVertical className="h-4 w-4 text-zinc-500" />
+                          <div
+                            className="cursor-grab rounded-lg p-1 text-zinc-500 hover:bg-white/5 active:cursor-grabbing"
+                            title="Drag to reorder"
+                          >
+                            <GripVertical className="h-4 w-4" />
+                          </div>
                           <div className="rounded-xl bg-white/5 p-2 text-zinc-200">
                             <Icon className="h-4 w-4" />
                           </div>
@@ -653,22 +696,6 @@ export function ChannelCustomization({ initialProfile }: { initialProfile: Profi
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => move(s.id, -1)}
-                            className="rounded-full border border-zinc-800 px-3 py-1 text-xs font-semibold text-zinc-200 hover:bg-white/10 disabled:opacity-40"
-                            disabled={s.position === 0}
-                          >
-                            Up
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => move(s.id, 1)}
-                            className="rounded-full border border-zinc-800 px-3 py-1 text-xs font-semibold text-zinc-200 hover:bg-white/10 disabled:opacity-40"
-                            disabled={s.position === sections.length - 1}
-                          >
-                            Down
-                          </button>
                           <button
                             type="button"
                             onClick={() => removeSection(s.id)}
