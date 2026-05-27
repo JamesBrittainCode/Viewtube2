@@ -19,6 +19,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ReportVideoButton } from '@/components/report-video-button';
 import { AdminVideoTakedownButton } from '@/components/admin-video-takedown-button';
 import { AdsenseSlot } from '@/components/adsense-slot';
+import { SaveToPlaylistsButton } from '@/components/save-to-playlists-button';
 
 export const runtime = 'edge';
 
@@ -178,6 +179,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
               initiallyDisliked={Boolean(dislikedRes?.data)}
               initialCount={dislikeCount || 0}
             />
+            <SaveToPlaylistsButton videoId={video.id} signedIn={Boolean(user)} />
             {user && <ReportVideoButton videoId={video.id} />}
             {isAdmin && <SetSpotlightButton videoId={video.id} />}
             {canModerate && <AdminVideoTakedownButton videoId={video.id} />}

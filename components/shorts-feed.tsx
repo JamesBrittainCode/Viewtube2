@@ -16,6 +16,7 @@ import {
 import { unwrapRelation } from '@/lib/profile';
 import { CommentSection } from '@/components/comment-section';
 import { emitStreakEvent } from '@/lib/streak-events';
+import { SaveToPlaylistsButton } from '@/components/save-to-playlists-button';
 
 type ShortRow = {
   id: string;
@@ -444,6 +445,12 @@ export function ShortsFeed({
                         <Share2 className="h-6 w-6" />
                         <span className="text-xs font-semibold">Share</span>
                       </button>
+
+                      <SaveToPlaylistsButton
+                        videoId={item.id}
+                        signedIn={Boolean(currentUserId)}
+                        variant="rail"
+                      />
                     </div>
                   </div>
 
