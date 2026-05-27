@@ -112,6 +112,33 @@ export default async function ChannelPage({
 
   const isOwner = Boolean(user?.id && user.id === channel.id);
   const featuredClient = isOwner ? supabase : publicClient;
+
+  const [{ data: homeSettings }, { data: homeSections }] = await Promise.all([
+    featuredClient
+      .from('channel_home_settings')
+      .select('home_enabled,trailer_video_id,featured_video_id')
+      .eq('user_id', channel.id)
+      .maybeSingle(),
+    featuredClient
+      .from('channel_home_sections')
+      .select('id,section_type,config,position')
+      .eq('user_id', channel.id)
+      .order('position', { ascending: true })
+      .limit(12),
+  ]);
+
+  const homeEnabled = homeSettings?.home_enabled !== false;
+  const sections =
+    (homeSections || [])
+      .map((s) => ({
+        id: String((s as { id?: unknown }).id || ''),
+        section_type: String((s as { section_type?: unknown }).section_type || 'videos'),
+        config:
+          (s as { config?: unknown }).config && typeof (s as { config?: unknown }).config === 'object'
+            ? ((s as { config?: unknown }).config as Record<string, unknown>)
+            : {},
+      }))
+      .filter((s) => Boolean(s.id)) || [];
   const { data: featuredRows } = await featuredClient
     .from('channel_featured_playlists')
     .select(
@@ -179,6 +206,97 @@ export default async function ChannelPage({
       .eq('creator_id', channel.id)
       .maybeSingle();
     subscribed = Boolean(data);
+  }
+
+  const featuredVideoIds = [homeSettings?.trailer_video_id, homeSettings?.featured_video_id]
+    .filter(Boolean)
+    .map((id) => String(id));
+  const { data: featuredVideos } = featuredVideoIds.length
+    ? await featuredClient
+        .from('videos')
+        .select('id,user_id,title,thumbnail_url,views,created_at,is_short')
+        .eq('user_id', channel.id)
+        .eq('is_removed', false)
+        .in('id', featuredVideoIds)
+    : { data: [] as unknown[] };
+
+  const featuredVideoById = new Map(
+    (featuredVideos || []).map((v) => [String((v as { id?: unknown }).id || ''), v as Record<string, unknown>]),
+  );
+
+  async function buildPlaylistCards(playlistIds: string[]): Promise<PlaylistCardData[]> {
+    const unique = Array.from(new Set(playlistIds.map(String))).filter(Boolean);
+    if (!unique.length) return [];
+
+    const { data: pls } = await featuredClient
+      .from('playlists')
+      .select('id,title,is_public,is_watch_later,updated_at')
+      .eq('user_id', channel.id)
+      .in('id', unique);
+
+    const playlists = (pls || [])
+      .filter((p) => !Boolean((p as { is_watch_later?: unknown }).is_watch_later))
+      .map((p) => ({
+        id: String((p as { id?: unknown }).id || ''),
+        title: String((p as { title?: unknown }).title || 'Playlist'),
+        is_public: Boolean((p as { is_public?: unknown }).is_public),
+        updated_at: String((p as { updated_at?: unknown }).updated_at || ''),
+      }));
+
+    const { data: items } = playlists.length
+      ? await featuredClient
+          .from('playlist_items')
+          .select('playlist_id,created_at,video:videos(thumbnail_url)')
+          .in(
+            'playlist_id',
+            playlists.map((p) => p.id),
+          )
+          .order('created_at', { ascending: false })
+          .limit(800)
+      : { data: [] as unknown[] };
+
+    const countBy = new Map<string, number>();
+    const coverBy = new Map<string, string | null>();
+    (items || []).forEach((row) => {
+      const playlistId = String((row as { playlist_id?: unknown }).playlist_id || '');
+      if (!playlistId) return;
+      countBy.set(playlistId, (countBy.get(playlistId) || 0) + 1);
+      if (!coverBy.has(playlistId)) {
+        const videoRelation = (
+          row as unknown as {
+            video?: { thumbnail_url?: string | null }[] | { thumbnail_url?: string | null } | null;
+          }
+        ).video;
+        const url = Array.isArray(videoRelation)
+          ? videoRelation[0]?.thumbnail_url ?? null
+          : videoRelation?.thumbnail_url ?? null;
+        coverBy.set(playlistId, url);
+      }
+    });
+
+    const order = new Map(unique.map((id, idx) => [id, idx]));
+    return playlists
+      .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+      .map((p) => ({
+        id: p.id,
+        title: p.title,
+        is_public: p.is_public,
+        updated_at: p.updated_at,
+        videoCount: countBy.get(p.id) || 0,
+        coverThumbnailUrl: coverBy.get(p.id) ?? null,
+      }));
+  }
+
+  const cardsBySection = new Map<string, PlaylistCardData[]>();
+  for (const s of sections) {
+    if (s.section_type === 'single_playlist') {
+      const id = typeof s.config.playlistId === 'string' ? s.config.playlistId : '';
+      if (id) cardsBySection.set(s.id, await buildPlaylistCards([id]));
+    }
+    if (s.section_type === 'multiple_playlists') {
+      const ids = Array.isArray(s.config.playlistIds) ? s.config.playlistIds.map(String) : [];
+      if (ids.length) cardsBySection.set(s.id, await buildPlaylistCards(ids));
+    }
   }
 
   return (
@@ -249,7 +367,91 @@ export default async function ChannelPage({
         )}
       </div>
 
-      {liveStream?.id ? (
+      {/* Trailer / featured videos */}
+      {homeEnabled && homeSettings?.trailer_video_id && !subscribed ? (
+        <div className="mt-6">
+          <h2 className="mb-3 text-lg font-semibold">Channel trailer</h2>
+          {(() => {
+            const video = featuredVideoById.get(String(homeSettings.trailer_video_id || ''));
+            if (!video) return null;
+            const id = String(video.id || '');
+            const title = String(video.title || 'Featured');
+            const thumb = typeof video.thumbnail_url === 'string' ? video.thumbnail_url : null;
+            const createdAt = typeof video.created_at === 'string' ? video.created_at : '';
+            const views = Number(video.views || 0);
+            return (
+              <Link
+                href={`/watch/${id}`}
+                className="group block overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                <div className="relative aspect-video w-full bg-zinc-200 dark:bg-zinc-800">
+                  <Image
+                    src={thumb || channel.banner_url || '/thumbnail-placeholder.svg'}
+                    alt={title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 900px"
+                    priority
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="line-clamp-2 text-base font-semibold group-hover:underline">{title}</h3>
+                  {createdAt ? (
+                    <p className="mt-1 text-sm text-zinc-500">
+                      {views.toLocaleString()} views •{' '}
+                      {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
+                    </p>
+                  ) : null}
+                </div>
+              </Link>
+            );
+          })()}
+        </div>
+      ) : null}
+
+      {homeEnabled && homeSettings?.featured_video_id && subscribed ? (
+        <div className="mt-6">
+          <h2 className="mb-3 text-lg font-semibold">Featured for returning subscribers</h2>
+          {(() => {
+            const video = featuredVideoById.get(String(homeSettings.featured_video_id || ''));
+            if (!video) return null;
+            const id = String(video.id || '');
+            const title = String(video.title || 'Featured');
+            const thumb = typeof video.thumbnail_url === 'string' ? video.thumbnail_url : null;
+            const createdAt = typeof video.created_at === 'string' ? video.created_at : '';
+            const views = Number(video.views || 0);
+            return (
+              <Link
+                href={`/watch/${id}`}
+                className="group block overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                <div className="relative aspect-video w-full bg-zinc-200 dark:bg-zinc-800">
+                  <Image
+                    src={thumb || channel.banner_url || '/thumbnail-placeholder.svg'}
+                    alt={title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 900px"
+                    priority
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="line-clamp-2 text-base font-semibold group-hover:underline">{title}</h3>
+                  {createdAt ? (
+                    <p className="mt-1 text-sm text-zinc-500">
+                      {views.toLocaleString()} views •{' '}
+                      {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
+                    </p>
+                  ) : null}
+                </div>
+              </Link>
+            );
+          })()}
+        </div>
+      ) : null}
+
+      {/* Live now card shows here only if not configured as a section */}
+      {(!homeEnabled || !sections.some((s) => s.section_type === 'live_now')) && liveStream?.id ? (
         <div className="mt-6">
           <h2 className="mb-3 text-lg font-semibold">Live now</h2>
           <Link
@@ -289,26 +491,133 @@ export default async function ChannelPage({
         </div>
       ) : null}
 
-      {shorts.length ? (
-        <div className="mt-8">
-          <h2 className="mb-4 text-lg font-semibold">Shorts</h2>
-          <ShortsShelf shorts={(shorts as never[]).slice(0, 18)} />
-        </div>
-      ) : null}
+      {homeEnabled && sections.length ? (
+        <div className="mt-8 space-y-8">
+          {sections.map((s) => {
+            if (s.section_type === 'live_now') {
+              if (!liveStream?.id) return null;
+              return (
+                <div key={s.id}>
+                  <h2 className="mb-3 text-lg font-semibold">Live now</h2>
+                  <Link
+                    href={`/live/${liveStream.id}`}
+                    className="group block overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+                  >
+                    <div className="relative aspect-video w-full bg-zinc-200 dark:bg-zinc-800">
+                      <Image
+                        src={liveStream.thumbnail_url || channel.banner_url || '/thumbnail-placeholder.svg'}
+                        alt={liveStream.title || 'Live stream'}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 1024px) 100vw, 900px"
+                      />
+                      <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+                        LIVE
+                      </span>
+                      <span className="absolute bottom-3 right-3 rounded-full bg-black/70 px-2 py-1 text-xs font-semibold text-white">
+                        {Number(liveStream.viewer_count || 0).toLocaleString()} watching
+                      </span>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="line-clamp-2 text-base font-semibold group-hover:underline">
+                        {liveStream.title || 'Live Stream'}
+                      </h3>
+                      <p className="mt-1 text-sm text-zinc-500">
+                        Started {formatDistanceToNow(new Date(liveStream.started_at), { addSuffix: true })}
+                      </p>
+                    </div>
+                  </Link>
+                </div>
+              );
+            }
 
-      {featuredCards.length ? (
-        <div className="mt-8">
-          <h2 className="mb-4 text-lg font-semibold">Playlists</h2>
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-4">
-            {featuredCards.map((p) => (
-              <PlaylistCard key={p.id} playlist={p} />
-            ))}
-          </div>
-        </div>
-      ) : null}
+            if (s.section_type === 'short_videos') {
+              if (!shorts.length) return null;
+              return (
+                <div key={s.id}>
+                  <h2 className="mb-4 text-lg font-semibold">Short videos</h2>
+                  <ShortsShelf shorts={(shorts as never[]).slice(0, 18)} />
+                </div>
+              );
+            }
 
-      <h2 className="mb-5 mt-8 text-lg font-semibold">Videos</h2>
-      <VideoGrid videos={(normalVideos || []) as never[]} />
+            if (s.section_type === 'videos') {
+              return (
+                <div key={s.id}>
+                  <h2 className="mb-5 text-lg font-semibold">Videos</h2>
+                  <VideoGrid videos={(normalVideos || []).slice(0, 24) as never[]} />
+                </div>
+              );
+            }
+
+            if (s.section_type === 'popular_videos') {
+              const popular = [...(normalVideos || [])]
+                .sort((a, b) => (b.views || 0) - (a.views || 0))
+                .slice(0, 24);
+              if (!popular.length) return null;
+              return (
+                <div key={s.id}>
+                  <h2 className="mb-5 text-lg font-semibold">Popular videos</h2>
+                  <VideoGrid videos={popular as never[]} />
+                </div>
+              );
+            }
+
+            if (s.section_type === 'single_playlist') {
+              const cards = cardsBySection.get(s.id) || [];
+              if (!cards.length) return null;
+              return (
+                <div key={s.id}>
+                  <h2 className="mb-4 text-lg font-semibold">{cards[0].title}</h2>
+                  <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-4">
+                    <PlaylistCard playlist={cards[0]} />
+                  </div>
+                </div>
+              );
+            }
+
+            if (s.section_type === 'multiple_playlists') {
+              const cards = cardsBySection.get(s.id) || featuredCards;
+              if (!cards.length) return null;
+              return (
+                <div key={s.id}>
+                  <h2 className="mb-4 text-lg font-semibold">Playlists</h2>
+                  <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-4">
+                    {cards.map((p) => (
+                      <PlaylistCard key={p.id} playlist={p} />
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+
+            return null;
+          })}
+        </div>
+      ) : (
+        <>
+          {shorts.length ? (
+            <div className="mt-8">
+              <h2 className="mb-4 text-lg font-semibold">Shorts</h2>
+              <ShortsShelf shorts={(shorts as never[]).slice(0, 18)} />
+            </div>
+          ) : null}
+
+          {featuredCards.length ? (
+            <div className="mt-8">
+              <h2 className="mb-4 text-lg font-semibold">Playlists</h2>
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-4">
+                {featuredCards.map((p) => (
+                  <PlaylistCard key={p.id} playlist={p} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <h2 className="mb-5 mt-8 text-lg font-semibold">Videos</h2>
+          <VideoGrid videos={(normalVideos || []) as never[]} />
+        </>
+      )}
     </section>
   );
 }
