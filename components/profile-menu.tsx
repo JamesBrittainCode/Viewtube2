@@ -105,6 +105,26 @@ export function ProfileMenu({ avatarUrl, handle, isAdmin = false, isModerator = 
           >
             Sign out
           </button>
+          <div className="my-2 h-px bg-zinc-200 dark:bg-zinc-700" />
+          <div className="flex flex-wrap gap-x-3 gap-y-1 px-3 pb-1 text-xs text-zinc-500">
+            <a
+              href="https://store.heyrivo.com/collections/viewtube"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+            >
+              Store
+            </a>
+            <Link href="/privacy" className="hover:underline">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:underline">
+              Terms
+            </Link>
+            <Link href="/support" className="hover:underline">
+              Support
+            </Link>
+          </div>
         </div>
       )}
     </div>
