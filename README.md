@@ -89,6 +89,16 @@ Required variables:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
+Optional ads variables (used only on homepage and `/streaks/ad`):
+
+- AdSense:
+  - `NEXT_PUBLIC_ADSENSE_CLIENT_ID`
+  - `NEXT_PUBLIC_ADSENSE_HOME_SLOT`
+  - `NEXT_PUBLIC_ADSENSE_REWARD_SLOT`
+- Adsterra (banner units):
+  - `NEXT_PUBLIC_ADSTERRA_HOME_BANNER_KEY`
+  - `NEXT_PUBLIC_ADSTERRA_REWARD_BANNER_KEY`
+
 ## 3) Local development
 
 ```bash

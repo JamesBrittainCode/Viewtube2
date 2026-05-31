@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import Script from 'next/script';
 import { AppShell } from '@/components/app-shell';
 import { AdblockGate } from '@/components/adblock-gate';
 import { Navbar } from '@/components/navbar';
@@ -32,23 +31,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-  // Fallback client id is included so AdSense can verify ownership even before env vars are set.
-  // Override by setting NEXT_PUBLIC_ADSENSE_CLIENT_ID in Vercel.
-  const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-7440729603400218';
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider>
           <AdblockGate />
-          <Script
-            id="adsense"
-            async
-            strategy="afterInteractive"
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
-              adsenseClient,
-            )}`}
-            crossOrigin="anonymous"
-          />
           <JsonLd
             data={{
               '@context': 'https://schema.org',
