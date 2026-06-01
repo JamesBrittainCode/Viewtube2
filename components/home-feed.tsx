@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { VideoGrid } from '@/components/video-grid';
 import { Spinner } from '@/components/spinner';
-import { AdSlot } from '@/components/ad-slot';
+import { AdsterraBanner } from '@/components/adsterra-banner';
 import { HomeContestBanner } from '@/components/home-contest-banner';
 import { ShortsShelf } from '@/components/shorts-shelf';
 
@@ -22,7 +22,6 @@ export function HomeFeed({
   initialHasMore: boolean;
   initialShorts: Array<Record<string, unknown>>;
 }) {
-  const adsenseHomeSlot = process.env.NEXT_PUBLIC_ADSENSE_HOME_SLOT || null;
   const adsterraHomeKey = process.env.NEXT_PUBLIC_ADSTERRA_HOME_BANNER_KEY || null;
   const [showContestBanner, setShowContestBanner] = useState(true);
   const [videos, setVideos] = useState(initialVideos);
@@ -73,17 +72,11 @@ export function HomeFeed({
             />
           </div>
         </div>
-      ) : adsenseHomeSlot || adsterraHomeKey ? (
+      ) : adsterraHomeKey ? (
         <div className="mb-4">
           <div className="mx-auto max-w-[1200px]">
             <div className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
-              <AdSlot
-                adsenseSlot={adsenseHomeSlot}
-                adsterraUnitKey={adsterraHomeKey}
-                adsterraWidth={728}
-                adsterraHeight={90}
-                className="min-h-[90px] w-full"
-              />
+              <AdsterraBanner unitKey={adsterraHomeKey} width={728} height={90} className="min-h-[90px] w-full" />
             </div>
           </div>
         </div>

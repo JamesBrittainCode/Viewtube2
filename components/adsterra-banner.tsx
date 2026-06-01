@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import Script from 'next/script';
+import { useMemo } from 'react';
 
 declare global {
   interface Window {
@@ -8,12 +9,8 @@ declare global {
   }
 }
 
-// Adsterra banner embed via "invoke.js" snippet.
+// Adsterra banner embed using their standard "invoke.js" snippet.
 // You must set NEXT_PUBLIC_ADSTERRA_*_KEY to the Adsterra unit key.
-// Notes:
-// - Adsterra uses a global `atOptions` object read by the injected script.
-// - To avoid collisions when rendering multiple units, we serialize script injection.
-let injectionQueue: Promise<void> = Promise.resolve();
 
 export function AdsterraBanner({
   unitKey,
@@ -26,43 +23,32 @@ export function AdsterraBanner({
   height?: number;
   className?: string;
 }) {
-  const containerId = useMemo(() => `adsterra-${unitKey}-${Math.random().toString(16).slice(2)}`, [unitKey]);
-  const injectedRef = useRef(false);
+  const ids = useMemo(() => {
+    const suffix = Math.random().toString(16).slice(2);
+    return {
+      holder: `adsterra-holder-${unitKey}-${suffix}`,
+      options: `adsterra-options-${unitKey}-${suffix}`,
+      invoke: `adsterra-invoke-${unitKey}-${suffix}`,
+    };
+  }, [unitKey]);
 
-  useEffect(() => {
-    if (!unitKey) return;
-    if (injectedRef.current) return;
-    injectedRef.current = true;
+  if (!unitKey) return null;
 
-    injectionQueue = injectionQueue.then(async () => {
-      // If the container disappeared, abort.
-      const container = document.getElementById(containerId);
-      if (!container) return;
-
-      // Configure this unit for the next injected script.
-      window.atOptions = {
-        key: unitKey,
-        format: 'iframe',
-        height,
-        width,
-        params: {},
-      };
-
-      const script = document.createElement('script');
-      script.type = 'text/javascript';
-      script.async = true;
-      script.src = `https://www.highperformanceformat.com/${encodeURIComponent(unitKey)}/invoke.js`;
-
-      // Ensure we append right after container to match typical snippets.
-      container.appendChild(script);
-
-      await new Promise<void>((resolve) => {
-        script.onload = () => resolve();
-        script.onerror = () => resolve();
-      });
-    });
-  }, [containerId, height, unitKey, width]);
-
-  return <div id={containerId} className={className} style={{ width, height }} />;
+  return (
+    <div id={ids.holder} className={className} style={{ width, height }}>
+      <Script
+        id={ids.options}
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `atOptions = {'key':'${unitKey}','format':'iframe','height':${height},'width':${width},'params':{}};`,
+        }}
+      />
+      <Script
+        id={ids.invoke}
+        async
+        strategy="afterInteractive"
+        src={`https://www.highperformanceformat.com/${encodeURIComponent(unitKey)}/invoke.js`}
+      />
+    </div>
+  );
 }
-
