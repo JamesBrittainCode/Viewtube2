@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AdSlot } from '@/components/ad-slot';
+import { AdsenseSlot } from '@/components/adsense-slot';
+import { AdsterraBanner } from '@/components/adsterra-banner';
 import { emitStreakEvent } from '@/lib/streak-events';
 
 function clamp01(n: number) {
@@ -110,14 +111,13 @@ export function AdRewardWatch({
             key={idx}
             className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950"
           >
-            <AdSlot
-              adsenseSlot={slot}
-              adsterraUnitKey={adsterraRewardKey}
-              // Adsterra "banner" units can be configured as 300x250 as well.
-              adsterraWidth={300}
-              adsterraHeight={250}
-              className="min-h-[250px] w-full"
-            />
+            {adsterraRewardKey ? (
+              <AdsterraBanner unitKey={adsterraRewardKey} width={300} height={250} className="w-full" />
+            ) : slot ? (
+              <AdsenseSlot slot={slot} className="min-h-[250px] w-full" />
+            ) : (
+              <div className="min-h-[250px]" />
+            )}
           </div>
         ))}
       </div>

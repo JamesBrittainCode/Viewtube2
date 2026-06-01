@@ -75,8 +75,13 @@ export function HomeFeed({
       ) : adsterraHomeKey ? (
         <div className="mb-4">
           <div className="mx-auto max-w-[1200px]">
-            <div className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
-              <AdsterraBanner unitKey={adsterraHomeKey} width={728} height={90} className="min-h-[90px] w-full" />
+            <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="px-3 pt-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Sponsored
+              </div>
+              <div className="px-3 pb-3 pt-1">
+                <AdsterraBanner unitKey={adsterraHomeKey} width={728} height={90} className="w-full" />
+              </div>
             </div>
           </div>
         </div>

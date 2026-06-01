@@ -19,7 +19,8 @@ import { createClient } from '@/lib/supabase/server';
 import { ReportVideoButton } from '@/components/report-video-button';
 import { AdminVideoTakedownButton } from '@/components/admin-video-takedown-button';
 import { SaveToPlaylistsButton } from '@/components/save-to-playlists-button';
-import { AdSlot } from '@/components/ad-slot';
+import { AdsenseSlot } from '@/components/adsense-slot';
+import { AdsterraBanner } from '@/components/adsterra-banner';
 
 export const runtime = 'edge';
 
@@ -209,10 +210,24 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
       <aside className="lg:sticky lg:top-20 lg:self-start">
         {process.env.NEXT_PUBLIC_ADSENSE_WATCH_SIDEBAR_SLOT ? (
           <div className="mb-4 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
-            <AdSlot
-              adsenseSlot={process.env.NEXT_PUBLIC_ADSENSE_WATCH_SIDEBAR_SLOT}
-              adsterraUnitKey={null}
-              className="min-h-[250px]"
+            {process.env.NEXT_PUBLIC_ADSTERRA_WATCH_SIDEBAR_BANNER_KEY ? (
+              <AdsterraBanner
+                unitKey={process.env.NEXT_PUBLIC_ADSTERRA_WATCH_SIDEBAR_BANNER_KEY}
+                width={300}
+                height={250}
+                className="w-full"
+              />
+            ) : (
+              <AdsenseSlot slot={process.env.NEXT_PUBLIC_ADSENSE_WATCH_SIDEBAR_SLOT} className="min-h-[250px]" />
+            )}
+          </div>
+        ) : process.env.NEXT_PUBLIC_ADSTERRA_WATCH_SIDEBAR_BANNER_KEY ? (
+          <div className="mb-4 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+            <AdsterraBanner
+              unitKey={process.env.NEXT_PUBLIC_ADSTERRA_WATCH_SIDEBAR_BANNER_KEY}
+              width={300}
+              height={250}
+              className="w-full"
             />
           </div>
         ) : null}

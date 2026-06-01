@@ -98,6 +98,7 @@ Optional ads variables (used only on homepage and `/streaks/ad`):
 - Adsterra (banner units):
   - `NEXT_PUBLIC_ADSTERRA_HOME_BANNER_KEY`
   - `NEXT_PUBLIC_ADSTERRA_REWARD_BANNER_KEY`
+  - `NEXT_PUBLIC_ADSTERRA_WATCH_SIDEBAR_BANNER_KEY`
 
 ## 3) Local development
 
