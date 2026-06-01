@@ -1,7 +1,6 @@
 'use client';
 
-import Script from 'next/script';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 declare global {
   interface Window {
@@ -27,28 +26,64 @@ export function AdsterraBanner({
     const suffix = Math.random().toString(16).slice(2);
     return {
       holder: `adsterra-holder-${unitKey}-${suffix}`,
-      options: `adsterra-options-${unitKey}-${suffix}`,
-      invoke: `adsterra-invoke-${unitKey}-${suffix}`,
+      script: `adsterra-script-${unitKey}-${suffix}`,
     };
   }, [unitKey]);
+
+  const injectedRef = useRef(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!unitKey) return;
+    if (injectedRef.current) return;
+    injectedRef.current = true;
+
+    const holder = document.getElementById(ids.holder);
+    if (!holder) return;
+
+    // Clear previous content just in case.
+    holder.innerHTML = '';
+
+    // IMPORTANT: Adsterra's invoke.js often relies on synchronous execution.
+    // We set `window.atOptions` then inject the script without `async`.
+    window.atOptions = {
+      key: unitKey,
+      format: 'iframe',
+      height,
+      width,
+      params: {},
+    };
+
+    const script = document.createElement('script');
+    script.id = ids.script;
+    script.type = 'text/javascript';
+    script.async = false;
+    script.src = `https://www.highperformanceformat.com/${encodeURIComponent(unitKey)}/invoke.js`;
+
+    const timeout = window.setTimeout(() => setFailed(true), 2500);
+
+    script.onload = () => {
+      window.clearTimeout(timeout);
+      setFailed(false);
+    };
+    script.onerror = () => {
+      window.clearTimeout(timeout);
+      setFailed(true);
+    };
+
+    holder.appendChild(script);
+  }, [height, ids.holder, ids.script, unitKey, width]);
 
   if (!unitKey) return null;
 
   return (
-    <div id={ids.holder} className={className} style={{ width, height }}>
-      <Script
-        id={ids.options}
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `atOptions = {'key':'${unitKey}','format':'iframe','height':${height},'width':${width},'params':{}};`,
-        }}
-      />
-      <Script
-        id={ids.invoke}
-        async
-        strategy="afterInteractive"
-        src={`https://www.highperformanceformat.com/${encodeURIComponent(unitKey)}/invoke.js`}
-      />
+    <div className={className} style={{ width, height }}>
+      <div id={ids.holder} style={{ width, height }} />
+      {failed ? (
+        <div className="mt-1 text-[11px] text-zinc-500">
+          Ad failed to load. Check ad blockers/privacy shields.
+        </div>
+      ) : null}
     </div>
   );
 }
