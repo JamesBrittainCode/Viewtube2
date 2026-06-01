@@ -32,6 +32,7 @@ export function AdsterraBanner({
 
   const injectedRef = useRef(false);
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!unitKey) return;
@@ -43,6 +44,8 @@ export function AdsterraBanner({
 
     // Clear previous content just in case.
     holder.innerHTML = '';
+    setFailed(false);
+    setLoaded(false);
 
     // IMPORTANT: Adsterra's invoke.js often relies on synchronous execution.
     // We set `window.atOptions` then inject the script without `async`.
@@ -60,11 +63,38 @@ export function AdsterraBanner({
     script.async = false;
     script.src = `https://www.highperformanceformat.com/${encodeURIComponent(unitKey)}/invoke.js`;
 
-    const timeout = window.setTimeout(() => setFailed(true), 2500);
+    // Give it plenty of time; Ad networks can be slow depending on geo/fill.
+    const timeoutMs = 12_000;
+    const timeout = window.setTimeout(() => {
+      const hasIframe = Boolean(holder.querySelector('iframe'));
+      if (!hasIframe) setFailed(true);
+    }, timeoutMs);
 
     script.onload = () => {
+      // Don't mark as "loaded" until we actually see an iframe render.
       window.clearTimeout(timeout);
-      setFailed(false);
+      const hasIframe = Boolean(holder.querySelector('iframe'));
+      if (hasIframe) {
+        setLoaded(true);
+        setFailed(false);
+        return;
+      }
+
+      // Some Adsterra units inject shortly after load; poll briefly.
+      const start = performance.now();
+      const poll = window.setInterval(() => {
+        const ok = Boolean(holder.querySelector('iframe'));
+        if (ok) {
+          window.clearInterval(poll);
+          setLoaded(true);
+          setFailed(false);
+          return;
+        }
+        if (performance.now() - start > 4000) {
+          window.clearInterval(poll);
+          setFailed(true);
+        }
+      }, 250);
     };
     script.onerror = () => {
       window.clearTimeout(timeout);
@@ -79,7 +109,7 @@ export function AdsterraBanner({
   return (
     <div className={className} style={{ width, height }}>
       <div id={ids.holder} style={{ width, height }} />
-      {failed ? (
+      {failed && !loaded ? (
         <div className="mt-1 text-[11px] text-zinc-500">
           Ad failed to load. Check ad blockers/privacy shields.
         </div>
