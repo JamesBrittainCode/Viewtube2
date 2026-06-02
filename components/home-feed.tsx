@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { VideoGrid } from '@/components/video-grid';
 import { Spinner } from '@/components/spinner';
-import { AdsterraBanner } from '@/components/adsterra-banner';
+import { AdsenseSlot } from '@/components/adsense-slot';
 import { HomeContestBanner } from '@/components/home-contest-banner';
 import { ShortsShelf } from '@/components/shorts-shelf';
 
@@ -22,7 +22,7 @@ export function HomeFeed({
   initialHasMore: boolean;
   initialShorts: Array<Record<string, unknown>>;
 }) {
-  const adsterraHomeKey = process.env.NEXT_PUBLIC_ADSTERRA_HOME_BANNER_KEY || null;
+  const homeAdSlot = process.env.NEXT_PUBLIC_ADSENSE_HOME_SLOT || null;
   const [showContestBanner, setShowContestBanner] = useState(true);
   const [videos, setVideos] = useState(initialVideos);
   const [page, setPage] = useState(1);
@@ -72,16 +72,11 @@ export function HomeFeed({
             />
           </div>
         </div>
-      ) : adsterraHomeKey ? (
+      ) : homeAdSlot ? (
         <div className="mb-4">
           <div className="mx-auto max-w-[1200px]">
-            <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-              <div className="px-3 pt-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Sponsored
-              </div>
-              <div className="px-3 pb-3 pt-1">
-                <AdsterraBanner unitKey={adsterraHomeKey} width={728} height={90} className="w-full" />
-              </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+              <AdsenseSlot slot={homeAdSlot} className="min-h-[90px] w-full" />
             </div>
           </div>
         </div>
