@@ -157,7 +157,7 @@ export default function StreakContestRulesPage() {
           <p>
             <span className="font-semibold text-zinc-900 dark:text-white">Contest pauses and strikes</span>: if Sponsor’s
             systems or moderators detect spammy point activity, the Participant may be placed on a temporary Contest
-            points pause, currently intended to last approximately thirty (30) minutes, and may receive one (1) Contest
+            points pause, currently intended to last approximately twenty (20) minutes, and may receive one (1) Contest
             abuse strike. During a Contest points pause, the Participant may continue ordinary ViewTube activity where
             allowed, but point earning may be blocked or reduced.
           </p>

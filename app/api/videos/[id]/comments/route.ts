@@ -117,9 +117,9 @@ export async function POST(
     );
   }
 
-  // Stricter but still human-friendly: catch bursts and repeated text, not normal conversation.
-  const windowSeconds = 60;
-  const limit = 5;
+  // Balanced anti-spam: catches bursts and repeated text, while leaving normal conversation alone.
+  const windowSeconds = 90;
+  const limit = 8;
   const sinceIso = new Date(Date.now() - windowSeconds * 1000).toISOString();
   const { count: recentCount } = await supabase
     .from('comments')
@@ -139,10 +139,10 @@ export async function POST(
   const repeatedCount = (recentComments || []).filter((item) => normalizeContestText(String(item.content || '')) === contentKey)
     .length;
 
-  const wouldExceed = (recentCount || 0) >= limit || (contentKey.length >= 3 && repeatedCount >= 2);
+  const wouldExceed = (recentCount || 0) >= limit || (contentKey.length >= 8 && repeatedCount >= 4);
   if (wouldExceed) {
     const newStrikes = (me?.comment_spam_strikes || 0) + 1;
-    const until = minutesFromNow(30);
+    const until = minutesFromNow(20);
     const contestStrike = await checkContestActivityGate(supabase, 'comment', {
       contentKey,
       forceStrikeReason: 'Contest points paused for comment spam.',
@@ -161,8 +161,8 @@ export async function POST(
       type: 'comment_suspension',
       message:
         newStrikes >= 2
-          ? 'You have been temporarily suspended from commenting for 30 minutes due to spam. This incident has been reported to moderators.'
-          : 'You have been temporarily suspended from commenting for 30 minutes due to spam. You may also receive a contest strike if this affects points.',
+          ? 'You have been temporarily suspended from commenting for 20 minutes due to spam. This incident has been reported to moderators.'
+          : 'You have been temporarily suspended from commenting for 20 minutes due to spam. You may also receive a contest strike if this affects points.',
       targetUrl: `/watch/${id}#comments`,
     });
 
@@ -189,10 +189,10 @@ export async function POST(
       {
         error:
           newStrikes >= 2
-            ? 'You’re temporarily suspended from commenting for 30 minutes due to spam. This was reported to moderators.'
-            : contestStrike.message || 'You’re temporarily suspended from commenting for 30 minutes due to spam.',
+            ? 'You’re temporarily suspended from commenting for 20 minutes due to spam. This was reported to moderators.'
+            : contestStrike.message || 'You’re temporarily suspended from commenting for 20 minutes due to spam.',
         code: 'comment_suspended',
-        seconds_left: 30 * 60,
+        seconds_left: 20 * 60,
         contest_strikes: contestStrike.strikes,
         contest_status: contestStrike.status,
       },

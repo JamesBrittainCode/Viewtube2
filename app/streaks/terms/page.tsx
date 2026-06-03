@@ -171,7 +171,7 @@ export default function StreakContestTermsPage() {
           <p>
             <span className="font-semibold text-zinc-900 dark:text-white">Contest Points Pause</span>: Sponsor may place
             a Participant on a temporary Contest Points Pause after suspected spammy point activity. A pause is currently
-            intended to last approximately thirty (30) minutes, but Sponsor may shorten, extend, or remove the pause in
+            intended to last approximately twenty (20) minutes, but Sponsor may shorten, extend, or remove the pause in
             its discretion. During a pause, the Participant may be able to continue ordinary ViewTube activity, but may
             not earn Contest points from point-earning actions.
           </p>

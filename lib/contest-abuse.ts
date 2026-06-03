@@ -17,16 +17,16 @@ type ProfileAbuseState = {
   contest_disqualified_at?: string | null;
 };
 
-const PAUSE_MINUTES = 30;
+const PAUSE_MINUTES = 20;
 const MAX_STRIKES = 3;
 
 const RATE_LIMITS: Record<ViewtubeActivityType, { windowSeconds: number; limit: number }> = {
-  comment: { windowSeconds: 60, limit: 5 },
-  comment_like: { windowSeconds: 60, limit: 16 },
-  video_like: { windowSeconds: 60, limit: 14 },
-  subscribe: { windowSeconds: 600, limit: 10 },
-  upload_video: { windowSeconds: 3600, limit: 8 },
-  go_live: { windowSeconds: 3600, limit: 4 },
+  comment: { windowSeconds: 120, limit: 10 },
+  comment_like: { windowSeconds: 60, limit: 25 },
+  video_like: { windowSeconds: 60, limit: 22 },
+  subscribe: { windowSeconds: 600, limit: 16 },
+  upload_video: { windowSeconds: 3600, limit: 12 },
+  go_live: { windowSeconds: 3600, limit: 6 },
   ad_watch: { windowSeconds: 86400, limit: 2 },
 };
 
@@ -193,11 +193,11 @@ export async function checkContestActivityGate(
     .eq('user_id', user.id)
     .gte('created_at', tenMinutesAgo);
 
-  if ((allRecent || 0) >= 35) {
+  if ((allRecent || 0) >= 60) {
     return addContestStrike(supabase, user.id, strikes, 'Contest points paused for unusually high point activity.');
   }
 
-  if (opts?.contentKey && activityType === 'comment') {
+  if (opts?.contentKey && opts.contentKey.length >= 8 && activityType === 'comment') {
     const { count: repeated } = await supabase
       .from('viewtube_contest_activity_events')
       .select('id', { count: 'exact', head: true })
@@ -206,7 +206,7 @@ export async function checkContestActivityGate(
       .eq('content_key', opts.contentKey)
       .gte('created_at', tenMinutesAgo);
 
-    if ((repeated || 0) >= 2) {
+    if ((repeated || 0) >= 4) {
       return addContestStrike(supabase, user.id, strikes, 'Contest points paused for repetitive comments.');
     }
   }
