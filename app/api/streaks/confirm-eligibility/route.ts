@@ -14,6 +14,19 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('contest_disqualified_at')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profile?.contest_disqualified_at) {
+    return NextResponse.json(
+      { error: 'You are no longer eligible for the ViewTube contest.' },
+      { status: 403 },
+    );
+  }
+
   const { error } = await supabase
     .from('profiles')
     .update({ age_confirmed_16: true, age_confirmed_at: new Date().toISOString() })
@@ -25,4 +38,3 @@ export async function POST() {
 
   return NextResponse.json({ ok: true });
 }
-

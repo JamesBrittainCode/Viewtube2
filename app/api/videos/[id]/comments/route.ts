@@ -3,6 +3,7 @@ import { sendNotification } from '@/lib/notifications';
 import { canModerateUser } from '@/lib/admin';
 import { createClient } from '@/lib/supabase/server';
 import { recordViewtubeActivity } from '@/lib/streaks';
+import { checkContestActivityGate, normalizeContestText } from '@/lib/contest-abuse';
 
 export const runtime = 'edge';
 
@@ -95,10 +96,30 @@ export async function POST(
     );
   }
 
-  // Basic spam heuristic: too many comments in a short window → 15 minute suspension.
-  // (We use a small window so normal engagement is unaffected.)
-  const windowSeconds = 20;
-  const limit = 4;
+  const body = (await request.json()) as { parentId: string | null; content: string };
+  const content = body.content?.trim();
+  const contentKey = content ? normalizeContestText(content) : '';
+
+  if (!content) {
+    return NextResponse.json({ error: 'Comment is required' }, { status: 400 });
+  }
+
+  const contestGate = await checkContestActivityGate(supabase, 'comment', { contentKey });
+  if (!contestGate.allowed) {
+    return NextResponse.json(
+      {
+        error: contestGate.message || 'Your contest points are temporarily paused for spammy activity.',
+        code: contestGate.status,
+        strikes: contestGate.strikes,
+        paused_until: contestGate.pausedUntil,
+      },
+      { status: 429 },
+    );
+  }
+
+  // Stricter but still human-friendly: catch bursts and repeated text, not normal conversation.
+  const windowSeconds = 60;
+  const limit = 5;
   const sinceIso = new Date(Date.now() - windowSeconds * 1000).toISOString();
   const { count: recentCount } = await supabase
     .from('comments')
@@ -106,10 +127,26 @@ export async function POST(
     .eq('user_id', user.id)
     .gte('created_at', sinceIso);
 
-  const wouldExceed = (recentCount || 0) >= limit;
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { data: recentComments } = await supabase
+    .from('comments')
+    .select('content')
+    .eq('user_id', user.id)
+    .gte('created_at', tenMinutesAgo)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  const repeatedCount = (recentComments || []).filter((item) => normalizeContestText(String(item.content || '')) === contentKey)
+    .length;
+
+  const wouldExceed = (recentCount || 0) >= limit || (contentKey.length >= 3 && repeatedCount >= 2);
   if (wouldExceed) {
     const newStrikes = (me?.comment_spam_strikes || 0) + 1;
-    const until = minutesFromNow(15);
+    const until = minutesFromNow(30);
+    const contestStrike = await checkContestActivityGate(supabase, 'comment', {
+      contentKey,
+      forceStrikeReason: 'Contest points paused for comment spam.',
+    });
 
     await supabase
       .from('profiles')
@@ -124,8 +161,8 @@ export async function POST(
       type: 'comment_suspension',
       message:
         newStrikes >= 2
-          ? 'You have been temporarily suspended from commenting for 15 minutes due to spam. This incident has been reported to moderators.'
-          : 'You have been temporarily suspended from commenting for 15 minutes due to spam. If this happens again, it will be reported to moderators.',
+          ? 'You have been temporarily suspended from commenting for 30 minutes due to spam. This incident has been reported to moderators.'
+          : 'You have been temporarily suspended from commenting for 30 minutes due to spam. You may also receive a contest strike if this affects points.',
       targetUrl: `/watch/${id}#comments`,
     });
 
@@ -152,10 +189,12 @@ export async function POST(
       {
         error:
           newStrikes >= 2
-            ? 'You’re temporarily suspended from commenting for 15 minutes due to spam. This was reported to moderators.'
-            : 'You’re temporarily suspended from commenting for 15 minutes due to spam. If you do it again, it will be reported to moderators.',
+            ? 'You’re temporarily suspended from commenting for 30 minutes due to spam. This was reported to moderators.'
+            : contestStrike.message || 'You’re temporarily suspended from commenting for 30 minutes due to spam.',
         code: 'comment_suspended',
-        seconds_left: 15 * 60,
+        seconds_left: 30 * 60,
+        contest_strikes: contestStrike.strikes,
+        contest_status: contestStrike.status,
       },
       { status: 429 },
     );
@@ -175,13 +214,6 @@ export async function POST(
     return NextResponse.json({ error: 'Comments are turned off for this video' }, { status: 403 });
   }
 
-  const body = (await request.json()) as { parentId: string | null; content: string };
-  const content = body.content?.trim();
-
-  if (!content) {
-    return NextResponse.json({ error: 'Comment is required' }, { status: 400 });
-  }
-
   const { error } = await supabase.from('comments').insert({
     video_id: id,
     user_id: user.id,
@@ -193,7 +225,7 @@ export async function POST(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  const streak = await recordViewtubeActivity(supabase, 'comment');
+  const streak = await recordViewtubeActivity(supabase, 'comment', { contentKey });
 
   if (video.user_id !== user.id) {
     await sendNotification(supabase, {
