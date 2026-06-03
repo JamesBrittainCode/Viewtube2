@@ -63,6 +63,16 @@ export default function StreakContestTermsPage() {
               <span className="font-semibold text-zinc-900 dark:text-white">“Prize”</span> means the mystery prize bundle
               described in the Contest Rules, subject to substitution.
             </li>
+            <li>
+              <span className="font-semibold text-zinc-900 dark:text-white">“Contest Abuse Strike”</span> means an
+              enforcement mark Sponsor may apply when Sponsor’s systems or moderators detect spammy, repetitive,
+              automated, coordinated, exploitative, or otherwise abusive point activity.
+            </li>
+            <li>
+              <span className="font-semibold text-zinc-900 dark:text-white">“Contest Points Pause”</span> means a
+              temporary restriction during which a Participant may be blocked from earning Contest points, even if the
+              Participant can still use other ViewTube features.
+            </li>
           </ul>
         </section>
 
@@ -118,6 +128,19 @@ export default function StreakContestTermsPage() {
             points or streak values are estimates until final. Sponsor may correct errors, remove abusive points, or
             reconcile discrepancies at any time, including after the Contest Period, to maintain integrity.
           </p>
+          <p>
+            <span className="font-semibold text-zinc-900 dark:text-white">Abuse prevention limits</span>: Sponsor may
+            apply automatic or manual limits to any point-earning action, including commenting, replying, liking videos,
+            liking comments, subscribing, uploading videos, going live, referral activity, ad reward claims, and any
+            future point action. These limits may consider activity speed, repetition, target patterns, text similarity,
+            duplicate actions, coordinated behavior, prior enforcement history, and other signals reasonably related to
+            Contest integrity.
+          </p>
+          <p>
+            If a point action is denied, reduced, or blocked by anti-abuse systems, the action may still appear on
+            ViewTube where technically and legally permitted, but it may not count toward Points, Streaks, Leaderboard
+            placement, or Prize eligibility.
+          </p>
         </section>
 
         <section className="space-y-2">
@@ -137,6 +160,33 @@ export default function StreakContestTermsPage() {
             Sponsor may investigate and take enforcement action in its discretion. Enforcement actions may include
             removing points, resetting streaks, restricting Contest access, suspending or terminating accounts, and
             disqualifying Participants.
+          </p>
+          <p>
+            <span className="font-semibold text-zinc-900 dark:text-white">Comment, reply, and engagement spam</span> may
+            include posting the same or substantially similar comment or reply repeatedly, posting many comments or
+            replies in a short period, liking many videos or comments in a pattern that appears primarily designed to
+            earn points, repeatedly toggling actions, using multiple accounts, or otherwise using ordinary ViewTube
+            features in a way that Sponsor reasonably determines is meant to manipulate Points or Streaks.
+          </p>
+          <p>
+            <span className="font-semibold text-zinc-900 dark:text-white">Contest Points Pause</span>: Sponsor may place
+            a Participant on a temporary Contest Points Pause after suspected spammy point activity. A pause is currently
+            intended to last approximately thirty (30) minutes, but Sponsor may shorten, extend, or remove the pause in
+            its discretion. During a pause, the Participant may be able to continue ordinary ViewTube activity, but may
+            not earn Contest points from point-earning actions.
+          </p>
+          <p>
+            <span className="font-semibold text-zinc-900 dark:text-white">Contest Abuse Strikes</span>: Sponsor may issue
+            one (1) Contest Abuse Strike when spammy, repetitive, automated, coordinated, exploitative, or otherwise
+            suspicious point activity is detected. Sponsor may notify the Participant of the strike, but failure to
+            receive or view a notice does not invalidate enforcement.
+          </p>
+          <p>
+            <span className="font-semibold text-zinc-900 dark:text-white">Three-strike disqualification</span>: if a
+            Participant receives three (3) Contest Abuse Strikes, Sponsor may permanently remove the Participant from
+            the Contest, remove the Participant from the Leaderboard, make the Participant unable to re-confirm
+            eligibility or re-enter the Contest, and make the Participant ineligible to win the Prize. Sponsor may also
+            remove or adjust points or streaks associated with abusive activity.
           </p>
         </section>
 

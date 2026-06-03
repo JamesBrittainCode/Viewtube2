@@ -27,6 +27,10 @@ export default function StreakContestRulesPage() {
             The user ranked #1 on the contest leaderboard at the contest end time wins a mystery prize bundle (subject
             to verification and these Rules and Terms).
           </li>
+          <li>
+            Spammy point activity may put contest points on pause and add a strike. Three strikes permanently remove an
+            account from the Contest.
+          </li>
         </ul>
         <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
           This summary is for convenience only. The full Rules and Terms & Conditions control in the event of any
@@ -91,6 +95,12 @@ export default function StreakContestRulesPage() {
             ViewTube. Participation is limited to natural persons acting on their own behalf. Use of bots, scripts,
             automation, or other methods intended to manipulate points or streaks is prohibited.
           </p>
+          <p>
+            Eligible activity must be genuine, human, and ordinary in nature. Repeating the same or substantially similar
+            action primarily to earn points, including repeated comments, replies, likes, comment likes, subscriptions,
+            uploads, live activity, ad reward claims, or other point-earning actions, may be treated as abuse even if the
+            action would otherwise be available on ViewTube.
+          </p>
         </section>
 
         <section className="space-y-2">
@@ -112,6 +122,13 @@ export default function StreakContestRulesPage() {
             <span className="font-semibold text-zinc-900 dark:text-white">Going live</span>: points for going live are
             awarded only if you remain live for at least five (5) continuous minutes, as measured by Sponsor’s systems.
           </p>
+          <p>
+            <span className="font-semibold text-zinc-900 dark:text-white">Point action limits</span>: Sponsor’s systems
+            may limit, pause, or deny points for unusually rapid, repetitive, coordinated, or otherwise suspicious
+            activity across any action that can earn points, including comments, replies, likes, comment likes,
+            subscriptions, uploads, live streams, referral activity, ad reward claims, and any future point action.
+            These limits are intended to preserve ordinary use of ViewTube while reducing point manipulation.
+          </p>
         </section>
 
         <section className="space-y-2">
@@ -130,6 +147,26 @@ export default function StreakContestRulesPage() {
             <li>Attempting to exploit bugs, glitches, or loopholes in points or streak logic.</li>
             <li>Impersonation or misrepresentation in connection with the Contest.</li>
           </ul>
+          <p>
+            <span className="font-semibold text-zinc-900 dark:text-white">Comment and reply spam</span> includes, without
+            limitation, posting many comments or replies in a short period, posting the same or substantially similar
+            comment repeatedly, using comments or replies mainly as a points mechanism, or otherwise disrupting normal
+            conversation. If detected, ViewTube may temporarily suspend commenting and may separately pause Contest
+            points.
+          </p>
+          <p>
+            <span className="font-semibold text-zinc-900 dark:text-white">Contest pauses and strikes</span>: if Sponsor’s
+            systems or moderators detect spammy point activity, the Participant may be placed on a temporary Contest
+            points pause, currently intended to last approximately thirty (30) minutes, and may receive one (1) Contest
+            abuse strike. During a Contest points pause, the Participant may continue ordinary ViewTube activity where
+            allowed, but point earning may be blocked or reduced.
+          </p>
+          <p>
+            <span className="font-semibold text-zinc-900 dark:text-white">Three-strike removal</span>: an account that
+            receives three (3) Contest abuse strikes may be permanently removed from the Contest, removed from the
+            Leaderboard, made ineligible to re-enter the Contest, and made ineligible to win the Prize. Sponsor may also
+            remove or correct points associated with abusive activity.
+          </p>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Sponsor’s determination of abuse or manipulation is final and may be made in Sponsor’s sole discretion, to
             the extent permitted by law.
