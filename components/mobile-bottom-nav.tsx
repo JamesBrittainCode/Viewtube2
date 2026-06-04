@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Flame, Folder, Home, Radio, UserRound, Smartphone } from 'lucide-react';
+import { Flame, Gamepad2, Home, Radio, UserRound, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const links = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/shorts', label: 'Shorts', icon: Smartphone },
+  { href: '/playables', label: 'Play', icon: Gamepad2 },
   { href: '/subscriptions', label: 'Subs', icon: UserRound },
-  { href: '/library', label: 'Library', icon: Folder },
   { href: '/trending', label: 'Trending', icon: Flame },
   { href: '/live', label: 'Live', icon: Radio },
 ] as const;

@@ -149,6 +149,23 @@ create table if not exists public.viewtube_activity_awards (
 
 create index if not exists idx_viewtube_activity_awards_user on public.viewtube_activity_awards using btree(user_id);
 
+create table if not exists public.playable_scores (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  game_key text not null,
+  high_score integer not null default 0 check (high_score >= 0),
+  level integer not null default 1 check (level >= 1),
+  plays integer not null default 0 check (plays >= 0),
+  last_score integer not null default 0 check (last_score >= 0),
+  stats jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, game_key)
+);
+
+create index if not exists idx_playable_scores_user
+  on public.playable_scores using btree(user_id, updated_at desc);
+
 create index if not exists idx_viewtube_streaks_current on public.viewtube_streaks using btree(current_streak);
 create index if not exists idx_viewtube_streaks_last_active on public.viewtube_streaks using btree(last_active_date);
 
@@ -909,6 +926,7 @@ alter table public.live_chat_messages enable row level security;
 alter table public.live_stream_keys enable row level security;
 alter table public.live_stream_configs enable row level security;
 alter table public.site_popups enable row level security;
+alter table public.playable_scores enable row level security;
 
 -- profiles
 create policy "Profiles are viewable by everyone"
@@ -1131,6 +1149,37 @@ on public.viewtube_activity_awards for all
 to authenticated
 using (false)
 with check (false);
+
+create policy "Playable scores are viewable by owner"
+on public.playable_scores for select
+to authenticated
+using ((select auth.uid()) = user_id);
+
+create policy "Users can insert own playable scores"
+on public.playable_scores for insert
+to authenticated
+with check ((select auth.uid()) = user_id);
+
+create policy "Users can update own playable scores"
+on public.playable_scores for update
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
+create or replace function public.set_playable_scores_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists playable_scores_set_updated_at on public.playable_scores;
+create trigger playable_scores_set_updated_at
+before update on public.playable_scores
+for each row execute function public.set_playable_scores_updated_at();
 
 create or replace function public.record_viewtube_activity_v2(
   activity_type text default null,

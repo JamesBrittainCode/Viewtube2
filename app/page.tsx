@@ -22,5 +22,12 @@ export default async function Home({
     getShortsVideos(1),
   ]);
 
-  return <HomeFeed initialVideos={videos as never[]} initialHasMore={hasMore} initialShorts={shorts.slice(0, 12) as never[]} />;
+  return (
+    <HomeFeed
+      initialVideos={videos as never[]}
+      initialHasMore={hasMore}
+      initialShorts={shorts.slice(0, 12) as never[]}
+      signedIn={Boolean(user)}
+    />
+  );
 }

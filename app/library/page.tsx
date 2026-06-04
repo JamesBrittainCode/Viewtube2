@@ -47,6 +47,13 @@ export default async function LibraryPage() {
           <div className="text-sm font-semibold">Playlists</div>
           <div className="mt-1 text-sm text-zinc-500">Public or private</div>
         </Link>
+        <Link
+          href="/playables"
+          className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-950"
+        >
+          <div className="text-sm font-semibold">Playables</div>
+          <div className="mt-1 text-sm text-zinc-500">Saved scores and levels</div>
+        </Link>
       </div>
 
       <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500">Your uploads</h2>
