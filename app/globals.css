@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes playablesLoad {
+  0% {
+    transform: translateX(-110%);
+  }
+  55% {
+    transform: translateX(65%);
+  }
+  100% {
+    transform: translateX(230%);
+  }
+}
+
 :root {
   --background: 0 0% 100%;
   --foreground: 240 10% 4%;

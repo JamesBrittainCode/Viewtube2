@@ -4,6 +4,20 @@ import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
 
+const builtInGames = [
+  {
+    id: 'built-in-flappy-dunk',
+    title: 'Flappy Dunk',
+    slug: 'flappy-dunk',
+    description: 'Guide the winged basketball through hoops and keep your streak alive.',
+    category: 'Sports',
+    thumbnail_url: '/playables/flappy-dunk/thumbnail.png',
+    game_url: '/playables/flappy-dunk/index.html',
+    plays_count: 0,
+    created_at: '2026-06-04T00:00:00.000Z',
+  },
+];
+
 export default async function PlayablesPage() {
   const supabase = await createClient();
   const {
@@ -12,11 +26,22 @@ export default async function PlayablesPage() {
 
   if (!user) redirect('/sign-in?next=/playables');
 
-  const { data: progress } = await supabase
-    .from('playable_scores')
-    .select('game_key,high_score,level,plays,last_score,updated_at')
-    .eq('user_id', user.id)
-    .order('updated_at', { ascending: false });
+  const [{ data: games }, { data: progress }] = await Promise.all([
+    supabase
+      .from('playable_games')
+      .select('id,title,slug,description,category,thumbnail_url,game_url,plays_count,created_at')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('playable_scores')
+      .select('game_key,high_score,level,plays,last_score,updated_at')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false }),
+  ]);
 
-  return <PlayablesArcade initialProgress={(progress || []) as never[]} />;
+  const uploadedGames = games || [];
+  const uploadedSlugs = new Set(uploadedGames.map((game) => String(game.slug)));
+  const mergedGames = [...builtInGames.filter((game) => !uploadedSlugs.has(game.slug)), ...uploadedGames];
+
+  return <PlayablesArcade games={mergedGames as never[]} initialProgress={(progress || []) as never[]} />;
 }

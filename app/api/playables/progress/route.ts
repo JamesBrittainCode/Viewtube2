@@ -3,13 +3,13 @@ import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
 
-const GAME_KEYS = new Set(['bubble-pop', 'memory-flip', 'signal-sprint']);
-
 function readPositiveInt(value: unknown, fallback: number) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(0, Math.floor(parsed));
 }
+
+const builtInGameKeys = new Set(['flappy-dunk']);
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -27,7 +27,17 @@ export async function POST(request: Request) {
   };
 
   const gameKey = String(body.gameKey || '').trim();
-  if (!GAME_KEYS.has(gameKey)) return NextResponse.json({ error: 'Unknown playable.' }, { status: 400 });
+  if (!gameKey) return NextResponse.json({ error: 'Unknown playable.' }, { status: 400 });
+
+  const { data: game, error: gameError } = await supabase
+    .from('playable_games')
+    .select('slug,plays_count')
+    .eq('slug', gameKey)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (gameError && !builtInGameKeys.has(gameKey)) return NextResponse.json({ error: gameError.message }, { status: 400 });
+  if (!game && !builtInGameKeys.has(gameKey)) return NextResponse.json({ error: 'Unknown playable.' }, { status: 404 });
 
   const score = readPositiveInt(body.score, 0);
   const level = Math.max(1, readPositiveInt(body.level, 1));
@@ -61,5 +71,11 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (game) {
+    await supabase
+      .from('playable_games')
+      .update({ plays_count: Number(game.plays_count || 0) + 1 })
+      .eq('slug', gameKey);
+  }
   return NextResponse.json({ progress: data });
 }

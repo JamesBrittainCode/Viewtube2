@@ -166,6 +166,25 @@ create table if not exists public.playable_scores (
 create index if not exists idx_playable_scores_user
   on public.playable_scores using btree(user_id, updated_at desc);
 
+create table if not exists public.playable_games (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  slug text not null unique check (slug ~ '^[a-z0-9-]{3,80}$'),
+  description text not null default '',
+  category text not null default 'Arcade',
+  thumbnail_url text,
+  game_url text not null,
+  instructions text not null default '',
+  is_active boolean not null default true,
+  plays_count bigint not null default 0 check (plays_count >= 0),
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_playable_games_active
+  on public.playable_games using btree(is_active, created_at desc);
+
 create index if not exists idx_viewtube_streaks_current on public.viewtube_streaks using btree(current_streak);
 create index if not exists idx_viewtube_streaks_last_active on public.viewtube_streaks using btree(last_active_date);
 
@@ -927,6 +946,7 @@ alter table public.live_stream_keys enable row level security;
 alter table public.live_stream_configs enable row level security;
 alter table public.site_popups enable row level security;
 alter table public.playable_scores enable row level security;
+alter table public.playable_games enable row level security;
 
 -- profiles
 create policy "Profiles are viewable by everyone"
@@ -1166,6 +1186,17 @@ to authenticated
 using ((select auth.uid()) = user_id)
 with check ((select auth.uid()) = user_id);
 
+create policy "Playable games are viewable when active"
+on public.playable_games for select
+to anon, authenticated
+using (is_active = true);
+
+create policy "Only admin can manage playable games"
+on public.playable_games for all
+to authenticated
+using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com')
+with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
+
 create or replace function public.set_playable_scores_updated_at()
 returns trigger
 language plpgsql
@@ -1179,6 +1210,11 @@ $$;
 drop trigger if exists playable_scores_set_updated_at on public.playable_scores;
 create trigger playable_scores_set_updated_at
 before update on public.playable_scores
+for each row execute function public.set_playable_scores_updated_at();
+
+drop trigger if exists playable_games_set_updated_at on public.playable_games;
+create trigger playable_games_set_updated_at
+before update on public.playable_games
 for each row execute function public.set_playable_scores_updated_at();
 
 create or replace function public.record_viewtube_activity_v2(
@@ -1653,6 +1689,10 @@ insert into storage.buckets (id, name, public)
 values ('ad-submissions', 'ad-submissions', true)
 on conflict (id) do nothing;
 
+insert into storage.buckets (id, name, public)
+values ('playables', 'playables', true)
+on conflict (id) do nothing;
+
 create policy "Public read access for videos bucket"
 on storage.objects for select
 to anon, authenticated
@@ -1767,6 +1807,11 @@ on storage.objects for select
 to anon, authenticated
 using (bucket_id = 'ad-submissions');
 
+create policy "Public read access for playables bucket"
+on storage.objects for select
+to anon, authenticated
+using (bucket_id = 'playables');
+
 create policy "Authenticated upload to banners bucket"
 on storage.objects for insert
 to authenticated
@@ -1847,3 +1892,53 @@ using (
   bucket_id = 'ad-submissions'
   and coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com'
 );
+
+create policy "Only admin uploads playables bucket objects"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'playables'
+  and coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com'
+);
+
+create policy "Only admin updates playables bucket objects"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'playables'
+  and coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com'
+)
+with check (
+  bucket_id = 'playables'
+  and coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com'
+);
+
+insert into public.playable_games (
+  title,
+  slug,
+  description,
+  category,
+  thumbnail_url,
+  game_url,
+  instructions,
+  is_active
+)
+values (
+  'Flappy Dunk',
+  'flappy-dunk',
+  'Guide the winged basketball through hoops and keep your streak alive.',
+  'Sports',
+  '/playables/flappy-dunk/thumbnail.png',
+  '/playables/flappy-dunk/index.html',
+  'Tap or click to flap. Time your jumps to dunk through each hoop.',
+  true
+)
+on conflict (slug) do update
+set
+  title = excluded.title,
+  description = excluded.description,
+  category = excluded.category,
+  thumbnail_url = excluded.thumbnail_url,
+  game_url = excluded.game_url,
+  instructions = excluded.instructions,
+  is_active = true;
