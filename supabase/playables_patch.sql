@@ -159,3 +159,104 @@ set
   game_url = excluded.game_url,
   instructions = excluded.instructions,
   is_active = true;
+
+create or replace function public.record_flappy_dunk_points(score_value integer default 0)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid;
+  today_utc date;
+  hour_target text;
+  inserted_count integer;
+  prev_last date;
+  updated public.viewtube_streaks;
+  advanced boolean;
+  champion_before uuid;
+  champion_after uuid;
+  points_delta bigint;
+begin
+  uid := auth.uid();
+  if uid is null then
+    raise exception 'Unauthorized';
+  end if;
+
+  points_delta := greatest(0, floor(coalesce(score_value, 0)))::bigint;
+  if points_delta <= 0 then
+    return jsonb_build_object('points_delta', 0, 'contest_status', 'no_score');
+  end if;
+
+  today_utc := (now() at time zone 'utc')::date;
+  hour_target := 'flappy-dunk:' || to_char(date_trunc('hour', now() at time zone 'utc'), 'YYYYMMDDHH24');
+
+  insert into public.viewtube_activity_awards (user_id, activity_type, target_id)
+  values (uid, 'flappy_dunk', hour_target)
+  on conflict (user_id, activity_type, target_id) do nothing;
+
+  get diagnostics inserted_count = row_count;
+  if inserted_count = 0 then
+    select * into updated from public.viewtube_streaks where user_id = uid;
+    return jsonb_build_object(
+      'points_delta', 0,
+      'points_total', coalesce(updated.points, 0),
+      'current_streak', coalesce(updated.current_streak, 0),
+      'longest_streak', coalesce(updated.longest_streak, 0),
+      'contest_status', 'cooldown',
+      'message', 'Flappy Dunk streak points can be earned once per hour.'
+    );
+  end if;
+
+  select last_active_date into prev_last from public.viewtube_streaks where user_id = uid;
+  advanced := coalesce(prev_last is distinct from today_utc, true);
+
+  insert into public.viewtube_streaks (user_id, current_streak, longest_streak, points, last_active_date, updated_at)
+  values (uid, 1, 1, points_delta, today_utc, now())
+  on conflict (user_id) do update
+  set
+    current_streak = case
+      when public.viewtube_streaks.last_active_date = today_utc then public.viewtube_streaks.current_streak
+      when public.viewtube_streaks.last_active_date = (today_utc - 1) then public.viewtube_streaks.current_streak + 1
+      else 1
+    end,
+    longest_streak = greatest(
+      public.viewtube_streaks.longest_streak,
+      case
+        when public.viewtube_streaks.last_active_date = today_utc then public.viewtube_streaks.current_streak
+        when public.viewtube_streaks.last_active_date = (today_utc - 1) then public.viewtube_streaks.current_streak + 1
+        else 1
+      end
+    ),
+    points = public.viewtube_streaks.points + points_delta,
+    last_active_date = greatest(coalesce(public.viewtube_streaks.last_active_date, date '1970-01-01'), today_utc),
+    updated_at = now()
+  returning * into updated;
+
+  select p.id into champion_before from public.profiles p where p.streak_champion = true limit 1;
+
+  select s.user_id
+  into champion_after
+  from public.viewtube_streaks s
+  order by s.points desc, s.current_streak desc, s.longest_streak desc, s.last_active_date desc nulls last, s.updated_at desc
+  limit 1;
+
+  if champion_after is not null and champion_before is distinct from champion_after then
+    if champion_before is not null then
+      update public.profiles set streak_champion = false where id = champion_before;
+    end if;
+    update public.profiles set streak_champion = true where id = champion_after;
+  end if;
+
+  return jsonb_build_object(
+    'advanced', advanced,
+    'current_streak', updated.current_streak,
+    'longest_streak', updated.longest_streak,
+    'points_total', updated.points,
+    'points_delta', points_delta,
+    'last_active_date', updated.last_active_date,
+    'champion_user_id', champion_after,
+    'contest_status', 'awarded'
+  );
+end;
+$$;

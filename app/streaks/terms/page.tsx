@@ -8,7 +8,7 @@ export default function StreakContestTermsPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Contest Terms & Conditions</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Effective date: May 24, 2026. Contest end date: July 1, 2026 at 11:59:59 PM Pacific Time.
+          Effective date: May 24, 2026. Contest end date: June 8, 2026 at 11:59:59 PM Pacific Time.
         </p>
       </div>
 
@@ -43,7 +43,7 @@ export default function StreakContestTermsPage() {
             </li>
             <li>
               <span className="font-semibold text-zinc-900 dark:text-white">“Contest Period”</span> means the time window
-              during which points and streaks are tracked for the Contest, ending July 1, 2026 at 11:59:59 PM Pacific
+              during which points and streaks are tracked for the Contest, ending June 8, 2026 at 11:59:59 PM Pacific
               Time.
             </li>
             <li>
@@ -122,6 +122,13 @@ export default function StreakContestTermsPage() {
             <span className="font-semibold text-zinc-900 dark:text-white">Going live minimum</span>: points for going live
             are awarded only when a live session remains active for at least five (5) continuous minutes, as determined
             by Sponsor’s systems. Interrupted streams, restarts, or technical issues may affect eligibility.
+          </p>
+          <p>
+            <span className="font-semibold text-zinc-900 dark:text-white">Flappy Dunk points</span>: Sponsor may award
+            one (1) Contest point for each in-game point scored in Flappy Dunk, subject to a limit of one (1)
+            points-eligible Flappy Dunk play per Participant per hour. Sponsor may reduce, deny, reverse, or audit
+            Flappy Dunk points if score reporting is unavailable, delayed, manipulated, technically inaccurate, or
+            otherwise inconsistent with Contest integrity.
           </p>
           <p>
             <span className="font-semibold text-zinc-900 dark:text-white">No “guaranteed points”</span>: any displayed

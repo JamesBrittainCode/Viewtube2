@@ -526,7 +526,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       await scaffolding.loadProject(projectData);
       setProgress(1);
       loadingScreen.hidden = true;
-      if (false) {
+      if (true) {
         scaffolding.start();
       } else {
         launchScreen.hidden = false;
@@ -538,6 +538,49 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       }
     };
     run().catch(handleError);
+  </script>
+  <script>
+    (() => {
+      const scoreNames = ['Score', 'score', 'Points', 'points'];
+      let bestScore = 0;
+      let sentScore = 0;
+      let lastScore = 0;
+
+      const readScore = () => {
+        if (!window.scaffolding || typeof window.scaffolding.getVariable !== 'function') return 0;
+        for (const name of scoreNames) {
+          try {
+            const value = Number(window.scaffolding.getVariable(name));
+            if (Number.isFinite(value)) return Math.max(0, Math.floor(value));
+          } catch (_) {}
+        }
+        return 0;
+      };
+
+      const sendScore = () => {
+        if (!bestScore || bestScore <= sentScore) return;
+        sentScore = bestScore;
+        window.parent.postMessage(
+          {
+            type: 'viewtube-playable-score',
+            gameKey: 'flappy-dunk',
+            score: bestScore,
+            level: Math.max(1, Math.floor(bestScore / 10) + 1),
+            stats: { source: 'flappy-dunk', hourlyPointsEligible: true },
+          },
+          '*',
+        );
+      };
+
+      window.setInterval(() => {
+        const score = readScore();
+        if (score > bestScore) bestScore = score;
+        if (bestScore > 0 && score === 0 && lastScore > 0) sendScore();
+        lastScore = score;
+      }, 750);
+
+      window.addEventListener('pagehide', sendScore);
+    })();
   </script>
 </body>
 </html>

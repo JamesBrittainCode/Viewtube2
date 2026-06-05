@@ -8,7 +8,7 @@ export default function StreakContestRulesPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Contest Rules</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Effective date: May 24, 2026. Contest end date: July 1, 2026 at 11:59:59 PM Pacific Time.
+          Effective date: May 24, 2026. Contest end date: June 8, 2026 at 11:59:59 PM Pacific Time.
         </p>
       </div>
 
@@ -79,7 +79,7 @@ export default function StreakContestRulesPage() {
         <section className="space-y-2">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-white">4) Contest Period</h2>
           <p>
-            The Contest begins when the Contest is made available within ViewTube and ends on July 1, 2026 at 11:59:59
+            The Contest begins when the Contest is made available within ViewTube and ends on June 8, 2026 at 11:59:59
             PM Pacific Time (the “Contest Period”). Sponsor’s systems are the official timekeeping device.
           </p>
         </section>
@@ -121,6 +121,12 @@ export default function StreakContestRulesPage() {
           <p>
             <span className="font-semibold text-zinc-900 dark:text-white">Going live</span>: points for going live are
             awarded only if you remain live for at least five (5) continuous minutes, as measured by Sponsor’s systems.
+          </p>
+          <p>
+            <span className="font-semibold text-zinc-900 dark:text-white">Flappy Dunk</span>: points may be awarded at
+            a rate of one (1) Contest point per in-game point scored, but only one (1) Flappy Dunk play may earn Contest
+            points per Participant per hour. Additional plays may still be available for fun and score tracking but may
+            not award additional Contest points until the hourly cooldown resets.
           </p>
           <p>
             <span className="font-semibold text-zinc-900 dark:text-white">Point action limits</span>: Sponsor’s systems

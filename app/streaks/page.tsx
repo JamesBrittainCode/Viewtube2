@@ -7,6 +7,7 @@ import { VerifiedBadge } from '@/components/verified-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { StreakEligibilityGate } from '@/components/streak-eligibility-gate';
 import { ReferralTierAction, WatchAdTierAction } from '@/components/points-tier-actions';
+import { StreakCountdown } from '@/components/streak-countdown';
 
 export const runtime = 'edge';
 
@@ -73,7 +74,7 @@ export default async function StreaksPage() {
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Prizes</h2>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
             Whoever is <span className="font-semibold">#1 on the leaderboard</span> by{' '}
-            <span className="font-semibold">July 1, 2026</span> wins a mystery prize bundle.
+            <span className="font-semibold">Monday, June 8, 2026</span> wins a mystery prize bundle.
           </p>
           <div className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
             <Link href="/streaks/rules" className="underline">
@@ -116,6 +117,7 @@ export default async function StreaksPage() {
 
 	return (
 		<div className="mx-auto max-w-4xl space-y-6">
+      <StreakCountdown />
 			<div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="text-xl font-bold text-zinc-900 dark:text-white">ViewTube Streak</h1>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -239,7 +241,7 @@ export default async function StreaksPage() {
           </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Whoever is <span className="font-semibold">#1 on the leaderboard</span> by{' '}
-            <span className="font-semibold">July 1, 2026</span> wins a mystery prize bundle.
+            <span className="font-semibold">Monday, June 8, 2026</span> wins a mystery prize bundle.
           </p>
         </div>
       </div>
@@ -281,6 +283,17 @@ export default async function StreaksPage() {
                 </td>
                 <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                   One claim per day (UTC). You must stay on the ad screen for 60 seconds.
+                </td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white">Play Flappy Dunk</td>
+                <td className="px-4 py-3 font-semibold">+1 per point</td>
+                <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  One points-eligible Flappy Dunk play per hour.{' '}
+                  <Link href="/playables/flappy-dunk" className="underline">
+                    Play now
+                  </Link>
+                  .
                 </td>
               </tr>
               <tr>

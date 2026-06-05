@@ -43,7 +43,7 @@ export function PlayablePlayer({ game, progress }: { game: Game; progress: Progr
           gameKey: game.slug,
           score: Number(data.score || 0),
           level: Number(data.level || 1),
-          stats: data.stats || {},
+          stats: { ...(data.stats || {}), streakPoints: game.slug === 'flappy-dunk' ? '1 per score point, once per hour' : null },
         }),
       })
         .then((res) => res.json())
@@ -59,6 +59,7 @@ export function PlayablePlayer({ game, progress }: { game: Game; progress: Progr
   }, [game.slug]);
 
   function recordPlay() {
+    if (game.slug === 'flappy-dunk') return;
     if (saved?.last_score) return;
     fetch('/api/playables/progress', {
       method: 'POST',

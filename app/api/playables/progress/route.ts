@@ -71,11 +71,18 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  let streakAward = null;
+  if (gameKey === 'flappy-dunk' && score > 0) {
+    const { data: award } = await supabase.rpc('record_flappy_dunk_points', {
+      score_value: score,
+    });
+    streakAward = award;
+  }
   if (game) {
     await supabase
       .from('playable_games')
       .update({ plays_count: Number(game.plays_count || 0) + 1 })
       .eq('slug', gameKey);
   }
-  return NextResponse.json({ progress: data });
+  return NextResponse.json({ progress: data, streakAward });
 }
