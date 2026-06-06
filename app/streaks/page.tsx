@@ -266,7 +266,7 @@ export default async function StreaksPage() {
                 <td className="px-4 py-3 font-semibold">+1 per point</td>
                 <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                   One points-eligible Flappy Dunk play per hour.{' '}
-                  <Link href="/playables/flappy-dunk" className="underline">
+                  <Link href="/playables/flappy-dunk?from=leaderboard" className="underline">
                     Play now
                   </Link>
                   .

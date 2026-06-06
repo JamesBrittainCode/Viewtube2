@@ -543,8 +543,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
     (() => {
       const scoreNames = ['SCORE', 'Score', 'score', 'Last_Score', 'last_score', 'Last Score', 'Points', 'points'];
       let bestScore = 0;
-      let sentScore = 0;
       let lastScore = 0;
+      let lastFinishedScore = 0;
 
       const readScore = () => {
         if (!window.scaffolding || typeof window.scaffolding.getVariable !== 'function') return 0;
@@ -557,16 +557,15 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         return 0;
       };
 
-      const sendScore = () => {
-        if (!bestScore || bestScore <= sentScore) return;
-        sentScore = bestScore;
+      const postScore = (score, status) => {
+        if (!score) return;
         window.parent.postMessage(
           {
             type: 'viewtube-playable-score',
             gameKey: 'flappy-dunk',
-            score: bestScore,
-            level: Math.max(1, Math.floor(bestScore / 10) + 1),
-            stats: { source: 'flappy-dunk', hourlyPointsEligible: true },
+            score,
+            level: Math.max(1, Math.floor(score / 10) + 1),
+            stats: { source: 'flappy-dunk', status, gameOver: status === 'game-over' },
           },
           '*',
         );
@@ -576,13 +575,18 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         const score = readScore();
         if (score > bestScore) {
           bestScore = score;
-          sendScore();
+          postScore(bestScore, 'playing');
         }
-        if (bestScore > 0 && score === 0 && lastScore > 0) sendScore();
+        if (score === 0 && lastScore > 0 && lastScore !== lastFinishedScore) {
+          lastFinishedScore = lastScore;
+          postScore(lastScore, 'game-over');
+        }
         lastScore = score;
       }, 750);
 
-      window.addEventListener('pagehide', sendScore);
+      window.addEventListener('pagehide', () => {
+        if (lastScore > 0 && lastScore !== lastFinishedScore) postScore(lastScore, 'game-over');
+      });
     })();
   </script>
 </body>

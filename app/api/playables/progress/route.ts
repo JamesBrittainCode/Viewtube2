@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     gameKey?: string;
     score?: number;
     level?: number;
+    awardPoints?: boolean;
     stats?: Record<string, unknown>;
   };
 
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   let streakAward = null;
-  if (gameKey === 'flappy-dunk' && score > 0) {
+  if (gameKey === 'flappy-dunk' && score > 0 && body.awardPoints === true) {
     const { data: award } = await supabase.rpc('record_flappy_dunk_points', {
       score_value: score,
     });

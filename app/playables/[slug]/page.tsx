@@ -23,14 +23,24 @@ const builtInGames = {
   },
 } as const;
 
-export default async function PlayableGamePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function PlayableGamePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ from?: string; earn?: string }>;
+}) {
   const { slug } = await params;
+  const query = (await searchParams) || {};
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect(`/sign-in?next=/playables/${encodeURIComponent(slug)}`);
+  const pointsEligible = slug === 'flappy-dunk' && (query.from === 'leaderboard' || query.earn === 'streak');
+  const nextUrl = `/playables/${encodeURIComponent(slug)}${pointsEligible ? '?from=leaderboard' : ''}`;
+
+  if (!user) redirect(`/sign-in?next=${encodeURIComponent(nextUrl)}`);
 
   const { data: game } = await supabase
     .from('playable_games')
@@ -49,5 +59,5 @@ export default async function PlayableGamePage({ params }: { params: Promise<{ s
     .eq('game_key', slug)
     .maybeSingle();
 
-  return <PlayablePlayer game={playable as never} progress={(progress || null) as never} />;
+  return <PlayablePlayer game={playable as never} progress={(progress || null) as never} pointsEligible={pointsEligible} />;
 }

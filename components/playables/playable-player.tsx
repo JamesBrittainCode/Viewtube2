@@ -20,11 +20,35 @@ type Progress = {
   last_score: number;
 } | null;
 
-export function PlayablePlayer({ game, progress }: { game: Game; progress: Progress }) {
+type StreakAward = {
+  points_delta?: number;
+  points_total?: number;
+  contest_status?: string;
+  message?: string;
+};
+
+type RunReward = {
+  score: number;
+  pointsDelta: number;
+  pointsTotal?: number;
+  status: string;
+  message: string;
+};
+
+export function PlayablePlayer({
+  game,
+  progress,
+  pointsEligible = false,
+}: {
+  game: Game;
+  progress: Progress;
+  pointsEligible?: boolean;
+}) {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(progress);
   const [saving, setSaving] = useState(false);
   const [playingNow, setPlayingNow] = useState<number | null>(null);
+  const [runReward, setRunReward] = useState<RunReward | null>(null);
   const [sessionId] = useState(() => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
   const src = useMemo(() => game.game_url, [game.game_url]);
 
@@ -39,12 +63,14 @@ export function PlayablePlayer({ game, progress }: { game: Game; progress: Progr
       if (!data || data.type !== 'viewtube-playable-score') return;
       const score = Math.max(0, Math.floor(Number(data.score || 0)));
       const level = Math.max(1, Math.floor(Number(data.level || 1)));
+      const gameOver = data.stats?.gameOver === true || data.stats?.status === 'game-over';
       setSaved((current) => ({
         high_score: Math.max(current?.high_score || 0, score),
         last_score: score,
         level: Math.max(current?.level || 1, level),
         plays: current?.plays || 0,
       }));
+      if (game.slug === 'flappy-dunk' && !gameOver) return;
       setSaving(true);
       fetch('/api/playables/progress', {
         method: 'POST',
@@ -53,12 +79,39 @@ export function PlayablePlayer({ game, progress }: { game: Game; progress: Progr
           gameKey: game.slug,
           score,
           level,
-          stats: { ...(data.stats || {}), streakPoints: game.slug === 'flappy-dunk' ? '1 per score point, once per hour' : null },
+          awardPoints: game.slug === 'flappy-dunk' && gameOver && pointsEligible,
+          stats: {
+            ...(data.stats || {}),
+            pointsEligible,
+            streakPoints: game.slug === 'flappy-dunk' ? '1 per score point, once per hour from the leaderboard' : null,
+          },
         }),
       })
         .then((res) => res.json())
         .then((payload) => {
           if (payload?.progress) setSaved(payload.progress);
+          if (game.slug === 'flappy-dunk' && gameOver) {
+            const award = (payload?.streakAward || null) as StreakAward | null;
+            const pointsDelta = Math.max(0, Number(award?.points_delta || 0));
+            const pointsTotal =
+              typeof award?.points_total === 'number' ? Math.max(0, Number(award.points_total)) : undefined;
+            setRunReward({
+              score,
+              pointsDelta,
+              pointsTotal,
+              status: award?.contest_status || (pointsEligible ? 'saved' : 'not_eligible'),
+              message:
+                award?.message ||
+                (pointsEligible
+                  ? pointsDelta > 0
+                    ? 'Nice run — those streak points landed.'
+                    : 'Run saved, but this play did not earn extra points.'
+                  : 'Run saved. Start Flappy Dunk from the leaderboard to earn streak points.'),
+            });
+            if (pointsDelta > 0) {
+              window.dispatchEvent(new CustomEvent('viewtube-points', { detail: award }));
+            }
+          }
         })
         .catch(() => null)
         .finally(() => setSaving(false));
@@ -66,7 +119,7 @@ export function PlayablePlayer({ game, progress }: { game: Game; progress: Progr
 
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [game.slug]);
+  }, [game.slug, pointsEligible]);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,6 +201,39 @@ export function PlayablePlayer({ game, progress }: { game: Game; progress: Progr
           allow="gamepad; fullscreen; autoplay"
           className="h-[72vh] min-h-[520px] w-full bg-black"
         />
+        {runReward ? (
+          <div className="absolute inset-x-4 bottom-4 z-20 mx-auto max-w-xl rounded-3xl border border-white/10 bg-zinc-950/95 p-4 text-white shadow-2xl backdrop-blur">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-xs font-black uppercase tracking-[0.24em] text-red-400">Run complete</div>
+                <div className="mt-1 text-2xl font-black">Score {runReward.score}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRunReward(null)}
+                className="rounded-full border border-white/10 px-3 py-1 text-sm font-bold text-zinc-300 hover:bg-white/10"
+              >
+                Close
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-white/10 p-3">
+                <div className="text-xs text-zinc-400">Points earned</div>
+                <div className="text-2xl font-black text-white">+{runReward.pointsDelta}</div>
+              </div>
+              <div className="rounded-2xl bg-white/10 p-3">
+                <div className="text-xs text-zinc-400">Your total</div>
+                <div className="text-2xl font-black text-white">{runReward.pointsTotal ?? '—'}</div>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-zinc-300">{runReward.message}</p>
+            {!pointsEligible && game.slug === 'flappy-dunk' ? (
+              <Link href="/streaks" className="mt-3 inline-flex text-sm font-bold text-red-300 hover:text-red-200">
+                Go to leaderboard →
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
         <a
           href={src}
           target="_blank"
