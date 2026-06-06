@@ -57,9 +57,9 @@ export function ReportVideoButton({ videoId, variant = 'button' }: Props) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-zinc-100 hover:bg-white/10"
+          className="flex min-h-11 w-full items-center gap-5 px-4 py-2.5 text-left text-[15px] font-medium text-white transition hover:bg-white/10"
         >
-          <Flag className="h-5 w-5" />
+          <Flag className="h-6 w-6 shrink-0 text-zinc-100" />
           Report
         </button>
       ) : (

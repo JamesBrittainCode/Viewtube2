@@ -8,6 +8,7 @@ import {
   Flag,
   ListPlus,
   MoreVertical,
+  RotateCcw,
   Share2,
   SlidersHorizontal,
 } from 'lucide-react';
@@ -21,6 +22,9 @@ type Props = {
   channelId?: string | null;
   signedIn?: boolean;
 };
+
+const HIDDEN_CHANNELS_KEY = 'viewtube:hidden-channels:v2';
+const OLD_HIDDEN_CHANNELS_KEY = 'viewtube:hidden-channels';
 
 function readList(key: string) {
   if (typeof window === 'undefined') return [];
@@ -52,14 +56,17 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
   const [open, setOpen] = useState(false);
   const [working, setWorking] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [hasHiddenChannels, setHasHiddenChannels] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    window.localStorage.removeItem(OLD_HIDDEN_CHANNELS_KEY);
     const hiddenVideos = new Set([
       ...readList('viewtube:never-watch'),
       ...readList('viewtube:not-interested'),
     ]);
-    const hiddenChannels = new Set(readList('viewtube:hidden-channels'));
+    const hiddenChannels = new Set(readList(HIDDEN_CHANNELS_KEY));
+    setHasHiddenChannels(hiddenChannels.size > 0);
     if (!hiddenVideos.has(videoId) && (!channelId || !hiddenChannels.has(channelId))) return;
     const card = rootRef.current?.closest<HTMLElement>('[data-video-card]');
     if (card) card.style.display = 'none';
@@ -154,9 +161,22 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
   }
 
   function dontRecommendChannel() {
-    if (channelId) saveUnique('viewtube:hidden-channels', channelId);
+    if (channelId) saveUnique(HIDDEN_CHANNELS_KEY, channelId);
     hideCard('Channel hidden from this device');
   }
+
+  function resetHiddenChannels() {
+    window.localStorage.removeItem(HIDDEN_CHANNELS_KEY);
+    window.localStorage.removeItem(OLD_HIDDEN_CHANNELS_KEY);
+    setHasHiddenChannels(false);
+    setOpen(false);
+    setMessage('Hidden channels reset');
+    window.setTimeout(() => window.location.reload(), 350);
+  }
+
+  const itemClass =
+    'flex min-h-11 w-full items-center gap-5 px-4 py-2.5 text-left text-[15px] font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60';
+  const iconClass = 'h-6 w-6 shrink-0 text-zinc-100';
 
   return (
     <div ref={rootRef} className="relative ml-auto shrink-0">
@@ -181,22 +201,22 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
             aria-label="Close video menu"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 top-10 z-50 w-72 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/98 p-2 text-zinc-100 shadow-2xl">
+          <div className="absolute right-0 top-10 z-50 w-80 overflow-hidden rounded-xl bg-[#282828] py-2 text-white shadow-[0_8px_24px_rgba(0,0,0,0.5)] ring-1 ring-white/10">
             <button
               type="button"
               onClick={addToQueue}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-white/10"
+              className={itemClass}
             >
-              <ListPlus className="h-5 w-5" />
+              <ListPlus className={iconClass} />
               Add to queue
             </button>
             <button
               type="button"
               onClick={() => void saveToWatchLater()}
               disabled={working === 'watch-later'}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-white/10"
+              className={itemClass}
             >
-              <Clock className="h-5 w-5" />
+              <Clock className={iconClass} />
               {working === 'watch-later' ? 'Saving…' : 'Save to Watch later'}
             </button>
             <SaveToPlaylistsButton videoId={videoId} signedIn={signedIn} variant="menu" />
@@ -206,38 +226,48 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
                 download
                 target="_blank"
                 rel="noreferrer"
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-white/10"
+                className={itemClass}
                 onClick={() => setOpen(false)}
               >
-                <Download className="h-5 w-5" />
+                <Download className={iconClass} />
                 Download
               </a>
             ) : null}
             <button
               type="button"
               onClick={() => void share()}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-white/10"
+              className={itemClass}
             >
-              <Share2 className="h-5 w-5" />
+              <Share2 className={iconClass} />
               Share
             </button>
-            <div className="my-1 h-px bg-white/10" />
+            <div className="my-2 h-px bg-white/10" />
             <button
               type="button"
               onClick={notInterested}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-white/10"
+              className={itemClass}
             >
-              <Ban className="h-5 w-5" />
+              <Ban className={iconClass} />
               Not interested
             </button>
             <button
               type="button"
               onClick={dontRecommendChannel}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-white/10"
+              className={itemClass}
             >
-              <SlidersHorizontal className="h-5 w-5" />
+              <SlidersHorizontal className={iconClass} />
               Don&apos;t recommend channel
             </button>
+            {hasHiddenChannels ? (
+              <button
+                type="button"
+                onClick={resetHiddenChannels}
+                className={itemClass}
+              >
+                <RotateCcw className={iconClass} />
+                Show hidden channels again
+              </button>
+            ) : null}
             {signedIn ? (
               <ReportVideoButton videoId={videoId} variant="menu" />
             ) : (
@@ -247,9 +277,9 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
                   setOpen(false);
                   window.location.href = `/sign-in?next=${encodeURIComponent(`/watch/${videoId}`)}`;
                 }}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-white/10"
+                className={itemClass}
               >
-                <Flag className="h-5 w-5" />
+                <Flag className={iconClass} />
                 Sign in to report
               </button>
             )}
@@ -258,7 +288,7 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
       ) : null}
 
       {message ? (
-        <div className="absolute right-0 top-10 z-30 whitespace-nowrap rounded-full bg-zinc-950 px-3 py-1 text-xs font-semibold text-white shadow-lg">
+        <div className="fixed bottom-6 left-1/2 z-[95] -translate-x-1/2 whitespace-nowrap rounded-lg bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-950 shadow-2xl dark:bg-zinc-800 dark:text-white">
           {message}
         </div>
       ) : null}
