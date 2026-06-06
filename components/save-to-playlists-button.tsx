@@ -36,6 +36,7 @@ export function SaveToPlaylistsButton({
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newPublic, setNewPublic] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const watchLaterSaved = useMemo(
     () => rows.find((r) => r.is_watch_later)?.containsVideo,
@@ -72,8 +73,15 @@ export function SaveToPlaylistsButton({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
   async function toggle(playlistId: string, shouldSave: boolean) {
     setError(null);
+    const playlistTitle = rows.find((p) => p.id === playlistId)?.title || 'playlist';
     const method = shouldSave ? 'POST' : 'DELETE';
     const res = await fetch(`/api/playlists/${playlistId}/items`, {
       method,
@@ -92,6 +100,7 @@ export function SaveToPlaylistsButton({
     setRows((prev) =>
       prev.map((p) => (p.id === playlistId ? { ...p, containsVideo: shouldSave } : p)),
     );
+    if (shouldSave) setToast(`Added to ${playlistTitle}`);
   }
 
   async function createPlaylist() {
@@ -286,6 +295,12 @@ export function SaveToPlaylistsButton({
               </div>
             </div>
           </div>
+        </div>
+      ) : null}
+
+      {toast ? (
+        <div className="fixed bottom-6 left-1/2 z-[100] -translate-x-1/2 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-950 shadow-2xl dark:bg-zinc-800 dark:text-white">
+          {toast}
         </div>
       ) : null}
     </>
