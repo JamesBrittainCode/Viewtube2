@@ -180,17 +180,26 @@ function Pill({ icon, label }: { icon?: ReactNode; label: string }) {
 
 function PlayablesLoader({ title }: { title: string }) {
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black">
-      <div className="relative text-center text-white">
-        <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-600/30 blur-3xl" />
-        <div className="relative mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-[2rem] border border-white/10 bg-white/10 shadow-[0_0_70px_rgba(239,68,68,0.45)] backdrop-blur">
-          <Gamepad2 className="h-10 w-10 animate-pulse text-red-300" />
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0b0b0d]">
+      <div className="w-full max-w-sm px-8 text-white">
+        <div className="mx-auto mb-6 grid h-16 w-16 grid-cols-2 gap-1 rounded-2xl bg-zinc-900 p-2 shadow-xl ring-1 ring-white/10">
+          <span className="rounded-lg bg-red-600" />
+          <span className="rounded-lg bg-zinc-700" />
+          <span className="rounded-lg bg-zinc-700" />
+          <span className="rounded-lg bg-white" />
         </div>
-        <div className="relative text-3xl font-black">Loading {title}</div>
-        <div className="relative mt-4 h-2 w-72 overflow-hidden rounded-full bg-white/10">
-          <div className="h-full w-1/2 animate-[playablesLoad_1.1s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-red-600 via-orange-400 to-red-600" />
+        <div className="text-center">
+          <div className="text-xl font-black tracking-tight">{title}</div>
+          <div className="mt-1 text-sm font-medium text-zinc-400">Loading playable</div>
         </div>
-        <div className="relative mt-3 text-xs uppercase tracking-[0.35em] text-zinc-400">warming up the arcade</div>
+        <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+          <div className="h-full w-2/5 animate-[playablesLoad_1.25s_ease-in-out_infinite] rounded-full bg-red-600" />
+        </div>
+        <div className="mt-5 flex items-center justify-center gap-1.5">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-zinc-500" />
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-zinc-500 [animation-delay:120ms]" />
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-zinc-500 [animation-delay:240ms]" />
+        </div>
       </div>
     </div>
   );
