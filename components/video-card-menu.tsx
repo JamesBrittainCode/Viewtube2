@@ -5,6 +5,7 @@ import {
   Ban,
   Clock,
   Download,
+  Flag,
   ListPlus,
   MoreVertical,
   Share2,
@@ -37,8 +38,19 @@ function saveUnique(key: string, value: string) {
   window.localStorage.setItem(key, JSON.stringify(next));
 }
 
+async function readError(response: Response) {
+  const text = await response.text();
+  try {
+    const parsed = JSON.parse(text) as { error?: string };
+    return parsed.error || 'Request failed';
+  } catch {
+    return text || 'Request failed';
+  }
+}
+
 export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = false }: Props) {
   const [open, setOpen] = useState(false);
+  const [working, setWorking] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -52,6 +64,27 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
     const card = rootRef.current?.closest<HTMLElement>('[data-video-card]');
     if (card) card.style.display = 'none';
   }, [channelId, videoId]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open]);
+
+  useEffect(() => {
+    if (!message) return;
+    const timer = window.setTimeout(() => setMessage(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [message]);
+
+  function requireSignIn() {
+    if (signedIn) return false;
+    window.location.href = `/sign-in?next=${encodeURIComponent(`/watch/${videoId}`)}`;
+    return true;
+  }
 
   function hideCard(reason: string) {
     setOpen(false);
@@ -87,9 +120,32 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
     setMessage('Added to queue');
   }
 
-  function neverWatch() {
-    saveUnique('viewtube:never-watch', videoId);
-    hideCard('Saved to Never Watch');
+  async function saveToWatchLater() {
+    if (requireSignIn()) return;
+    setWorking('watch-later');
+    try {
+      const listRes = await fetch(`/api/playlists?videoId=${encodeURIComponent(videoId)}`, { cache: 'no-store' });
+      if (!listRes.ok) throw new Error(await readError(listRes));
+      const listPayload = (await listRes.json()) as {
+        playlists?: Array<{ id: string; is_watch_later?: boolean; containsVideo?: boolean }>;
+      };
+      const watchLater = (listPayload.playlists || []).find((playlist) => playlist.is_watch_later);
+      if (!watchLater?.id) throw new Error('Watch later playlist was not found.');
+      if (!watchLater.containsVideo) {
+        const saveRes = await fetch(`/api/playlists/${watchLater.id}/items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videoId }),
+        });
+        if (!saveRes.ok) throw new Error(await readError(saveRes));
+      }
+      setOpen(false);
+      setMessage(watchLater.containsVideo ? 'Already in Watch later' : 'Saved to Watch later');
+    } catch (error) {
+      setMessage((error as Error).message);
+    } finally {
+      setWorking(null);
+    }
   }
 
   function notInterested() {
@@ -136,11 +192,12 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
             </button>
             <button
               type="button"
-              onClick={neverWatch}
+              onClick={() => void saveToWatchLater()}
+              disabled={working === 'watch-later'}
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-white/10"
             >
               <Clock className="h-5 w-5" />
-              Save to Never Watch
+              {working === 'watch-later' ? 'Saving…' : 'Save to Watch later'}
             </button>
             <SaveToPlaylistsButton videoId={videoId} signedIn={signedIn} variant="menu" />
             {videoUrl ? (
@@ -181,7 +238,21 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
               <SlidersHorizontal className="h-5 w-5" />
               Don&apos;t recommend channel
             </button>
-            <ReportVideoButton videoId={videoId} variant="menu" />
+            {signedIn ? (
+              <ReportVideoButton videoId={videoId} variant="menu" />
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  window.location.href = `/sign-in?next=${encodeURIComponent(`/watch/${videoId}`)}`;
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-white/10"
+              >
+                <Flag className="h-5 w-5" />
+                Sign in to report
+              </button>
+            )}
           </div>
         </>
       ) : null}
