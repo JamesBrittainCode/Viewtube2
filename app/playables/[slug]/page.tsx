@@ -5,6 +5,14 @@ import { createClient } from '@/lib/supabase/server';
 export const runtime = 'edge';
 
 const builtInGames = {
+  tetris: {
+    title: 'Tetris',
+    slug: 'tetris',
+    description: 'Stack falling blocks, clear rows, and chase a new high score.',
+    game_url: '/playables/tetris/index.html',
+    instructions:
+      'Use the arrow keys to move and rotate blocks. Clear full rows to score. The game starts automatically in ViewTube Playables.',
+  },
   'flappy-dunk': {
     title: 'Flappy Dunk',
     slug: 'flappy-dunk',
@@ -31,7 +39,7 @@ export default async function PlayableGamePage({ params }: { params: Promise<{ s
     .eq('is_active', true)
     .maybeSingle();
 
-  const playable = game || builtInGames[slug as keyof typeof builtInGames] || null;
+  const playable = builtInGames[slug as keyof typeof builtInGames] || game || null;
   if (!playable) notFound();
 
   const { data: progress } = await supabase

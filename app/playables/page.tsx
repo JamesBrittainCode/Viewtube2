@@ -6,6 +6,17 @@ export const runtime = 'edge';
 
 const builtInGames = [
   {
+    id: 'built-in-tetris',
+    title: 'Tetris',
+    slug: 'tetris',
+    description: 'Stack falling blocks, clear rows, and chase a new high score.',
+    category: 'Puzzle',
+    thumbnail_url: '/playables/tetris/thumbnail.png',
+    game_url: '/playables/tetris/index.html',
+    plays_count: 0,
+    created_at: '2026-06-05T00:00:00.000Z',
+  },
+  {
     id: 'built-in-flappy-dunk',
     title: 'Flappy Dunk',
     slug: 'flappy-dunk',
@@ -40,8 +51,8 @@ export default async function PlayablesPage() {
   ]);
 
   const uploadedGames = games || [];
-  const uploadedSlugs = new Set(uploadedGames.map((game) => String(game.slug)));
-  const mergedGames = [...builtInGames.filter((game) => !uploadedSlugs.has(game.slug)), ...uploadedGames];
+  const builtInSlugs = new Set(builtInGames.map((game) => game.slug));
+  const mergedGames = [...builtInGames, ...uploadedGames.filter((game) => !builtInSlugs.has(String(game.slug)))];
 
   return <PlayablesArcade games={mergedGames as never[]} initialProgress={(progress || []) as never[]} />;
 }

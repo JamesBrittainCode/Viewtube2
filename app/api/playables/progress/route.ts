@@ -9,7 +9,7 @@ function readPositiveInt(value: unknown, fallback: number) {
   return Math.max(0, Math.floor(parsed));
 }
 
-const builtInGameKeys = new Set(['flappy-dunk']);
+const builtInGameKeys = new Set(['flappy-dunk', 'tetris']);
 
 export async function POST(request: Request) {
   const supabase = await createClient();
