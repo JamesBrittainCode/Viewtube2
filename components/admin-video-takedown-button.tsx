@@ -7,6 +7,7 @@ import { Ban } from 'lucide-react';
 type Props = {
   videoId: string;
   initialRemoved?: boolean;
+  variant?: 'icon' | 'menu';
 };
 
 async function parseApiError(response: Response) {
@@ -19,7 +20,7 @@ async function parseApiError(response: Response) {
   }
 }
 
-export function AdminVideoTakedownButton({ videoId, initialRemoved = false }: Props) {
+export function AdminVideoTakedownButton({ videoId, initialRemoved = false, variant = 'icon' }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [removed, setRemoved] = useState(initialRemoved);
@@ -49,6 +50,20 @@ export function AdminVideoTakedownButton({ videoId, initialRemoved = false }: Pr
     } finally {
       setLoading(false);
     }
+  }
+
+  if (variant === 'menu') {
+    return (
+      <button
+        type="button"
+        onClick={() => void onTakeDown()}
+        disabled={loading || removed}
+        className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-red-300 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <Ban className="h-5 w-5" />
+        {removed ? 'Already taken down' : loading ? 'Taking down...' : 'Take down'}
+      </button>
+    );
   }
 
   return (

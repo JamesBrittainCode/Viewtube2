@@ -2,8 +2,10 @@ import { VideoCard } from '@/components/video-card';
 
 export function VideoGrid({
   videos,
+  signedIn = false,
 }: {
   videos: Array<Record<string, unknown>>;
+  signedIn?: boolean;
 }) {
   if (!videos.length) {
     return (
@@ -16,7 +18,7 @@ export function VideoGrid({
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {videos.map((video) => (
-        <VideoCard key={video.id as string} video={video as never} />
+        <VideoCard key={video.id as string} video={video as never} signedIn={signedIn} />
       ))}
     </div>
   );

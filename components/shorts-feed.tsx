@@ -17,6 +17,8 @@ import { unwrapRelation } from '@/lib/profile';
 import { CommentSection } from '@/components/comment-section';
 import { emitStreakEvent } from '@/lib/streak-events';
 import { SaveToPlaylistsButton } from '@/components/save-to-playlists-button';
+import { ReportVideoButton } from '@/components/report-video-button';
+import { AdminVideoTakedownButton } from '@/components/admin-video-takedown-button';
 
 type ShortRow = {
   id: string;
@@ -375,11 +377,11 @@ export function ShortsFeed({
                     {menuOpenFor === item.id ? (
                       <div className="absolute right-3 top-14 z-20 w-52 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950/95 p-1 text-sm text-zinc-100 backdrop-blur">
                         <Link
-                          href={`/watch/${item.id}`}
+                          href={`/shorts/${item.id}`}
                           className="block rounded-xl px-3 py-2 hover:bg-white/10"
                           onClick={() => setMenuOpenFor(null)}
                         >
-                          Open watch page
+                          Open short
                         </Link>
                         <button
                           type="button"
@@ -391,6 +393,10 @@ export function ShortsFeed({
                         >
                           Copy link
                         </button>
+                        <ReportVideoButton videoId={item.id} variant="menu" />
+                        {canModerate ? (
+                          <AdminVideoTakedownButton videoId={item.id} variant="menu" />
+                        ) : null}
                       </div>
                     ) : null}
 

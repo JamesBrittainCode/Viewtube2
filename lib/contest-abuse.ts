@@ -1,5 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { sendNotification } from '@/lib/notifications';
 import type { ViewtubeActivityType } from '@/lib/streaks';
 
 export type ContestGateResult = {
@@ -13,99 +12,32 @@ export type ContestGateResult = {
 
 type ProfileAbuseState = {
   contest_paused_until?: string | null;
-  contest_spam_strikes?: number | null;
-  contest_disqualified_at?: string | null;
 };
-
-const PAUSE_MINUTES = 20;
-const MAX_STRIKES = 3;
 
 const RATE_LIMITS: Record<ViewtubeActivityType, { windowSeconds: number; limit: number }> = {
-  comment: { windowSeconds: 120, limit: 10 },
-  comment_like: { windowSeconds: 60, limit: 25 },
-  video_like: { windowSeconds: 60, limit: 22 },
-  subscribe: { windowSeconds: 600, limit: 16 },
-  upload_video: { windowSeconds: 3600, limit: 12 },
-  go_live: { windowSeconds: 3600, limit: 6 },
-  ad_watch: { windowSeconds: 86400, limit: 2 },
+  comment: { windowSeconds: 120, limit: 24 },
+  comment_like: { windowSeconds: 60, limit: 45 },
+  video_like: { windowSeconds: 60, limit: 40 },
+  subscribe: { windowSeconds: 600, limit: 28 },
+  upload_video: { windowSeconds: 3600, limit: 20 },
+  go_live: { windowSeconds: 3600, limit: 10 },
+  ad_watch: { windowSeconds: 86400, limit: 4 },
 };
 
-function addMinutes(date: Date, minutes: number) {
-  return new Date(date.getTime() + minutes * 60 * 1000);
-}
+const SAME_TARGET_LIMITS: Partial<Record<ViewtubeActivityType, { windowSeconds: number; limit: number }>> = {
+  comment: { windowSeconds: 600, limit: 12 },
+  comment_like: { windowSeconds: 600, limit: 16 },
+  video_like: { windowSeconds: 86400, limit: 3 },
+  subscribe: { windowSeconds: 86400, limit: 3 },
+};
 
-function safeMessage(strikes: number, disqualified: boolean) {
-  if (disqualified) {
-    return 'You received 3 contest abuse strikes and have been removed from the ViewTube contest.';
-  }
-  return `Your contest points are paused for ${PAUSE_MINUTES} minutes for spammy point activity. Strike ${strikes}/3.`;
-}
-
-async function notifyModerators(supabase: SupabaseClient, userId: string, message: string) {
-  const { data: mods } = await supabase.from('profiles').select('id').eq('can_moderate', true).limit(50);
-  for (const mod of mods || []) {
-    if (!mod?.id) continue;
-    await sendNotification(supabase, {
-      userId: String(mod.id),
-      type: 'contest_abuse_report',
-      message,
-      actorId: userId,
-      targetUrl: '/studio/admin',
-    });
-  }
-}
-
-async function addContestStrike(
-  supabase: SupabaseClient,
-  userId: string,
-  currentStrikes: number,
-  reason: string,
-): Promise<ContestGateResult> {
-  const nextStrikes = currentStrikes + 1;
-  const now = new Date();
-  const disqualified = nextStrikes >= MAX_STRIKES;
-  const pausedUntil = disqualified ? null : addMinutes(now, PAUSE_MINUTES).toISOString();
-  const disqualifiedAt = disqualified ? now.toISOString() : null;
-  const message = safeMessage(nextStrikes, disqualified);
-
-  const update: Record<string, unknown> = {
-    contest_spam_strikes: nextStrikes,
-    contest_paused_until: pausedUntil,
-  };
-
-  if (disqualified) {
-    update.contest_disqualified_at = disqualifiedAt;
-    update.contest_disqualification_reason = reason;
-    update.age_confirmed_16 = false;
-    update.streak_champion = false;
-  }
-
-  const { error } = await supabase.from('profiles').update(update).eq('id', userId);
-  if (error) {
-    return { allowed: true, status: 'unavailable', strikes: currentStrikes, pausedUntil: null, disqualifiedAt: null };
-  }
-
-  await sendNotification(supabase, {
-    userId,
-    type: disqualified ? 'contest_disqualified' : 'contest_points_paused',
-    message,
-    targetUrl: '/streaks',
-  });
-
-  if (disqualified || nextStrikes >= 2) {
-    await notifyModerators(
-      supabase,
-      userId,
-      disqualified ? 'A user was automatically removed from the ViewTube contest after 3 abuse strikes.' : reason,
-    );
-  }
-
+function denyPointsOnly(message: string): ContestGateResult {
   return {
     allowed: false,
-    status: disqualified ? 'disqualified' : 'strike',
-    strikes: nextStrikes,
-    pausedUntil,
-    disqualifiedAt,
+    status: 'paused',
+    strikes: 0,
+    pausedUntil: null,
+    disqualifiedAt: null,
     message,
   };
 }
@@ -125,7 +57,7 @@ export async function checkContestActivityGate(
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('contest_paused_until,contest_spam_strikes,contest_disqualified_at')
+    .select('contest_paused_until')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -134,26 +66,13 @@ export async function checkContestActivityGate(
   }
 
   const state = (profile || {}) as ProfileAbuseState;
-  const strikes = Math.max(0, Number(state.contest_spam_strikes || 0));
-  const disqualifiedAt = state.contest_disqualified_at || null;
-  if (disqualifiedAt) {
-    return {
-      allowed: false,
-      status: 'disqualified',
-      strikes,
-      pausedUntil: null,
-      disqualifiedAt,
-      message: 'You are no longer eligible for the ViewTube contest.',
-    };
-  }
-
   const pausedUntil = state.contest_paused_until || null;
   const pausedUntilMs = pausedUntil ? new Date(pausedUntil).getTime() : 0;
   if (pausedUntilMs && Date.now() < pausedUntilMs) {
     return {
       allowed: false,
       status: 'paused',
-      strikes,
+      strikes: 0,
       pausedUntil,
       disqualifiedAt: null,
       message: 'Your contest points are temporarily paused.',
@@ -161,7 +80,7 @@ export async function checkContestActivityGate(
   }
 
   if (opts?.forceStrikeReason) {
-    return addContestStrike(supabase, user.id, strikes, opts.forceStrikeReason);
+    return denyPointsOnly(opts.forceStrikeReason);
   }
 
   const limit = RATE_LIMITS[activityType];
@@ -174,16 +93,11 @@ export async function checkContestActivityGate(
     .gte('created_at', sinceIso);
 
   if (countError) {
-    return { allowed: true, status: 'unavailable', strikes, pausedUntil: null, disqualifiedAt: null };
+    return { allowed: true, status: 'unavailable', strikes: 0, pausedUntil: null, disqualifiedAt: null };
   }
 
   if ((count || 0) >= limit.limit) {
-    return addContestStrike(
-      supabase,
-      user.id,
-      strikes,
-      `Contest points paused for rapid ${activityType.replaceAll('_', ' ')} activity.`,
-    );
+    return denyPointsOnly(`Contest points paused for rapid ${activityType.replaceAll('_', ' ')} activity.`);
   }
 
   const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
@@ -193,8 +107,8 @@ export async function checkContestActivityGate(
     .eq('user_id', user.id)
     .gte('created_at', tenMinutesAgo);
 
-  if ((allRecent || 0) >= 60) {
-    return addContestStrike(supabase, user.id, strikes, 'Contest points paused for unusually high point activity.');
+  if ((allRecent || 0) >= 100) {
+    return denyPointsOnly('Contest points paused for unusually high point activity.');
   }
 
   if (opts?.contentKey && opts.contentKey.length >= 8 && activityType === 'comment') {
@@ -206,12 +120,30 @@ export async function checkContestActivityGate(
       .eq('content_key', opts.contentKey)
       .gte('created_at', tenMinutesAgo);
 
-    if ((repeated || 0) >= 4) {
-      return addContestStrike(supabase, user.id, strikes, 'Contest points paused for repetitive comments.');
+    if ((repeated || 0) >= 8) {
+      return denyPointsOnly('Contest points paused for repetitive comments.');
     }
   }
 
-  return { allowed: true, status: 'allowed', strikes, pausedUntil: null, disqualifiedAt: null };
+  const targetLimit = opts?.targetId ? SAME_TARGET_LIMITS[activityType] : null;
+  if (targetLimit && opts?.targetId) {
+    const targetSinceIso = new Date(Date.now() - targetLimit.windowSeconds * 1000).toISOString();
+    const { count: sameTargetCount } = await supabase
+      .from('viewtube_contest_activity_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('activity_type', activityType)
+      .eq('target_id', opts.targetId)
+      .gte('created_at', targetSinceIso);
+
+    if ((sameTargetCount || 0) >= targetLimit.limit) {
+      return denyPointsOnly(
+        `Contest points paused for repeatedly farming the same ${activityType.replaceAll('_', ' ')} target.`,
+      );
+    }
+  }
+
+  return { allowed: true, status: 'allowed', strikes: 0, pausedUntil: null, disqualifiedAt: null };
 }
 
 export async function recordContestActivityEvent(

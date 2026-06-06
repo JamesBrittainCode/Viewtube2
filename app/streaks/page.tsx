@@ -24,7 +24,6 @@ type Row = {
     verified?: boolean | null;
     top_streamer?: boolean | null;
     streak_champion?: boolean | null;
-    contest_disqualified_at?: string | null;
   } | null;
 };
 
@@ -40,31 +39,9 @@ export default async function StreaksPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('age_confirmed_16,handle,contest_disqualified_at,contest_spam_strikes,contest_paused_until')
+    .select('age_confirmed_16,handle,contest_paused_until')
     .eq('id', user.id)
     .maybeSingle();
-
-  if (profile?.contest_disqualified_at) {
-    return (
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-950 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-100">
-          <h1 className="text-xl font-bold">Contest access removed</h1>
-          <p className="mt-2 text-sm">
-            This account received 3 contest abuse strikes and can no longer participate in the ViewTube points contest.
-          </p>
-          <div className="mt-3 text-xs">
-            <Link href="/streaks/rules" className="underline">
-              Rules
-            </Link>{' '}
-            •{' '}
-            <Link href="/support" className="underline">
-              Contact support
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (!profile?.age_confirmed_16) {
     return (
@@ -99,7 +76,7 @@ export default async function StreaksPage() {
     supabase
       .from('viewtube_streaks')
       .select(
-        'user_id,current_streak,longest_streak,points,last_active_date,profiles:profiles!viewtube_streaks_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion,contest_disqualified_at)',
+        'user_id,current_streak,longest_streak,points,last_active_date,profiles:profiles!viewtube_streaks_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)',
       )
       .order('points', { ascending: false })
       .order('current_streak', { ascending: false })
@@ -108,7 +85,7 @@ export default async function StreaksPage() {
       .limit(50),
   ]);
 
-  const rows = ((leaderboard || []) as Row[]).filter((row) => !row.profiles?.contest_disqualified_at);
+  const rows = (leaderboard || []) as Row[];
   const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || '';
   const referralLink =
     profile?.handle ? `${siteOrigin || ''}/ref/${encodeURIComponent(profile.handle)}` : null;
@@ -126,8 +103,7 @@ export default async function StreaksPage() {
         </p>
         {contestPaused ? (
           <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
-            Contest points are paused until {new Date(profile!.contest_paused_until!).toLocaleString()}. Strike{' '}
-            {profile?.contest_spam_strikes || 1}/3.
+            Contest points are paused until {new Date(profile!.contest_paused_until!).toLocaleString()}.
           </div>
         ) : null}
 

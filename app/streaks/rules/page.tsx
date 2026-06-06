@@ -28,8 +28,8 @@ export default function StreakContestRulesPage() {
             to verification and these Rules and Terms).
           </li>
           <li>
-            Spammy point activity may put contest points on pause and add a strike. Three strikes permanently remove an
-            account from the Contest.
+            Spammy point activity may cause specific actions to earn no points, but ordinary ViewTube use should remain
+            available whenever possible.
           </li>
         </ul>
         <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
@@ -161,17 +161,15 @@ export default function StreakContestRulesPage() {
             points.
           </p>
           <p>
-            <span className="font-semibold text-zinc-900 dark:text-white">Contest pauses and strikes</span>: if Sponsor’s
-            systems or moderators detect spammy point activity, the Participant may be placed on a temporary Contest
-            points pause, currently intended to last approximately twenty (20) minutes, and may receive one (1) Contest
-            abuse strike. During a Contest points pause, the Participant may continue ordinary ViewTube activity where
-            allowed, but point earning may be blocked or reduced.
+            <span className="font-semibold text-zinc-900 dark:text-white">Contest point limits</span>: if Sponsor’s
+            systems or moderators detect spammy point activity, specific actions may temporarily earn no Contest points.
+            During a point limit, the Participant may continue ordinary ViewTube activity where allowed, but point
+            earning may be blocked or reduced for the affected action.
           </p>
           <p>
-            <span className="font-semibold text-zinc-900 dark:text-white">Three-strike removal</span>: an account that
-            receives three (3) Contest abuse strikes may be permanently removed from the Contest, removed from the
-            Leaderboard, made ineligible to re-enter the Contest, and made ineligible to win the Prize. Sponsor may also
-            remove or correct points associated with abusive activity.
+            <span className="font-semibold text-zinc-900 dark:text-white">Manual review</span>: ViewTube no longer uses
+            automatic three-strike Contest removal. Sponsor may still manually review severe abuse, correct points,
+            remove abusive content, or take platform moderation action where necessary.
           </p>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Sponsor’s determination of abuse or manipulation is final and may be made in Sponsor’s sole discretion, to

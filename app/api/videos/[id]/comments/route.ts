@@ -79,7 +79,7 @@ export async function POST(
 
   const { data: me } = await supabase
     .from('profiles')
-    .select('id,comment_suspended_until,comment_spam_strikes,can_moderate')
+    .select('id,comment_suspended_until,can_moderate')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -104,22 +104,9 @@ export async function POST(
     return NextResponse.json({ error: 'Comment is required' }, { status: 400 });
   }
 
-  const contestGate = await checkContestActivityGate(supabase, 'comment', { contentKey });
-  if (!contestGate.allowed) {
-    return NextResponse.json(
-      {
-        error: contestGate.message || 'Your contest points are temporarily paused for spammy activity.',
-        code: contestGate.status,
-        strikes: contestGate.strikes,
-        paused_until: contestGate.pausedUntil,
-      },
-      { status: 429 },
-    );
-  }
-
   // Balanced anti-spam: catches bursts and repeated text, while leaving normal conversation alone.
-  const windowSeconds = 90;
-  const limit = 8;
+  const windowSeconds = 60;
+  const limit = 18;
   const sinceIso = new Date(Date.now() - windowSeconds * 1000).toISOString();
   const { count: recentCount } = await supabase
     .from('comments')
@@ -136,65 +123,33 @@ export async function POST(
     .order('created_at', { ascending: false })
     .limit(20);
 
-  const repeatedCount = (recentComments || []).filter((item) => normalizeContestText(String(item.content || '')) === contentKey)
-    .length;
+  const repeatedCount = (recentComments || []).filter(
+    (item) => normalizeContestText(String(item.content || '')) === contentKey,
+  ).length;
 
-  const wouldExceed = (recentCount || 0) >= limit || (contentKey.length >= 8 && repeatedCount >= 4);
+  const wouldExceed = (recentCount || 0) >= limit || (contentKey.length >= 8 && repeatedCount >= 8);
   if (wouldExceed) {
-    const newStrikes = (me?.comment_spam_strikes || 0) + 1;
-    const until = minutesFromNow(20);
-    const contestStrike = await checkContestActivityGate(supabase, 'comment', {
-      contentKey,
-      forceStrikeReason: 'Contest points paused for comment spam.',
-    });
+    const until = minutesFromNow(10);
 
     await supabase
       .from('profiles')
       .update({
         comment_suspended_until: until,
-        comment_spam_strikes: newStrikes,
       })
       .eq('id', user.id);
 
     await sendNotification(supabase, {
       userId: user.id,
       type: 'comment_suspension',
-      message:
-        newStrikes >= 2
-          ? 'You have been temporarily suspended from commenting for 20 minutes due to spam. This incident has been reported to moderators.'
-          : 'You have been temporarily suspended from commenting for 20 minutes due to spam. You may also receive a contest strike if this affects points.',
+      message: 'You have been temporarily suspended from commenting for 10 minutes due to unusually rapid or repetitive comments.',
       targetUrl: `/watch/${id}#comments`,
     });
 
-    if (newStrikes >= 2) {
-      // Notify moderators/admins.
-      const { data: mods } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('can_moderate', true)
-        .limit(50);
-      for (const mod of mods || []) {
-        if (!mod?.id) continue;
-        await sendNotification(supabase, {
-          userId: mod.id,
-          type: 'comment_spam_report',
-          message: 'A user was auto-suspended for comment spam (repeat offense).',
-          actorId: user.id,
-          targetUrl: `/watch/${id}#comments`,
-        });
-      }
-    }
-
     return NextResponse.json(
       {
-        error:
-          newStrikes >= 2
-            ? 'You’re temporarily suspended from commenting for 20 minutes due to spam. This was reported to moderators.'
-            : contestStrike.message || 'You’re temporarily suspended from commenting for 20 minutes due to spam.',
+        error: 'You’re temporarily suspended from commenting for 10 minutes because comments were coming in too fast or repeating too much.',
         code: 'comment_suspended',
-        seconds_left: 20 * 60,
-        contest_strikes: contestStrike.strikes,
-        contest_status: contestStrike.status,
+        seconds_left: 10 * 60,
       },
       { status: 429 },
     );
@@ -225,7 +180,12 @@ export async function POST(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  const streak = await recordViewtubeActivity(supabase, 'comment', { contentKey });
+  const contestGate = await checkContestActivityGate(supabase, 'comment', { targetId: id, contentKey });
+  const streak = await recordViewtubeActivity(supabase, 'comment', {
+    targetId: id,
+    contentKey,
+    pointsOk: contestGate.allowed,
+  });
 
   if (video.user_id !== user.id) {
     await sendNotification(supabase, {

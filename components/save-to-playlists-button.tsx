@@ -27,7 +27,7 @@ export function SaveToPlaylistsButton({
 }: {
   videoId: string;
   signedIn: boolean;
-  variant?: 'pill' | 'rail';
+  variant?: 'pill' | 'rail' | 'menu';
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -141,6 +141,22 @@ export function SaveToPlaylistsButton({
         >
           <BookmarkPlus className="h-6 w-6" />
           <span className="text-xs font-semibold">Save</span>
+        </button>
+      ) : variant === 'menu' ? (
+        <button
+          type="button"
+          onClick={() => {
+            if (!signedIn) {
+              window.location.href = '/sign-in';
+              return;
+            }
+            setOpen(true);
+          }}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-zinc-100 hover:bg-white/10"
+          title="Save to playlist"
+        >
+          <BookmarkPlus className="h-5 w-5" />
+          Save to playlist
         </button>
       ) : (
         <button

@@ -85,10 +85,10 @@ export function HomeFeed({
         </div>
       ) : null}
 
-      <VideoGrid videos={(videos.slice(0, 8) as never[])} />
+      <VideoGrid videos={(videos.slice(0, 8) as never[])} signedIn={signedIn} />
       <ShortsShelf shorts={initialShorts as never[]} />
       {signedIn ? <PlayablesShelf /> : null}
-      {videos.length > 8 ? <VideoGrid videos={(videos.slice(8) as never[])} /> : null}
+      {videos.length > 8 ? <VideoGrid videos={(videos.slice(8) as never[])} signedIn={signedIn} /> : null}
 
       <div className="mt-8 flex flex-col items-center justify-center gap-3">
         {error ? <p className="text-sm text-red-500">{error}</p> : null}

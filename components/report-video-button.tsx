@@ -1,10 +1,12 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import { Flag } from 'lucide-react';
 import { VIDEO_REPORT_REASONS } from '@/lib/media-moderation';
 
 type Props = {
   videoId: string;
+  variant?: 'button' | 'menu';
 };
 
 async function parseApiError(response: Response) {
@@ -17,7 +19,7 @@ async function parseApiError(response: Response) {
   }
 }
 
-export function ReportVideoButton({ videoId }: Props) {
+export function ReportVideoButton({ videoId, variant = 'button' }: Props) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [reason, setReason] = useState<string>('');
@@ -51,13 +53,24 @@ export function ReportVideoButton({ videoId }: Props) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-full border border-zinc-300 px-3 py-2 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-      >
-        Report
-      </button>
+      {variant === 'menu' ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-zinc-100 hover:bg-white/10"
+        >
+          <Flag className="h-5 w-5" />
+          Report
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="rounded-full border border-zinc-300 px-3 py-2 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+        >
+          Report
+        </button>
+      )}
       {message ? <p className="text-xs text-zinc-500">{message}</p> : null}
       {open ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -108,4 +121,3 @@ export function ReportVideoButton({ videoId }: Props) {
     </>
   );
 }
-

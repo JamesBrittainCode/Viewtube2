@@ -6,18 +6,22 @@ import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { formatDuration } from '@/lib/format-duration';
+import { VideoCardMenu } from '@/components/video-card-menu';
 
 type Props = {
   video: {
     id: string;
+    user_id?: string;
     title: string;
     thumbnail_url: string | null;
+    video_url?: string | null;
     duration_seconds?: number | null;
     is_short?: boolean | null;
     views: number;
     created_at: string;
     profiles?:
       | {
+          id?: string;
           username?: string;
           handle?: string;
           avatar_url?: string | null;
@@ -26,6 +30,7 @@ type Props = {
           streak_champion?: boolean;
         }
       | Array<{
+          id?: string;
           username?: string;
           handle?: string;
           avatar_url?: string | null;
@@ -36,7 +41,7 @@ type Props = {
   };
 };
 
-export function VideoCard({ video }: Props) {
+export function VideoCard({ video, signedIn = false }: Props & { signedIn?: boolean }) {
   const createdAt = formatDistanceToNow(new Date(video.created_at), {
     addSuffix: true,
   });
@@ -46,7 +51,7 @@ export function VideoCard({ video }: Props) {
   const videoHref = isShort ? `/shorts/${video.id}` : `/watch/${video.id}`;
 
   return (
-    <article className="group">
+    <article className="group transition duration-200" data-video-card={video.id}>
       <Link href={videoHref}>
         <div
           className={[
@@ -83,7 +88,7 @@ export function VideoCard({ video }: Props) {
           className="h-9 w-9 rounded-full object-cover"
         />
 
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <Link href={videoHref} className="line-clamp-2 text-sm font-semibold">
             {video.title}
           </Link>
@@ -99,6 +104,13 @@ export function VideoCard({ video }: Props) {
             {video.views.toLocaleString()} views • {createdAt}
           </p>
         </div>
+        <VideoCardMenu
+          videoId={video.id}
+          title={video.title}
+          videoUrl={video.video_url}
+          channelId={video.user_id || profile?.id || null}
+          signedIn={signedIn}
+        />
       </div>
     </article>
   );
