@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, Gamepad2, Maximize2, Trophy } from 'lucide-react';
+import { ArrowLeft, Gamepad2, Maximize2, Trophy, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
@@ -24,6 +24,8 @@ export function PlayablePlayer({ game, progress }: { game: Game; progress: Progr
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(progress);
   const [saving, setSaving] = useState(false);
+  const [playingNow, setPlayingNow] = useState<number | null>(null);
+  const [sessionId] = useState(() => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
   const src = useMemo(() => game.game_url, [game.game_url]);
 
   useEffect(() => {
@@ -35,14 +37,22 @@ export function PlayablePlayer({ game, progress }: { game: Game; progress: Progr
     function onMessage(event: MessageEvent) {
       const data = event.data as { type?: string; score?: number; level?: number; stats?: Record<string, unknown> };
       if (!data || data.type !== 'viewtube-playable-score') return;
+      const score = Math.max(0, Math.floor(Number(data.score || 0)));
+      const level = Math.max(1, Math.floor(Number(data.level || 1)));
+      setSaved((current) => ({
+        high_score: Math.max(current?.high_score || 0, score),
+        last_score: score,
+        level: Math.max(current?.level || 1, level),
+        plays: current?.plays || 0,
+      }));
       setSaving(true);
       fetch('/api/playables/progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           gameKey: game.slug,
-          score: Number(data.score || 0),
-          level: Number(data.level || 1),
+          score,
+          level,
           stats: { ...(data.stats || {}), streakPoints: game.slug === 'flappy-dunk' ? '1 per score point, once per hour' : null },
         }),
       })
@@ -57,6 +67,38 @@ export function PlayablePlayer({ game, progress }: { game: Game; progress: Progr
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, [game.slug]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function pingPresence() {
+      const response = await fetch('/api/playables/presence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameKey: game.slug, sessionId }),
+      }).catch(() => null);
+      if (!response || !response.ok) return;
+      const payload = (await response.json().catch(() => null)) as { playingNow?: number } | null;
+      if (!cancelled && typeof payload?.playingNow === 'number') setPlayingNow(payload.playingNow);
+    }
+
+    async function loadPresence() {
+      const response = await fetch(`/api/playables/presence?gameKey=${encodeURIComponent(game.slug)}`).catch(() => null);
+      if (!response || !response.ok) return;
+      const payload = (await response.json().catch(() => null)) as { playingNow?: number } | null;
+      if (!cancelled && typeof payload?.playingNow === 'number') setPlayingNow(payload.playingNow);
+    }
+
+    pingPresence();
+    const heartbeat = window.setInterval(pingPresence, 15000);
+    const poll = window.setInterval(loadPresence, 10000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(heartbeat);
+      window.clearInterval(poll);
+    };
+  }, [game.slug, sessionId]);
 
   function recordPlay() {
     if (game.slug === 'flappy-dunk') return;
@@ -88,6 +130,7 @@ export function PlayablePlayer({ game, progress }: { game: Game; progress: Progr
         <div className="flex gap-2 text-sm">
           <Pill icon={<Trophy className="h-4 w-4" />} label={`Best ${saved?.high_score || 0}`} />
           <Pill icon={<Gamepad2 className="h-4 w-4" />} label={`Level ${saved?.level || 1}`} />
+          <Pill icon={<Users className="h-4 w-4" />} label={`${playingNow ?? '—'} playing now`} />
           {saving ? <Pill label="Saving…" /> : null}
         </div>
       </div>

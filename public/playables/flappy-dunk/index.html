@@ -541,7 +541,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   </script>
   <script>
     (() => {
-      const scoreNames = ['Last_Score', 'last_score', 'Last Score', 'Score', 'score', 'Points', 'points'];
+      const scoreNames = ['SCORE', 'Score', 'score', 'Last_Score', 'last_score', 'Last Score', 'Points', 'points'];
       let bestScore = 0;
       let sentScore = 0;
       let lastScore = 0;
@@ -574,7 +574,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
       window.setInterval(() => {
         const score = readScore();
-        if (score > bestScore) bestScore = score;
+        if (score > bestScore) {
+          bestScore = score;
+          sendScore();
+        }
         if (bestScore > 0 && score === 0 && lastScore > 0) sendScore();
         lastScore = score;
       }, 750);
