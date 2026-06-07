@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { createClient } from '@/lib/supabase/server';
 import { formatCompactCount } from '@/lib/number';
+import { displayHandle } from '@/lib/handle';
 import { buildMonthlySeries } from '@/lib/studio-analytics';
 import { StudioChart } from '@/components/studio-chart';
 
@@ -65,7 +66,7 @@ export default async function StudioPage() {
         <div className="rounded-2xl border border-zinc-700 bg-zinc-900 p-5">
           <p className="text-xs text-zinc-500">Channel</p>
           <p className="mt-2 text-xl font-semibold">{profile?.username || 'Creator'}</p>
-          <p className="text-sm text-zinc-500">{profile?.handle || '@user'}</p>
+          <p className="text-sm text-zinc-500">{displayHandle(profile?.handle)}</p>
         </div>
       </section>
 

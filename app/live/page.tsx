@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
 import { unwrapRelation } from '@/lib/profile';
+import { displayHandle } from '@/lib/handle';
 
 export const runtime = 'edge';
 
@@ -49,7 +50,7 @@ export default async function LiveDirectoryPage() {
                 </div>
                 <h2 className="mt-2 line-clamp-2 font-semibold">{stream.title}</h2>
                 <p className="mt-1 text-sm text-zinc-500">
-                  {profile?.username || 'Creator'} {profile?.handle ? `(${profile.handle})` : ''}
+                  {profile?.username || 'Creator'} {profile?.handle ? `(${displayHandle(profile.handle)})` : ''}
                 </p>
                 <p className="mt-1 text-xs text-zinc-500">
                   {Number(stream.viewer_count || 0).toLocaleString()} watching

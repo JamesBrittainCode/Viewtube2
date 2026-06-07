@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { isAdminEmail } from '@/lib/admin';
+import { displayHandle } from '@/lib/handle';
 import { SiteAlert } from '@/components/site-alert';
 import { SitePopup } from '@/components/site-popup';
 
@@ -114,7 +115,7 @@ export default async function StudioLayout({ children }: { children: React.React
             />
             <p className="mt-3 text-sm text-zinc-400">Your channel</p>
             <p className="font-semibold">{profile?.username || 'Creator'}</p>
-            <p className="text-sm text-zinc-500">{profile?.handle || '@user'}</p>
+            <p className="text-sm text-zinc-500">{displayHandle(profile?.handle)}</p>
           </div>
 
           <nav className="mt-4 space-y-1 text-sm">

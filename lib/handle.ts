@@ -3,3 +3,8 @@ export function normalizeHandle(input: string) {
   const safe = stripped.length >= 3 ? stripped.slice(0, 30) : 'user';
   return `@${safe}`;
 }
+
+export function displayHandle(input?: string | null, fallback = '@user') {
+  const stripped = String(input || '').trim().replace(/^@+/, '');
+  return stripped ? `@${stripped}` : fallback;
+}

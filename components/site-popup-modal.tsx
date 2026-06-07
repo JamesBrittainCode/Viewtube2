@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { displayHandle } from '@/lib/handle';
 
 function playPopupSound() {
   try {
@@ -122,7 +123,7 @@ export function SitePopupModal({
                   </p>
                   {admin?.verified ? <VerifiedBadge className="h-4 w-4" /> : null}
                 </div>
-                <p className="truncate text-xs text-zinc-500">{admin?.handle || '@admin'}</p>
+                <p className="truncate text-xs text-zinc-500">{displayHandle(admin?.handle, '@admin')}</p>
               </div>
             </div>
           </div>

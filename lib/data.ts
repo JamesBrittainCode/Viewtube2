@@ -241,6 +241,21 @@ export async function getTrendingVideos() {
   return data ?? [];
 }
 
+export async function getMoviesVideosByCreator(userId: string) {
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from('videos')
+    .select(baseVideoSelect)
+    .eq('user_id', userId)
+    .eq('is_removed', false)
+    .order('created_at', { ascending: false })
+    .limit(72);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export const getShortsVideos = unstable_cache(
   async (page: number) => {
     const supabase = createPublicClient();

@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { normalizeHandle } from '@/lib/handle';
+import { displayHandle, normalizeHandle } from '@/lib/handle';
 import { AD_BUCKET } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { uploadResumableToSupabase } from '@/lib/supabase/resumable-upload';
@@ -1082,7 +1082,7 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
                   <div>
                     <p className="text-sm font-semibold">{item.full_name}</p>
                     <p className="text-xs text-zinc-500">
-                      {item.email} • {(item.profile?.username || 'User')} {item.profile?.handle ? `(${item.profile.handle})` : ''}
+                      {item.email} • {(item.profile?.username || 'User')} {item.profile?.handle ? `(${displayHandle(item.profile.handle)})` : ''}
                     </p>
                     <p className="text-xs text-zinc-500">
                       Subscribers: {Number(item.profile?.subscribers_count || 0).toLocaleString()}
@@ -1138,7 +1138,7 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
                   <div>
                     <p className="text-sm font-semibold">{item.video?.title || 'Video unavailable'}</p>
                     <p className="text-xs text-zinc-500">
-                      Reporter: {(item.reporter?.username || 'User')} {item.reporter?.handle ? `(${item.reporter.handle})` : ''}
+                      Reporter: {(item.reporter?.username || 'User')} {item.reporter?.handle ? `(${displayHandle(item.reporter.handle)})` : ''}
                     </p>
                   </div>
                   <p className="text-xs uppercase tracking-wide text-zinc-400">Status: {item.status}</p>
@@ -1218,7 +1218,7 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
                   <div>
                     <p className="text-sm font-semibold">{item.title}</p>
                     <p className="text-xs text-zinc-500">
-                      Creator: {item.profile?.username || 'Unknown'} {item.profile?.handle ? `(${item.profile.handle})` : ''}
+                      Creator: {item.profile?.username || 'Unknown'} {item.profile?.handle ? `(${displayHandle(item.profile.handle)})` : ''}
                     </p>
                     <p className="text-xs text-zinc-500">
                       Views: {Number(item.views || 0).toLocaleString()} • Uploaded:{' '}

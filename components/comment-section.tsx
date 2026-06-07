@@ -10,6 +10,7 @@ import { emitStreakEvent } from '@/lib/streak-events';
 import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
+import { displayHandle } from '@/lib/handle';
 import type { Comment } from '@/lib/types';
 
 type FlatComment = Comment & {
@@ -111,7 +112,7 @@ function CommentItem({
           <div className="text-xs text-zinc-500">
             <span className="inline-flex items-center gap-1">
               <Link href={`/channel/${item.profile?.handle || item.profile?.username}`} className="font-medium text-zinc-800 hover:underline dark:text-zinc-200">
-                @{item.profile?.username}
+                {displayHandle(item.profile?.handle, item.profile?.username || 'User')}
               </Link>
               {item.profile?.streak_champion && <StreakFireBadge className="h-3.5 w-3.5" />}
               {item.profile?.verified && <VerifiedBadge className="h-3.5 w-3.5" />}

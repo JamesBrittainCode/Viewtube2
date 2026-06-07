@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { displayHandle } from '@/lib/handle';
 
 type Props = {
   avatarUrl?: string | null;
@@ -66,7 +67,7 @@ export function ProfileMenu({ avatarUrl, handle, isAdmin = false, isModerator = 
 
       {open && (
         <div className="absolute right-0 mt-2 w-52 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-          <div className="px-3 py-2 text-sm text-zinc-500">{handle || '@user'}</div>
+          <div className="px-3 py-2 text-sm text-zinc-500">{displayHandle(handle)}</div>
           <Link
             href="/studio/settings/customization"
             className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"

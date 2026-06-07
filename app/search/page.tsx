@@ -6,6 +6,7 @@ import { formatCompactCount } from '@/lib/number';
 import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
+import { displayHandle } from '@/lib/handle';
 
 export const runtime = 'edge';
 
@@ -73,7 +74,7 @@ export default async function SearchPage({
                       {c.top_streamer ? <TopStreamerBadge className="h-4 w-4" /> : null}
                     </div>
                     <div className="mt-0.5 truncate text-xs text-zinc-500">
-                      @{c.handle} • {formatCompactCount(Number(c.subscribers_count || 0))} subscribers
+                      {displayHandle(c.handle as string)} • {formatCompactCount(Number(c.subscribers_count || 0))} subscribers
                     </div>
                   </div>
                 </Link>

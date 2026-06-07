@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { MoreVertical, Search, Sparkles, Trophy } from 'lucide-react';
+import { MoreVertical, Search, Trophy } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -36,7 +36,6 @@ export function PlayablesArcade({
   const [category, setCategory] = useState('All');
   const progress = useMemo(() => new Map(initialProgress.map((row) => [row.game_key, row])), [initialProgress]);
   const categories = useMemo(() => ['All', ...Array.from(new Set(games.map((game) => game.category || 'Arcade')))], [games]);
-  const featured = games[0];
   const filtered = games.filter((game) => {
     const matchesCategory = category === 'All' || game.category === category;
     const text = `${game.title} ${game.description} ${game.category}`.toLowerCase();
@@ -73,56 +72,46 @@ export function PlayablesArcade({
       </div>
 
       <div className="px-4 py-6 md:px-6 lg:px-8">
-        {featured ? (
-          <div className="mb-6 rounded-[1.75rem] border border-zinc-200 bg-gradient-to-r from-zinc-100 to-zinc-50 p-4 dark:border-zinc-800 dark:from-zinc-950 dark:to-zinc-900">
-            <div className="mb-3 flex items-center gap-2 text-sm font-bold text-zinc-500">
-              <Sparkles className="h-4 w-4 text-red-500" />
-              Featured
-            </div>
-            <PlayableMiniCard game={featured} progress={progress.get(featured.slug)} />
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search playables"
+              className="w-full rounded-full border border-zinc-200 bg-zinc-50 py-3 pl-11 pr-4 text-sm outline-none focus:border-red-500 dark:border-zinc-800 dark:bg-zinc-900"
+            />
           </div>
-        ) : null}
+          <div className="flex gap-2 overflow-x-auto pb-1 lg:pb-0">
+            {categories.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setCategory(item)}
+                className={cn(
+                  'whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition',
+                  category === item ? 'bg-white text-zinc-950 shadow dark:bg-zinc-100' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-300',
+                )}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search playables"
-            className="w-full rounded-full border border-zinc-200 bg-zinc-50 py-3 pl-11 pr-4 text-sm outline-none focus:border-red-500 dark:border-zinc-800 dark:bg-zinc-900"
-          />
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1 lg:pb-0">
-          {categories.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setCategory(item)}
-              className={cn(
-                'whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition',
-                category === item ? 'bg-white text-zinc-950 shadow dark:bg-zinc-100' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-300',
-              )}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {filtered.length ? (
-        <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {filtered.map((game) => (
-            <PlayableCard key={game.id} game={game} progress={progress.get(game.slug)} />
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-[2rem] border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-800">
-          <Trophy className="mx-auto mb-3 h-8 w-8 text-zinc-500" />
-          <h2 className="text-xl font-bold">No playables yet</h2>
-          <p className="mt-1 text-sm text-zinc-500">Upload HTML games from the admin panel and they’ll show up here.</p>
-        </div>
-      )}
+        {filtered.length ? (
+          <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {filtered.map((game) => (
+              <PlayableCard key={game.id} game={game} progress={progress.get(game.slug)} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[2rem] border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-800">
+            <Trophy className="mx-auto mb-3 h-8 w-8 text-zinc-500" />
+            <h2 className="text-xl font-bold">No playables yet</h2>
+            <p className="mt-1 text-sm text-zinc-500">Upload HTML games from the admin panel and they’ll show up here.</p>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -148,25 +137,6 @@ function PlayableCard({ game, progress }: { game: PlayableGame; progress?: Progr
           </div>
         </div>
         <MoreVertical className="mt-1 h-5 w-5 shrink-0 text-zinc-500" />
-      </div>
-    </Link>
-  );
-}
-
-function PlayableMiniCard({ game, progress }: { game: PlayableGame; progress?: ProgressRow }) {
-  return (
-    <Link href={`/playables/${game.slug}`} className="group block overflow-hidden rounded-2xl bg-zinc-950">
-      <div className="aspect-video overflow-hidden bg-zinc-900">
-        {game.thumbnail_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={game.thumbnail_url} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-        ) : (
-          <div className="flex h-full items-center justify-center bg-gradient-to-br from-red-600 to-orange-400 text-4xl">▶</div>
-        )}
-      </div>
-      <div className="p-3">
-        <div className="font-bold">{game.title}</div>
-        <div className="mt-1 text-xs text-zinc-400">Best {progress?.high_score || 0} · Level {progress?.level || 1}</div>
       </div>
     </Link>
   );

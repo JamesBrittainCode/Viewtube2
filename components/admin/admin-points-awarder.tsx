@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import { displayHandle } from '@/lib/handle';
 
 type AwardResponse = {
   profile?: {
@@ -41,7 +42,7 @@ export function AdminPointsAwarder() {
       });
       if (!response.ok) throw new Error(await readError(response));
       const payload = (await response.json()) as AwardResponse;
-      const name = payload.profile?.username || (payload.profile?.handle ? `@${payload.profile.handle}` : 'User');
+      const name = payload.profile?.username || displayHandle(payload.profile?.handle, 'User');
       setMessage(`${name} received +${payload.award?.points_delta || points} points. Total: ${payload.award?.points_total ?? '—'}.`);
       setNote('');
     } catch (err) {

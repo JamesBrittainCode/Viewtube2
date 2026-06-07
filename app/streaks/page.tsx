@@ -8,6 +8,7 @@ import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { StreakEligibilityGate } from '@/components/streak-eligibility-gate';
 import { ReferralTierAction, WatchAdTierAction } from '@/components/points-tier-actions';
 import { StreakCountdown } from '@/components/streak-countdown';
+import { displayHandle } from '@/lib/handle';
 
 export const runtime = 'edge';
 
@@ -169,7 +170,7 @@ export default async function StreaksPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <div className="truncate text-sm font-semibold text-zinc-900 dark:text-white">
-                        {profile.username || (handle ? `@${handle}` : 'User')}
+                        {profile.username || displayHandle(handle, 'User')}
                       </div>
                       {isChampion && <StreakFireBadge className="h-4 w-4" />}
                       {profile.verified ? <VerifiedBadge className="h-4 w-4" /> : null}
@@ -180,7 +181,7 @@ export default async function StreaksPage() {
                         href={`/channel/${handle}`}
                         className="truncate text-xs text-zinc-500 hover:underline dark:text-zinc-400"
                       >
-                        @{handle}
+                        {displayHandle(handle)}
                       </Link>
                     ) : (
                       <div className="text-xs text-zinc-500 dark:text-zinc-400">—</div>

@@ -18,6 +18,7 @@ import { CommentSection } from '@/components/comment-section';
 import { emitStreakEvent } from '@/lib/streak-events';
 import { SaveToPlaylistsButton } from '@/components/save-to-playlists-button';
 import { ReportVideoButton } from '@/components/report-video-button';
+import { displayHandle } from '@/lib/handle';
 import { AdminVideoTakedownButton } from '@/components/admin-video-takedown-button';
 
 type ShortRow = {
@@ -367,7 +368,7 @@ export function ShortsFeed({
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent p-4">
                       <div className="pointer-events-auto">
                         <Link href={channelHref} className="text-sm font-semibold text-white hover:underline">
-                          {profile?.username || (handle ? `@${handle}` : 'Channel')}
+                          {profile?.username || displayHandle(handle, 'Channel')}
                         </Link>
                         <div className="mt-1 line-clamp-2 text-base font-semibold text-white">{item.title}</div>
                       </div>
