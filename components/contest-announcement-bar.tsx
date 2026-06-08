@@ -28,7 +28,7 @@ export function ContestAnnouncementBar() {
         <div className="min-w-0 truncate">
           <span className="font-extrabold tracking-wide">WATCH VIEWTUBE</span>{' '}
           <span className="font-black">WIN BIG</span>{' '}
-          <span className="opacity-90">• Contest ends June 9 at 11:59 AM</span>
+          <span className="opacity-90">• Contest ends June 8 at 11:59 AM PST</span>
         </div>
         <div className="flex items-center gap-2">
           <Link

@@ -8,7 +8,7 @@ export default function StreakContestTermsPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Contest Terms & Conditions</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Effective date: May 24, 2026. Contest end date: June 9, 2026 at 11:59:59 AM Pacific Time.
+          Effective date: May 24, 2026. Contest end date: June 8, 2026 at 11:59:59 AM PST.
         </p>
       </div>
 
@@ -43,7 +43,7 @@ export default function StreakContestTermsPage() {
             </li>
             <li>
               <span className="font-semibold text-zinc-900 dark:text-white">“Contest Period”</span> means the time window
-              during which points and streaks are tracked for the Contest, ending June 9, 2026 at 11:59:59 AM Pacific
+              during which points and streaks are tracked for the Contest, ending June 8, 2026 at 11:59:59 AM PST
               Time.
             </li>
             <li>

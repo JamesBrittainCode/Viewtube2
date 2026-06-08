@@ -52,7 +52,7 @@ export default async function StreaksPage() {
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Prizes</h2>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
             Whoever is <span className="font-semibold">#1 on the leaderboard</span> by{' '}
-            <span className="font-semibold">Tuesday, June 9, 2026 at 11:59 AM Pacific</span> wins a mystery prize bundle.
+            <span className="font-semibold">Monday, June 8, 2026 at 11:59 AM PST</span> wins a mystery prize bundle.
           </p>
           <div className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
             <Link href="/streaks/rules" className="underline">
@@ -218,7 +218,7 @@ export default async function StreaksPage() {
           </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Whoever is <span className="font-semibold">#1 on the leaderboard</span> by{' '}
-            <span className="font-semibold">Tuesday, June 9, 2026 at 11:59 AM Pacific</span> wins a mystery prize bundle.
+            <span className="font-semibold">Monday, June 8, 2026 at 11:59 AM PST</span> wins a mystery prize bundle.
           </p>
         </div>
       </div>
