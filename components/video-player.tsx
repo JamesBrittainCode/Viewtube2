@@ -497,13 +497,13 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
             type="button"
             onClick={onSkipAd}
             disabled={adCountdown > 0}
-            className="absolute bottom-3 right-3 rounded bg-black/70 px-3 py-1 text-xs text-white disabled:opacity-60"
+            className="absolute bottom-20 right-3 z-30 rounded bg-black/80 px-3 py-1 text-xs font-semibold text-white shadow-lg ring-1 ring-white/15 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {adCountdown > 0 ? `Skip in ${adCountdown}` : 'Skip Ad'}
           </button>
         )}
         {mode === 'ad' && !ad?.skippable && (
-          <div className="absolute bottom-3 right-3 rounded bg-black/70 px-3 py-1 text-xs font-medium text-white">
+          <div className="absolute bottom-20 right-3 z-30 rounded bg-black/80 px-3 py-1 text-xs font-medium text-white shadow-lg ring-1 ring-white/15">
             Video will play after ad
           </div>
         )}
