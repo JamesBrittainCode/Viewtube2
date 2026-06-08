@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+html[data-vt-theater='true'] [data-watch-grid='true'] {
+  display: block;
+}
+
+html[data-vt-theater='true'] [data-watch-recommendations='true'] {
+  display: none;
+}
+
 @keyframes playablesLoad {
   0% {
     transform: translateX(-110%);

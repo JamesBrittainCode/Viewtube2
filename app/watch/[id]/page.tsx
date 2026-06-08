@@ -119,7 +119,10 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px]">
+    <div
+      data-watch-grid="true"
+      className="grid grid-cols-1 gap-6 transition-[grid-template-columns] duration-300 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px]"
+    >
       <section>
         <script
           type="application/ld+json"
@@ -206,7 +209,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
         />
       </section>
 
-      <aside className="lg:sticky lg:top-20 lg:self-start">
+      <aside data-watch-recommendations="true" className="lg:sticky lg:top-20 lg:self-start">
         {process.env.NEXT_PUBLIC_ADSENSE_WATCH_SIDEBAR_SLOT ? (
           <div className="mb-4 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
             <AdsenseSlot slot={process.env.NEXT_PUBLIC_ADSENSE_WATCH_SIDEBAR_SLOT} className="min-h-[250px]" />

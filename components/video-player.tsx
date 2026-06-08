@@ -161,6 +161,15 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('vt-theater-mode-change', { detail: { active: isTheater } }));
+    return () => {
+      if (isTheater) {
+        window.dispatchEvent(new CustomEvent('vt-theater-mode-change', { detail: { active: false } }));
+      }
+    };
+  }, [isTheater]);
+
   const clearControlsHideTimer = useCallback(() => {
     if (controlsHideTimerRef.current) {
       window.clearTimeout(controlsHideTimerRef.current);
@@ -353,7 +362,7 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
     <div
       className={
         isTheater
-          ? 'relative mb-6 h-[min(76vh,calc(100vh-4rem))] w-full'
+          ? 'mb-6 w-full'
           : ''
       }
     >
@@ -362,14 +371,14 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
         className={[
           'overflow-hidden bg-black transition-all duration-300',
           isTheater
-            ? 'fixed inset-x-0 top-16 z-50 rounded-none shadow-2xl'
+            ? 'rounded-none shadow-2xl'
             : 'rounded-xl',
         ].join(' ')}
       >
       <div
         className={[
           'relative w-full bg-black',
-          isTheater ? 'mx-auto h-[min(76vh,calc(100vh-4rem))] max-w-[1600px]' : 'aspect-video',
+          isTheater ? 'mx-auto h-[min(76vh,calc(100vh-4rem))] max-w-[1800px]' : 'aspect-video',
         ].join(' ')}
         onMouseEnter={revealControls}
         onMouseMove={revealControls}
@@ -566,11 +575,23 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
                 setControlsVisible(true);
               }}
               title="Toggle theater mode (T)"
-              className={`rounded px-2 py-1 text-[11px] font-black leading-none hover:bg-zinc-800 ${
+              className={`rounded p-1 hover:bg-zinc-800 ${
                 isTheater ? 'bg-zinc-800 text-white' : 'text-zinc-300'
               }`}
             >
-              T
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="M8 9h8M8 15h8M6 12h.01M18 12h.01" />
+              </svg>
             </button>
           </div>
           <p>
