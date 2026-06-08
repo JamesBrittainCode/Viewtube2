@@ -1,6 +1,6 @@
 'use client';
 import { Captions, Maximize2, Minimize2, Play, Pause, Volume2, VolumeX } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSidebarOptional } from '@/components/sidebar-context';
 
 type Props = {
@@ -82,6 +82,7 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const sidebar = useSidebarOptional();
   const collapsedOnceRef = useRef(false);
+  const controlsHideTimerRef = useRef<number | null>(null);
   const [ad, setAd] = useState<AdDecision | null>(null);
   const [sourceUrl, setSourceUrl] = useState(videoUrl);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -95,6 +96,8 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
   const [pendingAutoplay, setPendingAutoplay] = useState(false);
   const [autoplayPrimed, setAutoplayPrimed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isTheater, setIsTheater] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
   const [captionsEnabled, setCaptionsEnabled] = useState(true);
   const [captionCues, setCaptionCues] = useState<CaptionCue[]>([]);
   const [activeCaption, setActiveCaption] = useState<string | null>(null);
@@ -137,7 +140,52 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
     setAutoplayPrimed(false);
     setCaptionCues([]);
     setActiveCaption(null);
+    setControlsVisible(true);
   }, [id, videoUrl]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const targetTag = target?.tagName?.toLowerCase();
+      if (targetTag === 'input' || targetTag === 'textarea' || target?.isContentEditable) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      if (event.key.toLowerCase() === 't') {
+        event.preventDefault();
+        setIsTheater((value) => !value);
+        setControlsVisible(true);
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  const clearControlsHideTimer = useCallback(() => {
+    if (controlsHideTimerRef.current) {
+      window.clearTimeout(controlsHideTimerRef.current);
+      controlsHideTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleControlsHide = useCallback(() => {
+    clearControlsHideTimer();
+    if (!isPlaying) return;
+    controlsHideTimerRef.current = window.setTimeout(() => setControlsVisible(false), 2400);
+  }, [clearControlsHideTimer, isPlaying]);
+
+  useEffect(() => {
+    return () => clearControlsHideTimer();
+  }, [clearControlsHideTimer]);
+
+  useEffect(() => {
+    if (!isPlaying) {
+      clearControlsHideTimer();
+      setControlsVisible(true);
+      return;
+    }
+    scheduleControlsHide();
+  }, [clearControlsHideTimer, isPlaying, scheduleControlsHide]);
 
   useEffect(() => {
     function onFullscreenChange() {
@@ -219,6 +267,12 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
   }
 
   const captionsAvailable = captionCues.length > 0;
+  const showControls = !isPlaying || controlsVisible || mode === 'ad';
+
+  function revealControls() {
+    setControlsVisible(true);
+    scheduleControlsHide();
+  }
 
   async function startMainVideo() {
     setMode('main');
@@ -296,8 +350,32 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
   }
 
   return (
-    <div ref={containerRef} className="overflow-hidden rounded-xl bg-black">
-      <div className="relative aspect-video w-full">
+    <div
+      className={
+        isTheater
+          ? 'relative mb-6 h-[min(76vh,calc(100vh-4rem))] w-full'
+          : ''
+      }
+    >
+      <div
+        ref={containerRef}
+        className={[
+          'overflow-hidden bg-black transition-all duration-300',
+          isTheater
+            ? 'fixed inset-x-0 top-16 z-50 rounded-none shadow-2xl'
+            : 'rounded-xl',
+        ].join(' ')}
+      >
+      <div
+        className={[
+          'relative w-full bg-black',
+          isTheater ? 'mx-auto h-[min(76vh,calc(100vh-4rem))] max-w-[1600px]' : 'aspect-video',
+        ].join(' ')}
+        onMouseEnter={revealControls}
+        onMouseMove={revealControls}
+        onTouchStart={revealControls}
+        onFocus={revealControls}
+      >
         <video
           ref={videoRef}
           src={sourceUrl}
@@ -307,7 +385,7 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
           disablePictureInPicture
           controlsList="nodownload noplaybackrate noremoteplayback"
           muted={isMuted}
-          className="h-full w-full"
+          className="h-full w-full object-contain"
           onPlay={() => {
             setIsPlaying(true);
             if (
@@ -372,7 +450,12 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
         />
 
         {mode === 'main' && captionsEnabled && activeCaption && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-14 flex justify-center px-3">
+          <div
+            className={[
+              'pointer-events-none absolute inset-x-0 flex justify-center px-3 transition-[bottom] duration-300',
+              showControls ? 'bottom-24' : 'bottom-6',
+            ].join(' ')}
+          >
             <p className="max-w-4xl rounded bg-black/75 px-2 py-1 text-center text-sm font-medium text-white">
               {activeCaption}
             </p>
@@ -415,9 +498,13 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
             Video will play after ad
           </div>
         )}
-      </div>
 
-      <div className="space-y-2 px-3 py-3">
+        <div
+          className={[
+            'absolute inset-x-0 bottom-0 z-20 space-y-2 bg-gradient-to-t from-black/95 via-black/70 to-transparent px-3 pb-3 pt-10 transition-opacity duration-300',
+            showControls ? 'opacity-100' : 'pointer-events-none opacity-0',
+          ].join(' ')}
+        >
         <input
           type="range"
           min={0}
@@ -472,11 +559,26 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
             <button type="button" onClick={() => void toggleFullscreen()} className="rounded p-1 hover:bg-zinc-800">
               {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsTheater((value) => !value);
+                setControlsVisible(true);
+              }}
+              title="Toggle theater mode (T)"
+              className={`rounded px-2 py-1 text-[11px] font-black leading-none hover:bg-zinc-800 ${
+                isTheater ? 'bg-zinc-800 text-white' : 'text-zinc-300'
+              }`}
+            >
+              T
+            </button>
           </div>
           <p>
             {formatTime(currentTime)} / {formatTime(duration)}
           </p>
         </div>
+      </div>
+      </div>
       </div>
     </div>
   );
