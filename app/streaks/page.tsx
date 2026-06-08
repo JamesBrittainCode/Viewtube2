@@ -8,6 +8,8 @@ import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { StreakEligibilityGate } from '@/components/streak-eligibility-gate';
 import { ReferralTierAction, WatchAdTierAction } from '@/components/points-tier-actions';
 import { StreakCountdown } from '@/components/streak-countdown';
+import { isAdminEmail } from '@/lib/admin';
+import { getContestVisibility, VIEWTUBE_CONTEST_END_LABEL, VIEWTUBE_CONTEST_BLACKOUT_MINUTES } from '@/lib/contest';
 import { displayHandle } from '@/lib/handle';
 
 export const runtime = 'edge';
@@ -33,6 +35,8 @@ export default async function StreaksPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const isAdmin = isAdminEmail(user?.email);
+  const contestVisibility = getContestVisibility(Date.now(), isAdmin);
 
   if (!user) {
     redirect('/sign-in?redirect=/streaks');
@@ -52,7 +56,7 @@ export default async function StreaksPage() {
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Prizes</h2>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
             Whoever is <span className="font-semibold">#1 on the leaderboard</span> by{' '}
-            <span className="font-semibold">Monday, June 8, 2026 at 11:59 AM PST</span> wins a mystery prize bundle.
+            <span className="font-semibold">{VIEWTUBE_CONTEST_END_LABEL}</span> wins a mystery prize bundle.
           </p>
           <div className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
             <Link href="/streaks/rules" className="underline">
@@ -118,7 +122,16 @@ export default async function StreaksPage() {
           </Link>
         </div>
 
-				<div className="mt-4 flex flex-wrap items-center gap-3">
+				{contestVisibility.resultsHidden ? (
+          <div className="mt-4 rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-4 text-sm text-fuchsia-950 dark:border-fuchsia-900/60 dark:bg-fuchsia-950/30 dark:text-fuchsia-100">
+            <div className="font-black">Final stretch privacy mode is active.</div>
+            <p className="mt-1">
+              Public results are hidden for the final {VIEWTUBE_CONTEST_BLACKOUT_MINUTES} minutes so nobody can snipe
+              the leaderboard at the buzzer. Results unlock when the contest ends.
+            </p>
+          </div>
+        ) : (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <div className="rounded-xl bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-800">
             <div className="text-xs text-zinc-500 dark:text-zinc-400">Current</div>
             <div className="text-lg font-bold text-zinc-900 dark:text-white">
@@ -142,6 +155,7 @@ export default async function StreaksPage() {
 						</span>
 					</div>
 				</div>
+        )}
 
       </div>
 
@@ -150,7 +164,18 @@ export default async function StreaksPage() {
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Streak Leaderboard</h2>
         </div>
         <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
-          {rows.length ? (
+          {contestVisibility.resultsHidden ? (
+            <div className="px-5 py-10 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-red-500 text-3xl shadow-lg">
+                🔒
+              </div>
+              <h3 className="mt-4 text-xl font-black text-zinc-900 dark:text-white">Leaderboard hidden until the finale</h3>
+              <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-600 dark:text-zinc-400">
+                The last {VIEWTUBE_CONTEST_BLACKOUT_MINUTES} minutes are private. Admin can still audit results in
+                ViewTube Studio.
+              </p>
+            </div>
+          ) : rows.length ? (
             rows.map((row, index) => {
               const profile = row.profiles || {};
               const handle = profile.handle || null;
@@ -218,7 +243,7 @@ export default async function StreaksPage() {
           </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Whoever is <span className="font-semibold">#1 on the leaderboard</span> by{' '}
-            <span className="font-semibold">Monday, June 8, 2026 at 11:59 AM PST</span> wins a mystery prize bundle.
+            <span className="font-semibold">{VIEWTUBE_CONTEST_END_LABEL}</span> wins a mystery prize bundle.
           </p>
         </div>
       </div>

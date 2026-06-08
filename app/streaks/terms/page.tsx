@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { VIEWTUBE_CONTEST_END_LABEL } from '@/lib/contest';
 
 export const runtime = 'edge';
 
@@ -8,7 +9,7 @@ export default function StreakContestTermsPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Contest Terms & Conditions</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Effective date: May 24, 2026. Contest end date: June 8, 2026 at 11:59:59 AM PST.
+          Effective date: May 24, 2026. Contest end date: {VIEWTUBE_CONTEST_END_LABEL}.
         </p>
       </div>
 
@@ -43,8 +44,7 @@ export default function StreakContestTermsPage() {
             </li>
             <li>
               <span className="font-semibold text-zinc-900 dark:text-white">“Contest Period”</span> means the time window
-              during which points and streaks are tracked for the Contest, ending June 8, 2026 at 11:59:59 AM PST
-              Time.
+              during which points and streaks are tracked for the Contest, ending {VIEWTUBE_CONTEST_END_LABEL}.
             </li>
             <li>
               <span className="font-semibold text-zinc-900 dark:text-white">“Leaderboard”</span> means the in-app page at
