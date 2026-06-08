@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-const contestEndMs = Date.parse('2026-06-09T06:59:59.000Z');
+const contestEndMs = Date.parse('2026-06-09T18:59:59.000Z');
 
 function formatTime(ms: number) {
   const safe = Math.max(0, ms);
@@ -26,7 +26,7 @@ export function StreakCountdown() {
   return (
     <div className="overflow-hidden rounded-2xl border border-red-200 bg-gradient-to-br from-red-600 via-pink-600 to-orange-500 p-5 text-white shadow-lg dark:border-red-900/60">
       <div className="text-xs font-black uppercase tracking-[0.28em] text-white/75">Contest countdown</div>
-      <div className="mt-2 text-lg font-black">Ends Monday, June 8, 2026 at 11:59 PM Pacific</div>
+      <div className="mt-2 text-lg font-black">Ends Tuesday, June 9, 2026 at 11:59 AM Pacific</div>
       <div className="mt-4 grid grid-cols-4 gap-2">
         {[
           ['Days', parts.days],

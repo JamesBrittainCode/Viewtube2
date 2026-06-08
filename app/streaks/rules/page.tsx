@@ -8,7 +8,7 @@ export default function StreakContestRulesPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Contest Rules</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Effective date: May 24, 2026. Contest end date: June 8, 2026 at 11:59:59 PM Pacific Time.
+          Effective date: May 24, 2026. Contest end date: June 9, 2026 at 11:59:59 AM Pacific Time.
         </p>
       </div>
 
@@ -79,8 +79,8 @@ export default function StreakContestRulesPage() {
         <section className="space-y-2">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-white">4) Contest Period</h2>
           <p>
-            The Contest begins when the Contest is made available within ViewTube and ends on June 8, 2026 at 11:59:59
-            PM Pacific Time (the “Contest Period”). Sponsor’s systems are the official timekeeping device.
+            The Contest begins when the Contest is made available within ViewTube and ends on June 9, 2026 at 11:59:59
+            AM Pacific Time (the “Contest Period”). Sponsor’s systems are the official timekeeping device.
           </p>
         </section>
 
