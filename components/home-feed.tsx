@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { VideoGrid } from '@/components/video-grid';
 import { Spinner } from '@/components/spinner';
 import { AdsenseSlot } from '@/components/adsense-slot';
-import { HomeContestBanner } from '@/components/home-contest-banner';
 import { ShortsShelf } from '@/components/shorts-shelf';
 import { PlayablesShelf } from '@/components/playables/playables-shelf';
 
@@ -26,7 +25,6 @@ export function HomeFeed({
   signedIn: boolean;
 }) {
   const homeAdSlot = process.env.NEXT_PUBLIC_ADSENSE_HOME_SLOT || null;
-  const [showContestBanner, setShowContestBanner] = useState(true);
   const [videos, setVideos] = useState(initialVideos);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -65,17 +63,7 @@ export function HomeFeed({
 
   return (
     <section>
-      {showContestBanner ? (
-        <div className="mb-4">
-          <div className="mx-auto max-w-[1200px]">
-            <HomeContestBanner
-              href="/streaks"
-              seconds={20}
-              onClosed={() => setShowContestBanner(false)}
-            />
-          </div>
-        </div>
-      ) : homeAdSlot ? (
+      {homeAdSlot ? (
         <div className="mb-4">
           <div className="mx-auto max-w-[1200px]">
             <div className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">

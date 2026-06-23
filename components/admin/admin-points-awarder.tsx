@@ -57,7 +57,7 @@ export function AdminPointsAwarder() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-black text-zinc-900 dark:text-white">Manual points</h2>
-          <p className="mt-1 text-sm text-zinc-500">Quietly award contest points to a user by handle or email.</p>
+          <p className="mt-1 text-sm text-zinc-500">Quietly award streak points to a user by handle or email.</p>
         </div>
         <div className="rounded-full bg-red-600/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-red-500">
           Admin only

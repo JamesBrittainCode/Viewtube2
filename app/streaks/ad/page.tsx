@@ -13,9 +13,6 @@ export default async function StreakAdRewardPage() {
 
   if (!user) redirect('/sign-in?redirect=/streaks/ad');
 
-  const { data: profile } = await supabase.from('profiles').select('age_confirmed_16').eq('id', user.id).maybeSingle();
-  if (!profile?.age_confirmed_16) redirect('/streaks?eligibility=1');
-
   const slot =
     process.env.NEXT_PUBLIC_ADSENSE_REWARD_SLOT ||
     process.env.NEXT_PUBLIC_ADSENSE_HOME_SLOT ||
@@ -35,4 +32,3 @@ export default async function StreakAdRewardPage() {
     </div>
   );
 }
-

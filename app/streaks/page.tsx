@@ -5,11 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
-import { StreakEligibilityGate } from '@/components/streak-eligibility-gate';
 import { ReferralTierAction, WatchAdTierAction } from '@/components/points-tier-actions';
-import { StreakCountdown } from '@/components/streak-countdown';
-import { isAdminEmail } from '@/lib/admin';
-import { getContestVisibility, VIEWTUBE_CONTEST_END_LABEL, VIEWTUBE_CONTEST_BLACKOUT_MINUTES } from '@/lib/contest';
 import { displayHandle } from '@/lib/handle';
 
 export const runtime = 'edge';
@@ -35,8 +31,6 @@ export default async function StreaksPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const isAdmin = isAdminEmail(user?.email);
-  const contestVisibility = getContestVisibility(Date.now(), isAdmin);
 
   if (!user) {
     redirect('/sign-in?redirect=/streaks');
@@ -44,33 +38,9 @@ export default async function StreaksPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('age_confirmed_16,handle,contest_paused_until')
+    .select('handle,contest_paused_until')
     .eq('id', user.id)
     .maybeSingle();
-
-  if (!profile?.age_confirmed_16) {
-    return (
-      <div className="mx-auto max-w-4xl space-y-6">
-        <StreakEligibilityGate />
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Prizes</h2>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            Whoever is <span className="font-semibold">#1 on the leaderboard</span> by{' '}
-            <span className="font-semibold">{VIEWTUBE_CONTEST_END_LABEL}</span> wins a mystery prize bundle.
-          </p>
-          <div className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-            <Link href="/streaks/rules" className="underline">
-              Rules
-            </Link>{' '}
-            •{' '}
-            <Link href="/streaks/terms" className="underline">
-              Terms & conditions
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const [{ data: myStreak }, { data: leaderboard }] = await Promise.all([
     supabase
@@ -94,43 +64,23 @@ export default async function StreaksPage() {
   const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || '';
   const referralLink =
     profile?.handle ? `${siteOrigin || ''}/ref/${encodeURIComponent(profile.handle)}` : null;
-  const contestPausedUntil = profile?.contest_paused_until ? new Date(profile.contest_paused_until).getTime() : 0;
-  const contestPaused = Boolean(contestPausedUntil && Date.now() < contestPausedUntil);
+  const pointsPausedUntil = profile?.contest_paused_until ? new Date(profile.contest_paused_until).getTime() : 0;
+  const pointsPaused = Boolean(pointsPausedUntil && Date.now() < pointsPausedUntil);
 
 	return (
 		<div className="mx-auto max-w-4xl space-y-6">
-      <StreakCountdown />
 			<div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="text-xl font-bold text-zinc-900 dark:text-white">ViewTube Streak</h1>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Keep a streak by logging in and doing at least one interaction per day (comment, like, subscribe, upload, go
           live).
         </p>
-        {contestPaused ? (
+        {pointsPaused ? (
           <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
-            Contest points are paused until {new Date(profile!.contest_paused_until!).toLocaleString()}.
+            Streak points are paused until {new Date(profile!.contest_paused_until!).toLocaleString()}.
           </div>
         ) : null}
 
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
-          <Link href="/streaks/rules" className="underline">
-            Rules
-          </Link>
-          <span>•</span>
-          <Link href="/streaks/terms" className="underline">
-            Terms & conditions
-          </Link>
-        </div>
-
-				{contestVisibility.resultsHidden ? (
-          <div className="mt-4 rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-4 text-sm text-fuchsia-950 dark:border-fuchsia-900/60 dark:bg-fuchsia-950/30 dark:text-fuchsia-100">
-            <div className="font-black">Final stretch privacy mode is active.</div>
-            <p className="mt-1">
-              Public results are hidden for the final {VIEWTUBE_CONTEST_BLACKOUT_MINUTES} minutes so nobody can snipe
-              the leaderboard at the buzzer. Results unlock when the contest ends.
-            </p>
-          </div>
-        ) : (
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <div className="rounded-xl bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-800">
             <div className="text-xs text-zinc-500 dark:text-zinc-400">Current</div>
@@ -155,7 +105,6 @@ export default async function StreaksPage() {
 						</span>
 					</div>
 				</div>
-        )}
 
       </div>
 
@@ -164,18 +113,7 @@ export default async function StreaksPage() {
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Streak Leaderboard</h2>
         </div>
         <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
-          {contestVisibility.resultsHidden ? (
-            <div className="px-5 py-10 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-red-500 text-3xl shadow-lg">
-                🔒
-              </div>
-              <h3 className="mt-4 text-xl font-black text-zinc-900 dark:text-white">Leaderboard hidden until the finale</h3>
-              <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-600 dark:text-zinc-400">
-                The last {VIEWTUBE_CONTEST_BLACKOUT_MINUTES} minutes are private. Admin can still audit results in
-                ViewTube Studio.
-              </p>
-            </div>
-          ) : rows.length ? (
+          {rows.length ? (
             rows.map((row, index) => {
               const profile = row.profiles || {};
               const handle = profile.handle || null;
@@ -229,29 +167,10 @@ export default async function StreaksPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Prizes</h2>
-        <div className="mt-3 grid gap-4 sm:grid-cols-[140px_1fr] sm:items-center">
-          <div className="relative mx-auto aspect-square w-32 overflow-hidden rounded-2xl bg-zinc-100 p-2 dark:bg-zinc-800 sm:mx-0">
-            <Image
-              src="/streak-mystery-box.png"
-              alt="Mystery prize bundle"
-              fill
-              className="object-contain"
-              sizes="128px"
-            />
-          </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Whoever is <span className="font-semibold">#1 on the leaderboard</span> by{' '}
-            <span className="font-semibold">{VIEWTUBE_CONTEST_END_LABEL}</span> wins a mystery prize bundle.
-          </p>
-        </div>
-      </div>
-
 			<div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
 				<h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Points tiers</h2>
 				<p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-					Points are awarded for eligible actions. Values may change to prevent abuse and keep the contest fair.
+					Points are awarded for eligible activity. Values may change to prevent abuse and keep the leaderboard fair.
 				</p>
 				<div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
 					<table className="w-full text-left text-sm">

@@ -7,7 +7,6 @@ import { PointsCelebration } from '@/components/points-celebration';
 import { Sidebar } from '@/components/sidebar';
 import { SidebarProvider } from '@/components/sidebar-context';
 import { StreakCelebration } from '@/components/streak-celebration';
-import { ContestAnnouncementBar } from '@/components/contest-announcement-bar';
 import { cn } from '@/lib/utils';
 
 export function AppShell({
@@ -79,7 +78,6 @@ export function AppShell({
       <SidebarProvider value={{ collapsed, setCollapsed }}>
         <StreakCelebration />
         <PointsCelebration />
-        <ContestAnnouncementBar />
         {navbar}
         {!theaterActive && <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />}
         <MobileBottomNav />
