@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
 import { FileVideo, Image as ImageIcon, MessageSquareText, Tags, Type } from 'lucide-react';
 import { startVideoUploadTask, resetVideoUploadTask } from '@/lib/upload-manager';
+import { formatUploadBytes, MAX_UPLOAD_BYTES } from '@/lib/upload-limits';
 
 type GeneratedThumb = {
   id: string;
@@ -13,7 +14,6 @@ type GeneratedThumb = {
 };
 
 const ALLOWED_THUMBNAIL_TYPES = new Set(['image/jpeg', 'image/png']);
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -357,9 +357,9 @@ export function UploadForm() {
         Allow comments
       </label>
 
-      {videoFile && videoFile.size > MAX_VIDEO_BYTES && !loading ? (
+      {videoFile && videoFile.size > MAX_UPLOAD_BYTES && !loading ? (
         <p className="text-xs text-zinc-500">
-          This video is over 50MB. ViewTube will compress it before uploading.
+          This video is over {formatUploadBytes(MAX_UPLOAD_BYTES)}. ViewTube will compress it before uploading.
         </p>
       ) : null}
 

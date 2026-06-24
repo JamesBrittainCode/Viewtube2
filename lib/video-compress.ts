@@ -2,6 +2,7 @@
 
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { formatUploadBytes } from '@/lib/upload-limits';
 
 type CompressOptions = {
   maxBytes: number;
@@ -126,9 +127,9 @@ export async function compressVideoIfNeeded(input: File, opts: CompressOptions):
     throw new Error('Could not determine video duration for compression.');
   }
 
-  // If a long video needs to fit under 50MB, quality will be extremely low.
+  // If a long video needs to fit under the configured upload limit, quality can get extremely low.
   if (duration > 60 * 20) {
-    throw new Error('This video is too long to reliably compress under 50MB. Please trim it shorter.');
+    throw new Error(`This video is too long to reliably compress under ${formatUploadBytes(opts.maxBytes)}. Please trim it shorter.`);
   }
 
   // Attempt 1–2 passes.
@@ -143,5 +144,5 @@ export async function compressVideoIfNeeded(input: File, opts: CompressOptions):
   const second = await transcodeAttempt(first, 1, duration, opts);
   if (second.size <= opts.maxBytes) return second;
 
-  throw new Error('Could not compress this video under 50MB. Try trimming the video or lowering resolution.');
+  throw new Error(`Could not compress this video under ${formatUploadBytes(opts.maxBytes)}. Try trimming the video or lowering resolution.`);
 }

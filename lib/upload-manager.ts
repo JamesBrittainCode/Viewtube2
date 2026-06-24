@@ -7,6 +7,7 @@ import { emitStreakEvent } from '@/lib/streak-events';
 import { compressVideoIfNeeded } from '@/lib/video-compress';
 import { getVideoMetadata } from '@/lib/video-metadata';
 import { computeAcoustIdFingerprintFromVideo } from '@/lib/music-fingerprint';
+import { formatUploadBytes, MAX_UPLOAD_BYTES } from '@/lib/upload-limits';
 
 export type UploadStage =
   | 'idle'
@@ -32,8 +33,6 @@ export type UploadState = {
     message: string;
   };
 };
-
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 
 let state: UploadState = {
   stage: 'idle',
@@ -96,10 +95,14 @@ export async function startVideoUploadTask(input: {
 
     let video = input.video;
 
-    if (video.size > MAX_VIDEO_BYTES) {
-      setState({ stage: 'compressing', overall: 0.05, detail: 'Compressing video to fit under 50MB…' });
+    if (video.size > MAX_UPLOAD_BYTES) {
+      setState({
+        stage: 'compressing',
+        overall: 0.05,
+        detail: `Compressing video to fit under ${formatUploadBytes(MAX_UPLOAD_BYTES)}…`,
+      });
       video = await compressVideoIfNeeded(video, {
-        maxBytes: MAX_VIDEO_BYTES,
+        maxBytes: MAX_UPLOAD_BYTES,
         onProgress: (progress) => {
           // Map compression into 5%..35%
           setState({
