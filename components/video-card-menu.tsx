@@ -25,6 +25,16 @@ type Props = {
 
 const HIDDEN_CHANNELS_KEY = 'viewtube:hidden-channels:v2';
 const OLD_HIDDEN_CHANNELS_KEY = 'viewtube:hidden-channels';
+const MENU_WIDTH = 320;
+const MENU_MAX_HEIGHT = 520;
+const VIEWPORT_PADDING = 12;
+const MENU_GAP = 8;
+
+type MenuPosition = {
+  top: number;
+  left: number;
+  maxHeight: number;
+};
 
 function readList(key: string) {
   if (typeof window === 'undefined') return [];
@@ -57,7 +67,9 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
   const [working, setWorking] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [hasHiddenChannels, setHasHiddenChannels] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     window.localStorage.removeItem(OLD_HIDDEN_CHANNELS_KEY);
@@ -74,11 +86,46 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
 
   useEffect(() => {
     if (!open) return;
+    function updatePosition() {
+      const button = buttonRef.current;
+      if (!button) return;
+
+      const rect = button.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const availableBelow = viewportHeight - rect.bottom - VIEWPORT_PADDING - MENU_GAP;
+      const availableAbove = rect.top - VIEWPORT_PADDING - MENU_GAP;
+      const placeAbove = availableBelow < 300 && availableAbove > availableBelow;
+      const maxHeight = Math.max(
+        220,
+        Math.min(MENU_MAX_HEIGHT, placeAbove ? availableAbove : availableBelow),
+      );
+      const left = Math.min(
+        viewportWidth - MENU_WIDTH - VIEWPORT_PADDING,
+        Math.max(VIEWPORT_PADDING, rect.right - MENU_WIDTH),
+      );
+      const top = placeAbove
+        ? Math.max(VIEWPORT_PADDING, rect.top - MENU_GAP - maxHeight)
+        : Math.min(viewportHeight - VIEWPORT_PADDING - maxHeight, rect.bottom + MENU_GAP);
+
+      setMenuPosition({ top, left, maxHeight });
+    }
+
+    updatePosition();
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') setOpen(false);
     }
+    function onViewportChange() {
+      updatePosition();
+    }
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onViewportChange, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('scroll', onViewportChange, true);
+    };
   }, [open]);
 
   useEffect(() => {
@@ -181,6 +228,7 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
   return (
     <div ref={rootRef} className="relative ml-auto shrink-0">
       <button
+        ref={buttonRef}
         type="button"
         onClick={(event) => {
           event.preventDefault();
@@ -201,7 +249,14 @@ export function VideoCardMenu({ videoId, title, videoUrl, channelId, signedIn = 
             aria-label="Close video menu"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 top-10 z-50 w-80 overflow-hidden rounded-xl bg-[#282828] py-2 text-white shadow-[0_8px_24px_rgba(0,0,0,0.5)] ring-1 ring-white/10">
+          <div
+            className="fixed z-50 w-80 overflow-y-auto overflow-x-hidden rounded-xl bg-[#282828] py-2 text-white shadow-[0_8px_24px_rgba(0,0,0,0.5)] ring-1 ring-white/10"
+            style={{
+              top: menuPosition?.top ?? VIEWPORT_PADDING,
+              left: menuPosition?.left ?? VIEWPORT_PADDING,
+              maxHeight: menuPosition?.maxHeight ?? `calc(100vh - ${VIEWPORT_PADDING * 2}px)`,
+            }}
+          >
             <button
               type="button"
               onClick={addToQueue}
