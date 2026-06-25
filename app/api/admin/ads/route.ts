@@ -122,6 +122,16 @@ export async function PATCH(request: Request) {
 
   const body = (await request.json()) as {
     id?: string;
+    title?: string;
+    video_url?: string;
+    click_url?: string;
+    thumbnail_url?: string | null;
+    logo_url?: string | null;
+    banner_url?: string | null;
+    runtime_seconds?: number;
+    target_reach?: number | null;
+    calculated_price_usd?: number | null;
+    skippable?: boolean;
     is_active?: boolean;
     approved?: boolean;
     starts_at?: string | null;
@@ -133,12 +143,60 @@ export async function PATCH(request: Request) {
   }
 
   const patch: {
+    title?: string;
+    video_url?: string;
+    click_url?: string;
+    thumbnail_url?: string | null;
+    logo_url?: string | null;
+    banner_url?: string | null;
+    runtime_seconds?: number;
+    target_reach?: number | null;
+    calculated_price_usd?: number | null;
+    skippable?: boolean;
     is_active?: boolean;
     approved?: boolean;
     starts_at?: string | null;
     ends_at?: string | null;
   } = {};
 
+  if (body.title !== undefined) {
+    const title = String(body.title || '').trim();
+    if (!title) return NextResponse.json({ error: 'title cannot be empty' }, { status: 400 });
+    patch.title = title;
+  }
+  if (body.video_url !== undefined) {
+    const videoUrl = String(body.video_url || '').trim();
+    if (!videoUrl) return NextResponse.json({ error: 'video_url cannot be empty' }, { status: 400 });
+    patch.video_url = videoUrl;
+  }
+  if (body.click_url !== undefined) {
+    const clickUrl = String(body.click_url || '').trim();
+    if (!clickUrl) return NextResponse.json({ error: 'click_url cannot be empty' }, { status: 400 });
+    try {
+      new URL(clickUrl);
+    } catch {
+      return NextResponse.json({ error: 'click_url must be a valid URL' }, { status: 400 });
+    }
+    patch.click_url = clickUrl;
+  }
+  if (body.logo_url !== undefined || body.thumbnail_url !== undefined) {
+    const logoUrl = String(body.logo_url ?? body.thumbnail_url ?? '').trim() || null;
+    patch.logo_url = logoUrl;
+    patch.thumbnail_url = logoUrl;
+  }
+  if (body.banner_url !== undefined) {
+    patch.banner_url = String(body.banner_url || '').trim() || null;
+  }
+  if (body.runtime_seconds !== undefined) patch.runtime_seconds = Math.max(0, Math.round(Number(body.runtime_seconds || 0)));
+  if (body.target_reach !== undefined) {
+    const targetReach = Number(body.target_reach || 0);
+    patch.target_reach = targetReach > 0 ? Math.round(targetReach) : null;
+  }
+  if (body.calculated_price_usd !== undefined) {
+    const price = Number(body.calculated_price_usd || 0);
+    patch.calculated_price_usd = price > 0 ? price : null;
+  }
+  if (typeof body.skippable === 'boolean') patch.skippable = body.skippable;
   if (typeof body.is_active === 'boolean') patch.is_active = body.is_active;
   if (typeof body.approved === 'boolean') patch.approved = body.approved;
   if (body.starts_at !== undefined) patch.starts_at = toIsoOrNull(body.starts_at);
