@@ -8,6 +8,7 @@ import {
   Clapperboard,
   Compass,
   DollarSign,
+  Megaphone,
   MessageSquareMore,
   Search,
   Settings,
@@ -57,7 +58,11 @@ export default async function StudioLayout({ children }: { children: React.React
   const isAdmin = isAdminEmail(user.email);
   const canModerate = isAdmin || Boolean(profile?.can_moderate);
   const navLinks = canModerate
-    ? [...baseNavLinks, { href: '/studio/admin', label: isAdmin ? 'Admin' : 'Moderation', icon: Shield }]
+    ? [
+        ...baseNavLinks,
+        ...(isAdmin ? [{ href: '/studio/admin/ads', label: 'Ad previews', icon: Megaphone }] : []),
+        { href: '/studio/admin', label: isAdmin ? 'Admin' : 'Moderation', icon: Shield },
+      ]
     : [...baseNavLinks];
 
   return (

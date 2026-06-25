@@ -2,6 +2,7 @@
 import { Captions, Maximize2, Minimize2, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSidebarOptional } from '@/components/sidebar-context';
+import { Spinner } from '@/components/spinner';
 
 type Props = {
   id: string;
@@ -98,6 +99,7 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isTheater, setIsTheater] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [captionsEnabled, setCaptionsEnabled] = useState(true);
   const [captionCues, setCaptionCues] = useState<CaptionCue[]>([]);
   const [activeCaption, setActiveCaption] = useState<string | null>(null);
@@ -141,6 +143,12 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
     setCaptionCues([]);
     setActiveCaption(null);
     setControlsVisible(true);
+    setIsVideoLoading(true);
+    if (typeof window !== 'undefined') {
+      const storageKey = `viewtube:last-watch-ad:${id}`;
+      window.sessionStorage.removeItem(storageKey);
+      window.dispatchEvent(new CustomEvent('viewtube-watch-ad', { detail: { videoId: id, ad: null } }));
+    }
   }, [id, videoUrl]);
 
   useEffect(() => {
@@ -261,10 +269,23 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
       if (!data.ad) return;
 
       setAd(data.ad);
+      const companionAd = {
+        id: data.ad.id,
+        title: data.ad.title,
+        click_url: data.ad.click_url,
+        thumbnail_url: data.ad.thumbnail_url || null,
+      };
+      try {
+        sessionStorage.setItem(`viewtube:last-watch-ad:${id}`, JSON.stringify(companionAd));
+      } catch {
+        // Best effort only.
+      }
+      window.dispatchEvent(new CustomEvent('viewtube-watch-ad', { detail: { videoId: id, ad: companionAd } }));
       setMode('ad');
       setSourceUrl(data.ad.video_url);
       setCurrentTime(0);
       setDuration(0);
+      setIsVideoLoading(true);
       setAdCountdown(5);
       setPendingAutoplay(true);
       return true;
@@ -288,6 +309,7 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
     setSourceUrl(videoUrl);
     setCurrentTime(0);
     setDuration(0);
+    setIsVideoLoading(true);
     setPendingAutoplay(true);
   }
 
@@ -397,6 +419,7 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
           className="h-full w-full object-contain"
           onPlay={() => {
             setIsPlaying(true);
+            setIsVideoLoading(false);
             if (
               collapseSidebarOnPlay &&
               !collapsedOnceRef.current &&
@@ -409,6 +432,11 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
             }
           }}
           onPause={() => setIsPlaying(false)}
+          onLoadStart={() => setIsVideoLoading(true)}
+          onWaiting={() => setIsVideoLoading(true)}
+          onStalled={() => setIsVideoLoading(true)}
+          onCanPlay={() => setIsVideoLoading(false)}
+          onPlaying={() => setIsVideoLoading(false)}
           onTimeUpdate={() => {
             const v = videoRef.current;
             if (!v) return;
@@ -427,6 +455,7 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
             const v = videoRef.current;
             if (!v) return;
             setDuration(v.duration || 0);
+            setIsVideoLoading(false);
             if (pendingAutoplay) {
               setPendingAutoplay(false);
               v.play().catch(() => null);
@@ -457,6 +486,14 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
           }}
           onClick={() => void onPlayPause()}
         />
+
+        {isVideoLoading ? (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/25">
+            <div className="rounded-full bg-black/70 p-4 shadow-2xl ring-1 ring-white/15">
+              <Spinner size={42} className="border-white/30 border-t-white" />
+            </div>
+          </div>
+        ) : null}
 
         {mode === 'main' && captionsEnabled && activeCaption && (
           <div
