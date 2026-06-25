@@ -8,6 +8,8 @@ type CompanionAd = {
   title: string;
   click_url: string;
   thumbnail_url?: string | null;
+  logo_url?: string | null;
+  banner_url?: string | null;
 };
 
 type WatchAdEvent = CustomEvent<{

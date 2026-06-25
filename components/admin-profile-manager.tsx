@@ -16,6 +16,8 @@ type AdItem = {
   video_url: string;
   click_url: string;
   thumbnail_url?: string | null;
+  logo_url?: string | null;
+  banner_url?: string | null;
   runtime_seconds: number;
   target_reach?: number | null;
   calculated_price_usd?: number | null;
@@ -43,6 +45,8 @@ type AdSubmission = {
   click_url: string;
   video_url: string;
   thumbnail_url?: string | null;
+  logo_url?: string | null;
+  banner_url?: string | null;
   runtime_seconds: number;
   target_reach?: number | null;
   calculated_price_usd?: number | null;
@@ -281,7 +285,6 @@ export function AdminProfileManager({ isAdmin = true }: { isAdmin?: boolean }) {
             { id: 'videos', label: 'Video Takedown' },
             { id: 'alert', label: 'Site Alert' },
             { id: 'popup', label: 'Site Popup' },
-            { id: 'ads', label: 'Ads' },
           ]
         : [
             { id: 'reported', label: 'Reported' },

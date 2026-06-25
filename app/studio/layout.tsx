@@ -60,7 +60,7 @@ export default async function StudioLayout({ children }: { children: React.React
   const navLinks = canModerate
     ? [
         ...baseNavLinks,
-        ...(isAdmin ? [{ href: '/studio/admin/ads', label: 'Ad previews', icon: Megaphone }] : []),
+        ...(isAdmin ? [{ href: '/studio/admin/ads', label: 'Upload ads', icon: Megaphone }] : []),
         { href: '/studio/admin', label: isAdmin ? 'Admin' : 'Moderation', icon: Shield },
       ]
     : [...baseNavLinks];

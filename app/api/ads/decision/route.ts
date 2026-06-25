@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   const { data, error } = await supabase
     .from('ads')
     .select(
-      'id,title,video_url,click_url,thumbnail_url,skippable,starts_at,ends_at,is_active,target_reach,impressions_count',
+      'id,title,video_url,click_url,thumbnail_url,logo_url,banner_url,skippable,starts_at,ends_at,is_active,target_reach,impressions_count',
     )
     .eq('is_active', true)
     .eq('approved', true)

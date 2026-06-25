@@ -22,7 +22,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('ads')
     .select(
-      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,impressions_count,clicks_count,completions_count,last_served_at,created_at',
+      'id,title,video_url,click_url,thumbnail_url,logo_url,banner_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,impressions_count,clicks_count,completions_count,last_served_at,created_at',
     )
     .order('created_at', { ascending: false });
 
@@ -45,6 +45,8 @@ export async function POST(request: Request) {
     video_url?: string;
     click_url?: string;
     thumbnail_url?: string;
+    logo_url?: string;
+    banner_url?: string;
     runtime_seconds?: number;
     target_reach?: number;
     calculated_price_usd?: number;
@@ -59,6 +61,8 @@ export async function POST(request: Request) {
   const videoUrl = String(body.video_url || '').trim();
   const clickUrl = String(body.click_url || '').trim();
   const thumbnailUrl = String(body.thumbnail_url || '').trim();
+  const logoUrl = String(body.logo_url || thumbnailUrl || '').trim();
+  const bannerUrl = String(body.banner_url || '').trim();
   const runtimeSeconds = Math.max(0, Number(body.runtime_seconds || 0));
   const targetReach = body.target_reach ? Math.max(0, Number(body.target_reach || 0)) : null;
   const calculatedPriceUsd = body.calculated_price_usd ? Math.max(0, Number(body.calculated_price_usd || 0)) : null;
@@ -84,7 +88,9 @@ export async function POST(request: Request) {
       title,
       video_url: videoUrl,
       click_url: clickUrl,
-      thumbnail_url: thumbnailUrl || null,
+      thumbnail_url: logoUrl || null,
+      logo_url: logoUrl || null,
+      banner_url: bannerUrl || null,
       runtime_seconds: runtimeSeconds,
       target_reach: targetReach,
       calculated_price_usd: calculatedPriceUsd,
@@ -96,7 +102,7 @@ export async function POST(request: Request) {
       created_by: user.id,
     })
     .select(
-      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,impressions_count,clicks_count,completions_count,last_served_at,created_at',
+      'id,title,video_url,click_url,thumbnail_url,logo_url,banner_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,impressions_count,clicks_count,completions_count,last_served_at,created_at',
     )
     .single();
 
@@ -155,7 +161,7 @@ export async function PATCH(request: Request) {
     .update(patch)
     .eq('id', body.id)
     .select(
-      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,impressions_count,clicks_count,completions_count,last_served_at,created_at',
+      'id,title,video_url,click_url,thumbnail_url,logo_url,banner_url,runtime_seconds,target_reach,calculated_price_usd,skippable,approved,starts_at,ends_at,is_active,source_submission_id,impressions_count,clicks_count,completions_count,last_served_at,created_at',
     )
     .single();
 

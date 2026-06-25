@@ -17,6 +17,8 @@ type AdDecision = {
   video_url: string;
   click_url: string;
   thumbnail_url?: string | null;
+  logo_url?: string | null;
+  banner_url?: string | null;
   skippable: boolean;
 };
 
@@ -273,7 +275,9 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
         id: data.ad.id,
         title: data.ad.title,
         click_url: data.ad.click_url,
-        thumbnail_url: data.ad.thumbnail_url || null,
+        thumbnail_url: data.ad.logo_url || data.ad.thumbnail_url || null,
+        logo_url: data.ad.logo_url || data.ad.thumbnail_url || null,
+        banner_url: data.ad.banner_url || null,
       };
       try {
         sessionStorage.setItem(`viewtube:last-watch-ad:${id}`, JSON.stringify(companionAd));
@@ -521,9 +525,9 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
             rel="noopener noreferrer"
             className="absolute right-3 top-3 flex items-center gap-2 rounded bg-white/90 px-2 py-1 text-xs font-semibold text-zinc-900"
           >
-            {ad.thumbnail_url ? (
+            {ad.logo_url || ad.thumbnail_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={ad.thumbnail_url} alt="" className="h-7 w-10 rounded object-cover" />
+              <img src={ad.logo_url || ad.thumbnail_url || ''} alt="" className="h-7 w-10 rounded object-cover" />
             ) : null}
             Visit Sponsor
           </a>

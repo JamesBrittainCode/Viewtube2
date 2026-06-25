@@ -49,7 +49,8 @@ export function AdvertiserIntakeForm() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [runtimeLabel, setRuntimeLabel] = useState<string | null>(null);
   const [runtimeSeconds, setRuntimeSeconds] = useState(0);
   const [targetReach, setTargetReach] = useState(10000);
@@ -108,8 +109,11 @@ export function AdvertiserIntakeForm() {
       if (runtimeSeconds <= 0 || runtimeSeconds > 180) {
         throw new Error('Ad runtime must be between 1 and 180 seconds.');
       }
-      if (thumbnailFile && !ALLOWED_IMAGE_TYPES.has(thumbnailFile.type)) {
-        throw new Error('Thumbnail image must be PNG or JPEG.');
+      if (logoFile && !ALLOWED_IMAGE_TYPES.has(logoFile.type)) {
+        throw new Error('Logo image must be PNG or JPEG.');
+      }
+      if (bannerFile && !ALLOWED_IMAGE_TYPES.has(bannerFile.type)) {
+        throw new Error('Banner image must be PNG or JPEG.');
       }
 
       const clickUrl = String(formData.get('click_url') || '').trim();
@@ -141,20 +145,36 @@ export function AdvertiserIntakeForm() {
         .from(AD_SUBMISSIONS_BUCKET)
         .getPublicUrl(videoPath).data.publicUrl;
 
-      let thumbnailUrl: string | null = null;
-      if (thumbnailFile) {
-        const thumbPath = `${basePath}-thumb.${fileExt(thumbnailFile.name, 'jpg')}`;
-        const { error: thumbError } = await supabase.storage
+      let logoUrl: string | null = null;
+      if (logoFile) {
+        const logoPath = `${basePath}-logo.${fileExt(logoFile.name, 'jpg')}`;
+        const { error: logoError } = await supabase.storage
           .from(AD_SUBMISSIONS_BUCKET)
-          .upload(thumbPath, thumbnailFile, {
+          .upload(logoPath, logoFile, {
             upsert: false,
-            contentType: thumbnailFile.type || 'image/jpeg',
+            contentType: logoFile.type || 'image/jpeg',
             cacheControl: '3600',
           });
-        if (thumbError) throw new Error(thumbError.message);
-        thumbnailUrl = supabase.storage
+        if (logoError) throw new Error(logoError.message);
+        logoUrl = supabase.storage
           .from(AD_SUBMISSIONS_BUCKET)
-          .getPublicUrl(thumbPath).data.publicUrl;
+          .getPublicUrl(logoPath).data.publicUrl;
+      }
+
+      let bannerUrl: string | null = null;
+      if (bannerFile) {
+        const bannerPath = `${basePath}-banner.${fileExt(bannerFile.name, 'jpg')}`;
+        const { error: bannerError } = await supabase.storage
+          .from(AD_SUBMISSIONS_BUCKET)
+          .upload(bannerPath, bannerFile, {
+            upsert: false,
+            contentType: bannerFile.type || 'image/jpeg',
+            cacheControl: '3600',
+          });
+        if (bannerError) throw new Error(bannerError.message);
+        bannerUrl = supabase.storage
+          .from(AD_SUBMISSIONS_BUCKET)
+          .getPublicUrl(bannerPath).data.publicUrl;
       }
 
       const payload = {
@@ -166,7 +186,9 @@ export function AdvertiserIntakeForm() {
         ad_title: String(formData.get('ad_title') || '').trim(),
         click_url: clickUrl,
         video_url: videoUrl,
-        thumbnail_url: thumbnailUrl,
+        thumbnail_url: logoUrl,
+        logo_url: logoUrl,
+        banner_url: bannerUrl,
         runtime_seconds: runtimeSeconds,
         target_reach: pricing.targetReach,
         skippable,
@@ -187,7 +209,8 @@ export function AdvertiserIntakeForm() {
       setMessage('Ad campaign submitted for review.');
       form.reset();
       setVideoFile(null);
-      setThumbnailFile(null);
+      setLogoFile(null);
+      setBannerFile(null);
       setRuntimeLabel(null);
       setRuntimeSeconds(0);
       setTargetReach(10000);
@@ -244,13 +267,24 @@ export function AdvertiserIntakeForm() {
             {runtimeLabel ? <p className="mt-2 text-xs text-zinc-500">Detected runtime: {runtimeLabel}</p> : null}
           </label>
           <label className="rounded-xl border border-dashed border-zinc-300 p-3 text-sm dark:border-zinc-700">
-            <span className="mb-2 block text-zinc-500">Thumbnail image (optional)</span>
+            <span className="mb-2 block text-zinc-500">Logo image (optional)</span>
             <input
               type="file"
               accept="image/png,image/jpeg"
-              onChange={(event) => setThumbnailFile(event.target.files?.[0] || null)}
+              onChange={(event) => setLogoFile(event.target.files?.[0] || null)}
               className="block w-full text-sm"
             />
+            <p className="mt-2 text-xs text-zinc-500">Shown as the small round sponsor logo. No placeholder appears if omitted.</p>
+          </label>
+          <label className="rounded-xl border border-dashed border-zinc-300 p-3 text-sm dark:border-zinc-700">
+            <span className="mb-2 block text-zinc-500">Sidebar banner (optional)</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg"
+              onChange={(event) => setBannerFile(event.target.files?.[0] || null)}
+              className="block w-full text-sm"
+            />
+            <p className="mt-2 text-xs text-zinc-500">Shown above recommended videos only when uploaded.</p>
           </label>
           <input
             name="target_reach"

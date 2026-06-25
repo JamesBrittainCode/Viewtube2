@@ -24,7 +24,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('ad_submissions')
     .select(
-      'id,first_name,last_name,position_title,company_name,submitter_email,contact_email,ad_title,click_url,video_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,starts_at,ends_at,paypal_transaction_id,payment_amount_usd,payment_provider,payment_reference,paid_at,status,review_notes,reviewed_at,reviewed_by,converted_ad_id,created_at',
+      'id,first_name,last_name,position_title,company_name,submitter_email,contact_email,ad_title,click_url,video_url,thumbnail_url,logo_url,banner_url,runtime_seconds,target_reach,calculated_price_usd,skippable,starts_at,ends_at,paypal_transaction_id,payment_amount_usd,payment_provider,payment_reference,paid_at,status,review_notes,reviewed_at,reviewed_by,converted_ad_id,created_at',
     )
     .order('created_at', { ascending: false })
     .limit(200);
@@ -59,7 +59,7 @@ export async function PATCH(request: Request) {
   const { data: submission, error: fetchError } = await supabase
     .from('ad_submissions')
     .select(
-      'id,submitter_email,contact_email,ad_title,video_url,click_url,thumbnail_url,runtime_seconds,target_reach,calculated_price_usd,skippable,status,starts_at,ends_at,payment_amount_usd,paypal_transaction_id,payment_provider,payment_reference,paid_at',
+      'id,submitter_email,contact_email,ad_title,video_url,click_url,thumbnail_url,logo_url,banner_url,runtime_seconds,target_reach,calculated_price_usd,skippable,status,starts_at,ends_at,payment_amount_usd,paypal_transaction_id,payment_provider,payment_reference,paid_at',
     )
     .eq('id', body.id)
     .single();
@@ -150,7 +150,9 @@ export async function PATCH(request: Request) {
       title: submission.ad_title,
       video_url: submission.video_url,
       click_url: submission.click_url,
-      thumbnail_url: submission.thumbnail_url,
+      thumbnail_url: submission.logo_url || submission.thumbnail_url,
+      logo_url: submission.logo_url || submission.thumbnail_url,
+      banner_url: submission.banner_url,
       runtime_seconds: submission.runtime_seconds || 0,
       target_reach: submission.target_reach || null,
       calculated_price_usd: submission.calculated_price_usd || null,
@@ -163,7 +165,7 @@ export async function PATCH(request: Request) {
       created_by: user.id,
     })
     .select(
-      'id,title,video_url,click_url,thumbnail_url,runtime_seconds,skippable,approved,starts_at,ends_at,is_active,created_at',
+      'id,title,video_url,click_url,thumbnail_url,logo_url,banner_url,runtime_seconds,skippable,approved,starts_at,ends_at,is_active,created_at',
     )
     .single();
 

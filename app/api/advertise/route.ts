@@ -29,6 +29,8 @@ export async function POST(request: Request) {
     click_url?: string;
     video_url?: string;
     thumbnail_url?: string | null;
+    logo_url?: string | null;
+    banner_url?: string | null;
     runtime_seconds?: number;
     target_reach?: number;
     skippable?: boolean;
@@ -46,6 +48,8 @@ export async function POST(request: Request) {
   const clickUrl = String(body.click_url || '').trim();
   const videoUrl = String(body.video_url || '').trim();
   const thumbnailUrl = String(body.thumbnail_url || '').trim() || null;
+  const logoUrl = String(body.logo_url || thumbnailUrl || '').trim() || null;
+  const bannerUrl = String(body.banner_url || '').trim() || null;
   const runtimeSeconds = Math.max(0, Math.round(Number(body.runtime_seconds || 0)));
   const targetReach = Math.max(0, Math.round(Number(body.target_reach || 0)));
   const skippable = body.skippable !== false;
@@ -106,7 +110,9 @@ export async function POST(request: Request) {
       ad_title: adTitle,
       click_url: clickUrl,
       video_url: videoUrl,
-      thumbnail_url: thumbnailUrl,
+      thumbnail_url: logoUrl,
+      logo_url: logoUrl,
+      banner_url: bannerUrl,
       runtime_seconds: runtimeSeconds,
       target_reach: pricing.targetReach,
       calculated_price_usd: pricing.estimatedPriceUsd,

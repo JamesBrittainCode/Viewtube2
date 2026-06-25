@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { Megaphone, MousePointerClick, PlayCircle, Sidebar } from 'lucide-react';
+import { AdminAdWorkspace } from '@/components/admin/admin-ad-workspace';
 import { AdCompanionCard } from '@/components/ads/ad-companion-card';
 import { isAdminEmail } from '@/lib/admin';
 import { createClient } from '@/lib/supabase/server';
@@ -11,6 +12,8 @@ type AdPreviewItem = {
   video_url: string;
   click_url: string;
   thumbnail_url?: string | null;
+  logo_url?: string | null;
+  banner_url?: string | null;
   runtime_seconds?: number | null;
   status: string;
   skippable?: boolean | null;
@@ -38,20 +41,17 @@ function statusPill(item: AdPreviewItem) {
 
 function InVideoAdPreview({ item }: { item: AdPreviewItem }) {
   const host = hostLabel(item.click_url);
+  const logoUrl = item.logo_url || item.thumbnail_url || null;
   return (
     <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-black shadow-2xl">
       <div className="relative aspect-video bg-zinc-950">
         <video src={item.video_url} preload="metadata" controls className="h-full w-full object-contain" />
         <div className="pointer-events-none absolute bottom-6 left-6 max-w-[min(460px,80%)] rounded-2xl bg-black/70 p-3 shadow-2xl ring-1 ring-white/10 backdrop-blur">
           <div className="flex items-center gap-3">
-            {item.thumbnail_url ? (
+            {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.thumbnail_url} alt="" className="h-11 w-11 rounded-full object-cover" />
-            ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-600 text-xs font-black text-white">
-                Ad
-              </div>
-            )}
+              <img src={logoUrl} alt="" className="h-11 w-11 rounded-full object-cover" />
+            ) : null}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-black text-white">{item.title}</p>
               <p className="truncate text-xs text-zinc-300">{host}</p>
@@ -125,7 +125,7 @@ function AdPreviewBlock({ item }: { item: AdPreviewItem }) {
               QA checklist
             </div>
             <ul className="list-disc space-y-1 pl-5">
-              <li>Thumbnail/banner is clear at sidebar size.</li>
+              <li>Optional logo/banner are clear at sidebar size.</li>
               <li>Title fits in two lines.</li>
               <li>Button destination opens correctly.</li>
               <li>Creative still looks good with player controls over it.</li>
@@ -150,13 +150,13 @@ export default async function StudioAdminAdsPage() {
     supabase
       .from('ads')
       .select(
-        'id,title,video_url,click_url,thumbnail_url,runtime_seconds,skippable,approved,is_active,impressions_count,clicks_count,completions_count,created_at',
+        'id,title,video_url,click_url,thumbnail_url,logo_url,banner_url,runtime_seconds,skippable,approved,is_active,impressions_count,clicks_count,completions_count,created_at',
       )
       .order('created_at', { ascending: false }),
     supabase
       .from('ad_submissions')
       .select(
-        'id,ad_title,company_name,video_url,click_url,thumbnail_url,runtime_seconds,skippable,status,created_at',
+        'id,ad_title,company_name,video_url,click_url,thumbnail_url,logo_url,banner_url,runtime_seconds,skippable,status,created_at',
       )
       .order('created_at', { ascending: false })
       .limit(20),
@@ -168,6 +168,8 @@ export default async function StudioAdminAdsPage() {
     video_url: item.video_url,
     click_url: item.click_url,
     thumbnail_url: item.thumbnail_url,
+    logo_url: item.logo_url,
+    banner_url: item.banner_url,
     runtime_seconds: item.runtime_seconds,
     skippable: item.skippable,
     impressions_count: item.impressions_count,
@@ -184,6 +186,8 @@ export default async function StudioAdminAdsPage() {
     video_url: item.video_url,
     click_url: item.click_url,
     thumbnail_url: item.thumbnail_url,
+    logo_url: item.logo_url,
+    banner_url: item.banner_url,
     runtime_seconds: item.runtime_seconds,
     skippable: item.skippable,
     created_at: item.created_at,
@@ -200,14 +204,16 @@ export default async function StudioAdminAdsPage() {
             <Megaphone className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-white">Ad previews</h1>
+            <h1 className="text-3xl font-black text-white">Upload ads</h1>
             <p className="mt-2 max-w-3xl text-sm text-zinc-400">
-              Review exactly how campaigns will feel on ViewTube: the in-video sponsored overlay, the sidebar companion
-              unit above recommended videos, and the basic click destination.
+              Upload campaigns and review exactly how they will feel on ViewTube: the in-video sponsored overlay, the
+              optional sidebar companion banner, logo, and click destination.
             </p>
           </div>
         </div>
       </div>
+
+      <AdminAdWorkspace />
 
       {items.length ? (
         <div className="space-y-6">
