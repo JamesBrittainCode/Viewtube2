@@ -26,7 +26,7 @@ export function SponsoredHomeBanner({
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={ad.image_url} alt={ad.title} className="aspect-[6/1] w-full object-cover transition duration-300 group-hover:scale-[1.01]" />
-      <span className="absolute bottom-2 left-2 rounded-full bg-black/75 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-white shadow-lg ring-1 ring-white/10">
+      <span className="absolute bottom-2 left-2 rounded-md bg-black/45 px-2 py-0.5 text-[11px] font-medium text-white/80 shadow-sm ring-1 ring-white/10 backdrop-blur-sm">
         Sponsored
       </span>
     </a>
