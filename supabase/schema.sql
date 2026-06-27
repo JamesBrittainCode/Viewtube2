@@ -248,6 +248,22 @@ create table if not exists public.ads (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.banner_ads (
+  id uuid primary key default gen_random_uuid(),
+  title text not null default 'Sponsored',
+  image_url text not null,
+  click_url text not null,
+  placement text not null default 'home_top',
+  approved boolean not null default true,
+  is_active boolean not null default true,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  impressions_count integer not null default 0,
+  clicks_count integer not null default 0,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.ad_submissions (
   id uuid primary key default gen_random_uuid(),
   first_name text not null,
@@ -526,6 +542,7 @@ create index if not exists idx_video_reports_status_created on public.video_repo
 create index if not exists idx_video_reports_video_id on public.video_reports using btree(video_id);
 create index if not exists idx_ads_active_created_at on public.ads using btree(is_active, created_at desc);
 create index if not exists idx_ads_schedule on public.ads using btree(approved, is_active, starts_at, ends_at);
+create index if not exists idx_banner_ads_active_placement on public.banner_ads using btree(placement, approved, is_active, created_at desc);
 create index if not exists idx_ad_submissions_status_created_at on public.ad_submissions using btree(status, created_at desc);
 create index if not exists idx_moderation_events_user_id on public.moderation_events using btree(user_id, created_at desc);
 create index if not exists idx_creator_spotlights_scheduled_for on public.creator_spotlights using btree(scheduled_for desc);
@@ -936,6 +953,7 @@ alter table public.subscriptions enable row level security;
 alter table public.notifications enable row level security;
 alter table public.video_reports enable row level security;
 alter table public.ads enable row level security;
+alter table public.banner_ads enable row level security;
 alter table public.ad_submissions enable row level security;
 alter table public.moderation_events enable row level security;
 alter table public.creator_spotlights enable row level security;
@@ -1517,6 +1535,22 @@ using (
 
 create policy "Only admin can manage ads"
 on public.ads for all
+to authenticated
+using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com')
+with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');
+
+create policy "Active banner ads are viewable by everyone"
+on public.banner_ads for select
+to anon, authenticated
+using (
+  approved = true
+  and is_active = true
+  and (starts_at is null or starts_at <= now())
+  and (ends_at is null or ends_at > now())
+);
+
+create policy "Only admin can manage banner ads"
+on public.banner_ads for all
 to authenticated
 using (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com')
 with check (coalesce((auth.jwt() ->> 'email'), '') = 'jesuslearningclub@gmail.com');

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { Megaphone } from 'lucide-react';
 import { AdminAdCampaignList, type AdminAdPreviewItem } from '@/components/admin/admin-ad-campaign-list';
+import { AdminBannerAdWorkspace } from '@/components/admin/admin-banner-ad-workspace';
 import { AdminAdWorkspace } from '@/components/admin/admin-ad-workspace';
 import { isAdminEmail } from '@/lib/admin';
 import { createClient } from '@/lib/supabase/server';
@@ -14,7 +15,7 @@ export default async function StudioAdminAdsPage() {
   if (!user) redirect('/sign-in');
   if (!isAdminEmail(user.email)) redirect('/studio/admin');
 
-  const [{ data: ads }, { data: submissions }] = await Promise.all([
+  const [{ data: ads }, { data: submissions }, { data: bannerAds }] = await Promise.all([
     supabase
       .from('ads')
       .select(
@@ -28,6 +29,10 @@ export default async function StudioAdminAdsPage() {
       )
       .order('created_at', { ascending: false })
       .limit(20),
+    supabase
+      .from('banner_ads')
+      .select('id,title,image_url,click_url,placement,approved,is_active,starts_at,ends_at,impressions_count,clicks_count,created_at')
+      .order('created_at', { ascending: false }),
   ]);
 
   const liveAds: AdminAdPreviewItem[] = (ads || []).map((item) => ({
@@ -90,6 +95,7 @@ export default async function StudioAdminAdsPage() {
       </div>
 
       <AdminAdWorkspace />
+      <AdminBannerAdWorkspace initialBannerAds={bannerAds || []} />
       <AdminAdCampaignList items={items} />
     </div>
   );

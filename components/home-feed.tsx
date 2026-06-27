@@ -6,6 +6,7 @@ import { Spinner } from '@/components/spinner';
 import { AdsenseSlot } from '@/components/adsense-slot';
 import { ShortsShelf } from '@/components/shorts-shelf';
 import { PlayablesShelf } from '@/components/playables/playables-shelf';
+import { SponsoredHomeBanner } from '@/components/ads/sponsored-home-banner';
 
 type FeedPayload = {
   videos: Array<Record<string, unknown>>;
@@ -17,11 +18,13 @@ export function HomeFeed({
   initialVideos,
   initialHasMore,
   initialShorts,
+  homeBannerAd,
   signedIn,
 }: {
   initialVideos: Array<Record<string, unknown>>;
   initialHasMore: boolean;
   initialShorts: Array<Record<string, unknown>>;
+  homeBannerAd: { id: string; title: string; image_url: string; click_url: string } | null;
   signedIn: boolean;
 }) {
   const homeAdSlot = process.env.NEXT_PUBLIC_ADSENSE_HOME_SLOT || null;
@@ -63,7 +66,13 @@ export function HomeFeed({
 
   return (
     <section>
-      {homeAdSlot ? (
+      {homeBannerAd ? (
+        <div className="mb-4">
+          <div className="mx-auto max-w-[1200px]">
+            <SponsoredHomeBanner ad={homeBannerAd} />
+          </div>
+        </div>
+      ) : homeAdSlot ? (
         <div className="mb-4">
           <div className="mx-auto max-w-[1200px]">
             <div className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
