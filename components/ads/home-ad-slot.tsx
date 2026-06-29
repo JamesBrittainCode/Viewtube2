@@ -10,6 +10,25 @@ type SponsoredBannerAd = {
   click_url: string;
 };
 
+const DEFAULT_HILLTOP_HOME_BANNER_SCRIPT_SRCS = [
+  '//pricklyassociation.com/bXXKVss.dFGalg0/YnWAcN/ZefmR9/ujZ/U/l/kBPsTXcDxVN/zbE/yYM/TUMktDNyz/E/3/MjT_IVxTNAwN',
+  '//pricklyassociation.com/bpXFV.sXd/G/lb0zYuW/cd/ueUmW9/uaZgU/llkTPHTJcux-N/zwgp3IM/z/MDtmNZzDEO3LOEDJcDzWNCwh',
+];
+
+function getHilltopScriptSources() {
+  const envSources = process.env.NEXT_PUBLIC_HILLTOP_HOME_BANNER_SCRIPT_SRC?.trim();
+  if (!envSources) return DEFAULT_HILLTOP_HOME_BANNER_SCRIPT_SRCS;
+  return envSources
+    .split(',')
+    .map((src) => src.trim())
+    .filter(Boolean);
+}
+
+function pickRandomItem(items: string[]) {
+  if (!items.length) return '';
+  return items[Math.floor(Math.random() * items.length)];
+}
+
 function hasAdContent(container: HTMLDivElement | null) {
   if (!container) return false;
   return Boolean(
@@ -42,7 +61,7 @@ function HilltopHomeBanner({
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isConfigured, setIsConfigured] = useState(true);
-  const scriptSrc = process.env.NEXT_PUBLIC_HILLTOP_HOME_BANNER_SCRIPT_SRC || '';
+  const scriptSrc = useMemo(() => pickRandomItem(getHilltopScriptSources()), []);
   const htmlSnippet = process.env.NEXT_PUBLIC_HILLTOP_HOME_BANNER_HTML || '';
 
   useEffect(() => {
@@ -71,9 +90,13 @@ function HilltopHomeBanner({
 
     if (html) executeHtmlSnippet(container, html);
     if (src) {
-      const script = document.createElement('script');
+      const script = document.createElement('script') as HTMLScriptElement & {
+        settings?: Record<string, never>;
+      };
+      script.settings = {};
       script.async = true;
       script.src = src;
+      script.referrerPolicy = 'no-referrer-when-downgrade';
       script.onerror = () => setAvailable(false);
       container.appendChild(script);
     }
@@ -104,7 +127,7 @@ export function HomeAdSlot({ fallbackAd }: { fallbackAd: SponsoredBannerAd | nul
   const hasHilltopConfig = useMemo(
     () =>
       Boolean(
-        process.env.NEXT_PUBLIC_HILLTOP_HOME_BANNER_SCRIPT_SRC?.trim() ||
+        getHilltopScriptSources().length ||
           process.env.NEXT_PUBLIC_HILLTOP_HOME_BANNER_HTML?.trim()
       ),
     []
