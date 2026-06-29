@@ -3,10 +3,9 @@
 import { useState } from 'react';
 import { VideoGrid } from '@/components/video-grid';
 import { Spinner } from '@/components/spinner';
-import { AdsenseSlot } from '@/components/adsense-slot';
 import { ShortsShelf } from '@/components/shorts-shelf';
 import { PlayablesShelf } from '@/components/playables/playables-shelf';
-import { SponsoredHomeBanner } from '@/components/ads/sponsored-home-banner';
+import { HomeAdSlot } from '@/components/ads/home-ad-slot';
 
 type FeedPayload = {
   videos: Array<Record<string, unknown>>;
@@ -27,7 +26,6 @@ export function HomeFeed({
   homeBannerAd: { id: string; title: string; image_url: string; click_url: string } | null;
   signedIn: boolean;
 }) {
-  const homeAdSlot = process.env.NEXT_PUBLIC_ADSENSE_HOME_SLOT || null;
   const [videos, setVideos] = useState(initialVideos);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -66,21 +64,7 @@ export function HomeFeed({
 
   return (
     <section>
-      {homeBannerAd ? (
-        <div className="mb-4">
-          <div className="mx-auto max-w-[1200px]">
-            <SponsoredHomeBanner ad={homeBannerAd} />
-          </div>
-        </div>
-      ) : homeAdSlot ? (
-        <div className="mb-4">
-          <div className="mx-auto max-w-[1200px]">
-            <div className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
-              <AdsenseSlot slot={homeAdSlot} className="min-h-[90px] w-full" />
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <HomeAdSlot fallbackAd={homeBannerAd} />
 
       <VideoGrid videos={(videos.slice(0, 8) as never[])} signedIn={signedIn} />
       <ShortsShelf shorts={initialShorts as never[]} />
