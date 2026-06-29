@@ -31,14 +31,17 @@ export default async function Home({
   ]);
 
   const now = Date.now();
-  const homeBannerAd =
-    (bannerAds || []).find((item) => {
-      const starts = 'starts_at' in item && item.starts_at ? new Date(item.starts_at as string).getTime() : null;
-      const ends = 'ends_at' in item && item.ends_at ? new Date(item.ends_at as string).getTime() : null;
+  const homeBannerAd = (() => {
+    const eligibleBannerAds = (bannerAds || []).filter((item) => {
+      const starts = item.starts_at ? new Date(item.starts_at).getTime() : null;
+      const ends = item.ends_at ? new Date(item.ends_at).getTime() : null;
       if (starts && now < starts) return false;
       if (ends && now >= ends) return false;
       return true;
-    }) || null;
+    });
+    if (!eligibleBannerAds.length) return null;
+    return eligibleBannerAds[Math.floor(Math.random() * eligibleBannerAds.length)];
+  })();
 
   return (
     <HomeFeed
