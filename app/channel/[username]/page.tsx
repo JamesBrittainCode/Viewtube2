@@ -55,6 +55,79 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   };
 }
 
+function ChannelFeatureVideo({
+  label,
+  video,
+  channelName,
+  fallbackImage,
+  summary,
+}: {
+  label: string;
+  video: Record<string, unknown>;
+  channelName: string;
+  fallbackImage?: string | null;
+  summary: string;
+}) {
+  const id = String(video.id || '');
+  const title = String(video.title || 'Featured');
+  const thumb = typeof video.thumbnail_url === 'string' ? video.thumbnail_url : null;
+  const createdAt = typeof video.created_at === 'string' ? video.created_at : '';
+  const views = Number(video.views || 0);
+
+  if (!id) return null;
+
+  return (
+    <section className="mt-6 border-b border-zinc-200 pb-8 dark:border-zinc-800">
+      <h2 className="mb-4 text-lg font-semibold">{label}</h2>
+      <div className="grid gap-5 lg:grid-cols-[minmax(260px,520px)_minmax(0,1fr)] lg:items-start">
+        <Link
+          href={`/watch/${id}`}
+          className="group relative block overflow-hidden rounded-xl bg-zinc-200 dark:bg-zinc-900"
+        >
+          <div className="relative aspect-video w-full">
+            <Image
+              src={thumb || fallbackImage || '/thumbnail-placeholder.svg'}
+              alt={title}
+              fill
+              className="object-cover transition duration-300 group-hover:scale-[1.02]"
+              sizes="(max-width: 1024px) 100vw, 520px"
+              priority
+            />
+          </div>
+          <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/20">
+            <span className="grid h-14 w-14 place-items-center rounded-full bg-black/70 text-white opacity-0 shadow-lg transition group-hover:opacity-100">
+              <span className="ml-1 h-0 w-0 border-y-[10px] border-l-[16px] border-y-transparent border-l-current" />
+            </span>
+          </span>
+        </Link>
+        <div className="max-w-2xl">
+          <Link href={`/watch/${id}`} className="text-xl font-bold leading-tight hover:underline">
+            {title}
+          </Link>
+          <p className="mt-2 text-sm text-zinc-500">
+            {channelName}
+            {createdAt ? (
+              <>
+                {' '}
+                · {views.toLocaleString()} views · {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
+              </>
+            ) : null}
+          </p>
+          <p className="mt-4 line-clamp-4 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+            {summary}
+          </p>
+          <Link
+            href={`/watch/${id}`}
+            className="mt-5 inline-flex items-center rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+          >
+            Watch now
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default async function ChannelPage({
   params,
   searchParams,
@@ -435,97 +508,23 @@ export default async function ChannelPage({
 
       {/* Trailer / featured videos */}
       {activeTab === 'home' && homeEnabled && homeSettings?.trailer_video_id && !subscribed ? (
-        <div className="mt-6">
-          <h2 className="mb-3 text-lg font-semibold">Channel trailer</h2>
-          {(() => {
-            const video = featuredVideoById.get(String(homeSettings.trailer_video_id || ''));
-            if (!video) return null;
-            const id = String(video.id || '');
-            const title = String(video.title || 'Featured');
-            const thumb = typeof video.thumbnail_url === 'string' ? video.thumbnail_url : null;
-            const createdAt = typeof video.created_at === 'string' ? video.created_at : '';
-            const views = Number(video.views || 0);
-            return (
-              <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start">
-                  <Link
-                    href={`/watch/${id}`}
-                    className="group block overflow-hidden rounded-2xl bg-zinc-200 dark:bg-zinc-800"
-                  >
-                    <div className="relative aspect-video w-full">
-                      <Image
-                        src={thumb || channel.banner_url || '/thumbnail-placeholder.svg'}
-                        alt={title}
-                        fill
-                        className="object-cover transition duration-300 group-hover:scale-[1.01]"
-                        sizes="(max-width: 1024px) 100vw, 720px"
-                        priority
-                      />
-                    </div>
-                  </Link>
-                  <div className="flex flex-col justify-start">
-                    <Link
-                      href={`/watch/${id}`}
-                      className="line-clamp-2 text-base font-semibold hover:underline"
-                    >
-                      {title}
-                    </Link>
-                    {createdAt ? (
-                      <p className="mt-2 text-sm text-zinc-500">
-                        {views.toLocaleString()} views •{' '}
-                        {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
-                      </p>
-                    ) : null}
-                    <p className="mt-3 line-clamp-3 text-sm text-zinc-600 dark:text-zinc-300">
-                      Welcome to {channel.username}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-        </div>
+        <ChannelFeatureVideo
+          label="Channel trailer"
+          video={featuredVideoById.get(String(homeSettings.trailer_video_id || '')) || {}}
+          channelName={channel.username}
+          fallbackImage={channel.banner_url}
+          summary={(channel.bio || '').trim() || `Welcome to ${channel.username}. Watch the latest videos, shorts, and playlists from this channel.`}
+        />
       ) : null}
 
       {activeTab === 'home' && homeEnabled && homeSettings?.featured_video_id && subscribed ? (
-        <div className="mt-6">
-          <h2 className="mb-3 text-lg font-semibold">Featured for returning subscribers</h2>
-          {(() => {
-            const video = featuredVideoById.get(String(homeSettings.featured_video_id || ''));
-            if (!video) return null;
-            const id = String(video.id || '');
-            const title = String(video.title || 'Featured');
-            const thumb = typeof video.thumbnail_url === 'string' ? video.thumbnail_url : null;
-            const createdAt = typeof video.created_at === 'string' ? video.created_at : '';
-            const views = Number(video.views || 0);
-            return (
-              <Link
-                href={`/watch/${id}`}
-                className="group block overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
-              >
-                <div className="relative aspect-video w-full bg-zinc-200 dark:bg-zinc-800">
-                  <Image
-                    src={thumb || channel.banner_url || '/thumbnail-placeholder.svg'}
-                    alt={title}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 1024px) 100vw, 900px"
-                    priority
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="line-clamp-2 text-base font-semibold group-hover:underline">{title}</h3>
-                  {createdAt ? (
-                    <p className="mt-1 text-sm text-zinc-500">
-                      {views.toLocaleString()} views •{' '}
-                      {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
-                    </p>
-                  ) : null}
-                </div>
-              </Link>
-            );
-          })()}
-        </div>
+        <ChannelFeatureVideo
+          label="Featured for returning subscribers"
+          video={featuredVideoById.get(String(homeSettings.featured_video_id || '')) || {}}
+          channelName={channel.username}
+          fallbackImage={channel.banner_url}
+          summary={`Welcome back to ${channel.username}. Here’s a featured video picked for subscribers.`}
+        />
       ) : null}
 
       {/* Live now card shows here only if not configured as a section */}
