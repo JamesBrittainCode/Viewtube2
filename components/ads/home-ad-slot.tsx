@@ -137,22 +137,6 @@ function HilltopHomeBanner({
           <p className="mt-1 text-sm text-zinc-500">
             Ad · Learn more from this sponsor
           </p>
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={() => containerRef.current?.querySelector<HTMLElement>('a[href], iframe')?.focus()}
-              className="min-w-28 rounded-full bg-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-300 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700"
-            >
-              Watch
-            </button>
-            <button
-              type="button"
-              onClick={() => containerRef.current?.querySelector<HTMLElement>('a[href], iframe')?.focus()}
-              className="min-w-28 rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 dark:bg-white dark:hover:bg-zinc-200"
-            >
-              Learn more
-            </button>
-          </div>
         </div>
       </div>
     </article>
