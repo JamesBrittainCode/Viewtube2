@@ -64,9 +64,8 @@ export function HomeFeed({
 
   return (
     <section>
-      <HomeAdSlot fallbackAd={homeBannerAd} />
+      <HomeAdSlot fallbackAd={homeBannerAd} videos={videos.slice(0, 8)} signedIn={signedIn} />
 
-      <VideoGrid videos={(videos.slice(0, 8) as never[])} signedIn={signedIn} />
       <ShortsShelf shorts={initialShorts as never[]} />
       {signedIn ? <PlayablesShelf /> : null}
       {videos.length > 8 ? <VideoGrid videos={(videos.slice(8) as never[])} signedIn={signedIn} /> : null}

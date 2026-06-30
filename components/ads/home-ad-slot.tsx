@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SponsoredHomeBanner } from '@/components/ads/sponsored-home-banner';
+import { VideoCard } from '@/components/video-card';
 
 type SponsoredBannerAd = {
   id: string;
@@ -116,13 +117,57 @@ function HilltopHomeBanner({
   if (!isConfigured) return null;
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
-      <div ref={containerRef} className="mx-auto min-h-[90px] w-full overflow-hidden" />
-    </div>
+    <article className="group">
+      <div className="relative aspect-video overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-900">
+        <div className="flex h-full w-full items-center justify-center p-2">
+          <div
+            ref={containerRef}
+            className="flex max-h-full max-w-full items-center justify-center overflow-hidden rounded-lg [&_canvas]:max-h-full [&_canvas]:max-w-full [&_embed]:max-h-full [&_embed]:max-w-full [&_iframe]:max-h-full [&_iframe]:max-w-full [&_img]:max-h-full [&_img]:max-w-full [&_object]:max-h-full [&_object]:max-w-full"
+          />
+        </div>
+      </div>
+      <div className="mt-3 flex gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-600 text-xs font-black text-white">
+          Ad
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="line-clamp-2 text-base font-semibold leading-snug text-zinc-950 dark:text-white">
+            Sponsored
+          </h3>
+          <p className="mt-1 text-sm text-zinc-500">
+            Ad · Learn more from this sponsor
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => containerRef.current?.querySelector<HTMLElement>('a[href], iframe')?.focus()}
+              className="min-w-28 rounded-full bg-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-300 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700"
+            >
+              Watch
+            </button>
+            <button
+              type="button"
+              onClick={() => containerRef.current?.querySelector<HTMLElement>('a[href], iframe')?.focus()}
+              className="min-w-28 rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 dark:bg-white dark:hover:bg-zinc-200"
+            >
+              Learn more
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
   );
 }
 
-export function HomeAdSlot({ fallbackAd }: { fallbackAd: SponsoredBannerAd | null }) {
+export function HomeAdSlot({
+  fallbackAd,
+  videos,
+  signedIn,
+}: {
+  fallbackAd: SponsoredBannerAd | null;
+  videos: Array<Record<string, unknown>>;
+  signedIn: boolean;
+}) {
   const [networkAvailable, setNetworkAvailable] = useState<boolean | null>(null);
   const hasHilltopConfig = useMemo(
     () =>
@@ -133,18 +178,42 @@ export function HomeAdSlot({ fallbackAd }: { fallbackAd: SponsoredBannerAd | nul
     []
   );
 
-  if (!hasHilltopConfig && !fallbackAd) return null;
+  if (!hasHilltopConfig && !fallbackAd) {
+    return (
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        {videos.map((video) => (
+          <VideoCard key={video.id as string} video={video as never} signedIn={signedIn} />
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div className="mb-4">
-      <div className="mx-auto max-w-[1200px]">
-        {hasHilltopConfig && networkAvailable !== false ? (
+    <>
+      {hasHilltopConfig && networkAvailable !== false ? (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           <HilltopHomeBanner onAvailabilityChange={setNetworkAvailable} />
-        ) : null}
-        {networkAvailable === false || !hasHilltopConfig ? (
-          fallbackAd ? <SponsoredHomeBanner ad={fallbackAd} /> : null
-        ) : null}
-      </div>
-    </div>
+          {videos.map((video) => (
+            <VideoCard key={video.id as string} video={video as never} signedIn={signedIn} />
+          ))}
+        </div>
+      ) : null}
+      {networkAvailable === false || !hasHilltopConfig ? (
+        <>
+          {fallbackAd ? (
+            <div className="mb-4">
+              <div className="mx-auto max-w-[1200px]">
+                <SponsoredHomeBanner ad={fallbackAd} />
+              </div>
+            </div>
+          ) : null}
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {videos.map((video) => (
+              <VideoCard key={video.id as string} video={video as never} signedIn={signedIn} />
+            ))}
+          </div>
+        </>
+      ) : null}
+    </>
   );
 }
