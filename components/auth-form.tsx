@@ -89,6 +89,7 @@ export function AuthForm({
         }
       }
 
+      window.dispatchEvent(new Event('viewtube-play-intro'));
       router.push(nextPath);
       router.refresh();
     } catch (err) {

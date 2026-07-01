@@ -4,6 +4,7 @@ import { AppShell } from '@/components/app-shell';
 import { AdblockGate } from '@/components/adblock-gate';
 import { Navbar } from '@/components/navbar';
 import { ThemeProvider } from '@/components/theme-provider';
+import { ViewTubeIntro } from '@/components/viewtube-intro';
 import { JsonLd } from '@/components/json-ld';
 import { Analytics } from '@vercel/analytics/next';
 
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }}
           />
           <AppShell navbar={<Navbar />}>{children}</AppShell>
+          <ViewTubeIntro />
           <Analytics />
         </ThemeProvider>
       </body>
