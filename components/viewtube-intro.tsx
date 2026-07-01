@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-const INTRO_SESSION_KEY = 'viewtube_intro_seen_this_session';
+const INTRO_LAST_PLAYED_KEY = 'viewtube_intro_last_played_at';
 const INTRO_PENDING_KEY = 'viewtube_intro_pending';
 const INTRO_EVENT = 'viewtube-play-intro';
+const INTRO_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 type IntroState = 'hidden' | 'ready' | 'blocked' | 'fading';
 
@@ -14,6 +15,14 @@ export function ViewTubeIntro() {
   const fadeTimerRef = useRef<number | null>(null);
   const [state, setState] = useState<IntroState>('hidden');
 
+  const markIntroPlayed = useCallback(() => {
+    try {
+      window.localStorage.setItem(INTRO_LAST_PLAYED_KEY, String(Date.now()));
+    } catch {
+      // Local storage can be unavailable in private or restricted contexts.
+    }
+  }, []);
+
   const closeIntro = useCallback(() => {
     const video = videoRef.current;
     if (video) video.pause();
@@ -21,40 +30,47 @@ export function ViewTubeIntro() {
     if (fadeTimerRef.current) window.clearTimeout(fadeTimerRef.current);
     fadeTimerRef.current = window.setTimeout(() => {
       setState('hidden');
-      try {
-        window.sessionStorage.setItem(INTRO_SESSION_KEY, 'true');
-      } catch {
-        // Session storage can be unavailable in private or restricted contexts.
-      }
+      markIntroPlayed();
     }, 700);
-  }, []);
+  }, [markIntroPlayed]);
 
-  const playIntro = useCallback(async ({ force = false }: { force?: boolean } = {}) => {
+  const requestIntro = useCallback(({ force = false }: { force?: boolean } = {}) => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches && !force) return;
 
     try {
-      if (!force && window.sessionStorage.getItem(INTRO_SESSION_KEY) === 'true') return;
+      const lastPlayed = Number(window.localStorage.getItem(INTRO_LAST_PLAYED_KEY) || 0);
+      if (!force && lastPlayed && Date.now() - lastPlayed < INTRO_COOLDOWN_MS) return;
     } catch {
-      // If sessionStorage is unavailable, still let the intro play.
+      // If localStorage is unavailable, still let the intro play.
     }
 
+    setState('ready');
+  }, []);
+
+  const playVisibleIntro = useCallback(async () => {
     const video = videoRef.current;
     if (!video) return;
 
-    setState('ready');
     video.currentTime = 0;
     video.muted = false;
     video.volume = 1;
 
     try {
       await video.play();
+      setState('ready');
     } catch {
       setState('blocked');
     }
   }, []);
 
   useEffect(() => {
-    const onPlayIntro = () => void playIntro({ force: true });
+    if (state !== 'ready') return;
+    const frame = window.requestAnimationFrame(() => void playVisibleIntro());
+    return () => window.cancelAnimationFrame(frame);
+  }, [playVisibleIntro, state]);
+
+  useEffect(() => {
+    const onPlayIntro = () => requestIntro({ force: true });
     window.addEventListener(INTRO_EVENT, onPlayIntro);
 
     const supabase = createClient();
@@ -78,7 +94,7 @@ export function ViewTubeIntro() {
         pending = true;
         document.cookie = `${INTRO_PENDING_KEY}=; path=/; max-age=0; samesite=lax`;
       }
-      void playIntro({ force: pending });
+      requestIntro({ force: pending });
     });
 
     return () => {
@@ -87,7 +103,7 @@ export function ViewTubeIntro() {
       subscription.unsubscribe();
       if (fadeTimerRef.current) window.clearTimeout(fadeTimerRef.current);
     };
-  }, [playIntro]);
+  }, [requestIntro]);
 
   if (state === 'hidden') return null;
 
@@ -113,7 +129,7 @@ export function ViewTubeIntro() {
       {state === 'blocked' ? (
         <button
           type="button"
-          onClick={() => void playIntro({ force: true })}
+          onClick={() => void playVisibleIntro()}
           className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white px-6 py-3 text-sm font-bold text-zinc-950 shadow-2xl transition hover:scale-105"
         >
           Tap to start ViewTube
