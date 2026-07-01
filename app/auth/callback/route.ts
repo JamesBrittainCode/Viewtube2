@@ -36,6 +36,13 @@ export async function GET(request: Request) {
         new URL(`/sign-in?error=${encodeURIComponent(error.message)}`, origin),
       );
     }
+    response.cookies.set({
+      name: 'viewtube_intro_pending',
+      value: 'true',
+      path: '/',
+      maxAge: 60,
+      sameSite: 'lax',
+    });
   }
 
   return response;

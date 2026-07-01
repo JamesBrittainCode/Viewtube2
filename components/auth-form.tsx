@@ -89,7 +89,11 @@ export function AuthForm({
         }
       }
 
-      window.dispatchEvent(new Event('viewtube-play-intro'));
+      try {
+        window.sessionStorage.setItem('viewtube_intro_pending', 'true');
+      } catch {
+        window.dispatchEvent(new Event('viewtube-play-intro'));
+      }
       router.push(nextPath);
       router.refresh();
     } catch (err) {

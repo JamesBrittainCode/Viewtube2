@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 const INTRO_SESSION_KEY = 'viewtube_intro_seen_this_session';
+const INTRO_PENDING_KEY = 'viewtube_intro_pending';
 const INTRO_EVENT = 'viewtube-play-intro';
 
 type IntroState = 'hidden' | 'ready' | 'blocked' | 'fading';
@@ -65,7 +66,20 @@ export function ViewTubeIntro() {
       }
     });
 
-    const frame = window.requestAnimationFrame(() => void playIntro());
+    const frame = window.requestAnimationFrame(() => {
+      let pending = false;
+      try {
+        pending = window.sessionStorage.getItem(INTRO_PENDING_KEY) === 'true';
+        if (pending) window.sessionStorage.removeItem(INTRO_PENDING_KEY);
+      } catch {
+        pending = false;
+      }
+      if (!pending && document.cookie.includes(`${INTRO_PENDING_KEY}=true`)) {
+        pending = true;
+        document.cookie = `${INTRO_PENDING_KEY}=; path=/; max-age=0; samesite=lax`;
+      }
+      void playIntro({ force: pending });
+    });
 
     return () => {
       window.cancelAnimationFrame(frame);
@@ -115,4 +129,3 @@ export function ViewTubeIntro() {
     </div>
   );
 }
-
