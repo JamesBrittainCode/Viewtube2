@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { MessageThread } from '@/components/messages/message-thread';
+import { MessagesInbox } from '@/components/messages/messages-inbox';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function MessageThreadPage({ params }: { params: Promise<{ threadId: string }> }) {
@@ -11,5 +11,5 @@ export default async function MessageThreadPage({ params }: { params: Promise<{ 
   if (!user) redirect('/sign-in');
 
   const { threadId } = await params;
-  return <MessageThread threadId={threadId} />;
+  return <MessagesInbox currentUserId={user.id} selectedThreadId={threadId} />;
 }

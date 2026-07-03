@@ -141,7 +141,13 @@ export async function GET() {
       participants: participantsByThread.get(thread.id) || [],
       latest_message: latestByThread.get(thread.id) || null,
     }))
-    .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime());
+    .sort((a, b) => {
+      if (a.is_admin_thread !== b.is_admin_thread) return a.is_admin_thread ? -1 : 1;
+      const aPending = a.my_participant?.status === 'pending';
+      const bPending = b.my_participant?.status === 'pending';
+      if (aPending !== bPending) return aPending ? -1 : 1;
+      return new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime();
+    });
 
   return NextResponse.json({ threads });
 }
