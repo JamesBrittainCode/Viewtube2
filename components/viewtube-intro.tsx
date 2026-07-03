@@ -114,13 +114,6 @@ export function ViewTubeIntro() {
         onError={closeIntro}
       />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_45%,rgba(0,0,0,0.55))]" />
-      <button
-        type="button"
-        onClick={closeIntro}
-        className="absolute right-5 top-5 z-10 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20"
-      >
-        Skip
-      </button>
     </div>
   );
 }
