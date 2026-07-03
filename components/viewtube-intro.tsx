@@ -1,10 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 
 const INTRO_PENDING_KEY = 'viewtube_intro_pending';
+const INTRO_LAST_PLAYED_KEY = 'viewtube_intro_last_played_at';
 const INTRO_EVENT = 'viewtube-play-intro';
+const INTRO_COOLDOWN_MS = 8 * 60 * 60 * 1000;
 
 type IntroState = 'hidden' | 'ready' | 'fading';
 
@@ -23,11 +24,29 @@ export function ViewTubeIntro() {
     }, 700);
   }, []);
 
-  const requestIntro = useCallback(({ force = false }: { force?: boolean } = {}) => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches && !force) return;
-    if (!force) return;
-    setState('ready');
+  const canPlayIntro = useCallback(() => {
+    try {
+      const lastPlayed = Number(window.localStorage.getItem(INTRO_LAST_PLAYED_KEY) || 0);
+      return !lastPlayed || Date.now() - lastPlayed >= INTRO_COOLDOWN_MS;
+    } catch {
+      return true;
+    }
   }, []);
+
+  const markIntroPlayed = useCallback(() => {
+    try {
+      window.localStorage.setItem(INTRO_LAST_PLAYED_KEY, String(Date.now()));
+    } catch {
+      // localStorage may be unavailable in private/restricted contexts.
+    }
+  }, []);
+
+  const requestIntro = useCallback(({ ignoreReducedMotion = false }: { ignoreReducedMotion?: boolean } = {}) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches && !ignoreReducedMotion) return;
+    if (!canPlayIntro()) return;
+    markIntroPlayed();
+    setState('ready');
+  }, [canPlayIntro, markIntroPlayed]);
 
   const playVisibleIntro = useCallback(async () => {
     const video = videoRef.current;
@@ -58,17 +77,8 @@ export function ViewTubeIntro() {
   }, [playVisibleIntro, state]);
 
   useEffect(() => {
-    const onPlayIntro = () => requestIntro({ force: true });
+    const onPlayIntro = () => requestIntro({ ignoreReducedMotion: true });
     window.addEventListener(INTRO_EVENT, onPlayIntro);
-
-    const supabase = createClient();
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
-        window.dispatchEvent(new Event(INTRO_EVENT));
-      }
-    });
 
     const frame = window.requestAnimationFrame(() => {
       let pending = false;
@@ -82,13 +92,12 @@ export function ViewTubeIntro() {
         pending = true;
         document.cookie = `${INTRO_PENDING_KEY}=; path=/; max-age=0; samesite=lax`;
       }
-      if (pending) requestIntro({ force: true });
+      if (pending) requestIntro({ ignoreReducedMotion: true });
     });
 
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener(INTRO_EVENT, onPlayIntro);
-      subscription.unsubscribe();
       if (fadeTimerRef.current) window.clearTimeout(fadeTimerRef.current);
     };
   }, [requestIntro]);
