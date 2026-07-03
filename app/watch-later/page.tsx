@@ -46,7 +46,7 @@ export default async function WatchLaterPage() {
         created_at,
         video:videos(
           id,title,thumbnail_url,duration_seconds,is_short,views,created_at,
-          profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)
+          profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)
         )
       `,
     )

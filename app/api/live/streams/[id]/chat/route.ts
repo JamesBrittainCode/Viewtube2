@@ -10,7 +10,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const { data, error } = await supabase
     .from('live_chat_messages')
     .select(
-      'id,stream_id,user_id,content,pinned,is_deleted,deleted_at,deleted_by,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)',
+      'id,stream_id,user_id,content,pinned,is_deleted,deleted_at,deleted_by,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)',
     )
     .eq('stream_id', id)
     .order('created_at', { ascending: true })
@@ -86,7 +86,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     .from('live_chat_messages')
     .insert({ stream_id: id, user_id: user.id, content })
     .select(
-      'id,stream_id,user_id,content,pinned,is_deleted,deleted_at,deleted_by,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)',
+      'id,stream_id,user_id,content,pinned,is_deleted,deleted_at,deleted_by,created_at,profiles:profiles!live_chat_messages_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)',
     )
     .single();
 

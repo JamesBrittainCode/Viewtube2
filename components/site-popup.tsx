@@ -6,7 +6,7 @@ export async function SitePopup() {
   const supabase = createPublicClient();
   const { data } = await supabase
     .from('site_popups')
-    .select('id,message,expires_at,sound_enabled,admin:profiles!site_popups_created_by_fkey(username,handle,avatar_url,verified)')
+    .select('id,message,expires_at,sound_enabled,admin:profiles!site_popups_created_by_fkey(username,handle,avatar_url,verified,is_admin)')
     .eq('is_active', true)
     .order('created_at', { ascending: false })
     .limit(1);
@@ -16,6 +16,7 @@ export async function SitePopup() {
     handle: string | null;
     avatar_url: string | null;
     verified: boolean | null;
+    is_admin: boolean | null;
   };
 
   type PopupRow = {
@@ -44,6 +45,7 @@ export async function SitePopup() {
               handle: String(admin.handle || '@admin'),
               avatar_url: admin.avatar_url ?? null,
               verified: Boolean(admin.verified),
+              is_admin: Boolean(admin.is_admin),
             }
           : null
       }

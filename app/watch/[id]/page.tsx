@@ -10,6 +10,7 @@ import { VideoGrid } from '@/components/video-grid';
 import { VideoPlayer } from '@/components/video-player';
 import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { AdminBadge } from '@/components/admin-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { SetSpotlightButton } from '@/components/set-spotlight-button';
 import { isAdminEmail } from '@/lib/admin';
@@ -163,6 +164,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
             </Link>
             {channelProfile?.streak_champion ? <StreakFireBadge className="h-4 w-4" /> : null}
             {channelProfile?.verified && <VerifiedBadge />}
+            {channelProfile?.is_admin && <AdminBadge />}
             {channelProfile?.top_streamer && <TopStreamerBadge />}
           </div>
             <p className="text-sm text-zinc-500">

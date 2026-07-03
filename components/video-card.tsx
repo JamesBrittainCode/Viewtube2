@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { unwrapRelation } from '@/lib/profile';
 import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { AdminBadge } from '@/components/admin-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { formatDuration } from '@/lib/format-duration';
 import { VideoCardMenu } from '@/components/video-card-menu';
@@ -26,6 +27,7 @@ type Props = {
           handle?: string;
           avatar_url?: string | null;
           verified?: boolean;
+          is_admin?: boolean;
           top_streamer?: boolean;
           streak_champion?: boolean;
         }
@@ -35,6 +37,7 @@ type Props = {
           handle?: string;
           avatar_url?: string | null;
           verified?: boolean;
+          is_admin?: boolean;
           top_streamer?: boolean;
           streak_champion?: boolean;
         }>;
@@ -98,6 +101,7 @@ export function VideoCard({ video, signedIn = false }: Props & { signedIn?: bool
             </Link>
             {profile?.streak_champion && <StreakFireBadge className="h-3.5 w-3.5" />}
             {profile?.verified && <VerifiedBadge className="h-3.5 w-3.5" />}
+            {profile?.is_admin && <AdminBadge className="h-3.5 w-3.5" />}
             {profile?.top_streamer && <TopStreamerBadge className="h-3.5 w-3.5" />}
           </div>
           <p className="text-xs text-zinc-500">

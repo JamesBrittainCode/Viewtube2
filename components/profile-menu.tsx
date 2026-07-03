@@ -82,6 +82,12 @@ export function ProfileMenu({ avatarUrl, handle, isAdmin = false, isModerator = 
           >
             ViewTube Studio
           </Link>
+          <Link
+            href="/messages"
+            className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
+            Messages
+          </Link>
           {(isAdmin || isModerator) && (
             <Link
               href="/studio/admin"

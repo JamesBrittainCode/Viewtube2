@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { SubscribeButton } from '@/components/subscribe-button';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { AdminBadge } from '@/components/admin-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VideoGrid } from '@/components/video-grid';
@@ -172,7 +173,7 @@ export default async function ChannelPage({
   const { data: videos } = await publicClient
     .from('videos')
     .select(
-      'id,title,thumbnail_url,views,created_at,is_short,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)'
+      'id,title,thumbnail_url,views,created_at,is_short,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)'
     )
     .eq('user_id', channel.id)
     .eq('is_removed', false)
@@ -454,6 +455,7 @@ export default async function ChannelPage({
               <h1 className="text-2xl font-bold">{channel.username}</h1>
               {channel.streak_champion ? <StreakFireBadge className="h-5 w-5" /> : null}
               {channel.verified && <VerifiedBadge className="h-5 w-5" />}
+              {channel.is_admin && <AdminBadge className="h-5 w-5" />}
               {channel.top_streamer && <TopStreamerBadge className="h-5 w-5" />}
             </div>
             <p className="text-sm text-zinc-500">

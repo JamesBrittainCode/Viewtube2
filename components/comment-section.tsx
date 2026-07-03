@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { emitStreakEvent } from '@/lib/streak-events';
 import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { AdminBadge } from '@/components/admin-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { displayHandle } from '@/lib/handle';
 import type { Comment } from '@/lib/types';
@@ -19,6 +20,7 @@ type FlatComment = Comment & {
     handle: string;
     avatar_url: string | null;
     verified: boolean;
+    is_admin?: boolean;
     top_streamer?: boolean;
     streak_champion?: boolean;
   };
@@ -36,6 +38,7 @@ function nestComments(comments: FlatComment[]): Comment[] {
         handle: item.profiles?.handle || '',
         avatar_url: item.profiles?.avatar_url || null,
         verified: item.profiles?.verified || false,
+        is_admin: Boolean(item.profiles?.is_admin),
         top_streamer: Boolean(item.profiles?.top_streamer),
         streak_champion: Boolean(item.profiles?.streak_champion),
       },
@@ -116,6 +119,7 @@ function CommentItem({
               </Link>
               {item.profile?.streak_champion && <StreakFireBadge className="h-3.5 w-3.5" />}
               {item.profile?.verified && <VerifiedBadge className="h-3.5 w-3.5" />}
+              {item.profile?.is_admin && <AdminBadge className="h-3.5 w-3.5" />}
               {item.profile?.top_streamer && <TopStreamerBadge className="h-3.5 w-3.5" />}
             </span>{' '}
             • {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}

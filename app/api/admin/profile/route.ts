@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const adminClient = createAdminClient();
   const { data: profile, error: profileError } = await adminClient
     .from('profiles')
-    .select('id,username,handle,avatar_url,verified,top_streamer,can_stream_live,can_moderate')
+    .select('id,username,handle,avatar_url,verified,is_admin,top_streamer,can_stream_live,can_moderate')
     .eq('handle', handle)
     .maybeSingle();
 
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
   const userLookup = await adminClient.auth.admin.getUserById(profile.id);
   const profileEmail = userLookup.data.user?.email || null;
-  const isAdmin = isAdminEmail(profileEmail);
+  const isAdmin = Boolean(profile.is_admin) || isAdminEmail(profileEmail);
 
   return NextResponse.json({
     profile: {

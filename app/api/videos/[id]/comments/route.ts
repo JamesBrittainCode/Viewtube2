@@ -24,7 +24,7 @@ export async function GET(
   const { data, error } = await supabase
     .from('comments')
     .select(
-      'id,video_id,user_id,parent_id,content,pinned,created_at,profiles:profiles!comments_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)',
+      'id,video_id,user_id,parent_id,content,pinned,created_at,profiles:profiles!comments_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)',
     )
     .eq('video_id', id)
     .order('pinned', { ascending: false })

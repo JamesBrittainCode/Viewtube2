@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { AdminBadge } from '@/components/admin-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { ReferralTierAction, WatchAdTierAction } from '@/components/points-tier-actions';
 import { displayHandle } from '@/lib/handle';
@@ -21,6 +22,7 @@ type Row = {
     handle?: string | null;
     avatar_url?: string | null;
     verified?: boolean | null;
+    is_admin?: boolean | null;
     top_streamer?: boolean | null;
     streak_champion?: boolean | null;
   } | null;
@@ -51,7 +53,7 @@ export default async function StreaksPage() {
     supabase
       .from('viewtube_streaks')
       .select(
-        'user_id,current_streak,longest_streak,points,last_active_date,profiles:profiles!viewtube_streaks_user_id_fkey(username,handle,avatar_url,verified,top_streamer,streak_champion)',
+        'user_id,current_streak,longest_streak,points,last_active_date,profiles:profiles!viewtube_streaks_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)',
       )
       .order('points', { ascending: false })
       .order('current_streak', { ascending: false })
@@ -137,6 +139,7 @@ export default async function StreaksPage() {
                       </div>
                       {isChampion && <StreakFireBadge className="h-4 w-4" />}
                       {profile.verified ? <VerifiedBadge className="h-4 w-4" /> : null}
+                      {profile.is_admin ? <AdminBadge className="h-4 w-4" /> : null}
                       {profile.top_streamer ? <TopStreamerBadge className="h-4 w-4" /> : null}
                     </div>
                     {handle ? (

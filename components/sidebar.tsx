@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Clock, Film, Flame, Folder, Gamepad2, Home, ListVideo, PlaySquare, Radio, UserRound, Smartphone } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Film, Flame, Folder, Gamepad2, Home, ListVideo, MessageCircle, PlaySquare, Radio, UserRound, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const links = [
@@ -13,6 +13,7 @@ const links = [
   { href: '/library', label: 'Library', icon: Folder },
   { href: '/watch-later', label: 'Watch later', icon: Clock },
   { href: '/playlists', label: 'Playlists', icon: ListVideo },
+  { href: '/messages', label: 'Messages', icon: MessageCircle },
   { href: '/trending', label: 'Trending', icon: Flame },
   { href: '/live', label: 'Live', icon: Radio },
   { href: '/upload', label: 'Upload', icon: PlaySquare },

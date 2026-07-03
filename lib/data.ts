@@ -23,6 +23,7 @@ const baseVideoSelect = `
     handle,
     avatar_url,
     verified,
+    is_admin,
     top_streamer,
     streak_champion,
     subscribers_count

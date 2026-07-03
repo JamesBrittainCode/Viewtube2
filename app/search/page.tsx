@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { formatCompactCount } from '@/lib/number';
 import { StreakFireBadge } from '@/components/streak-fire-badge';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { AdminBadge } from '@/components/admin-badge';
 import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { displayHandle } from '@/lib/handle';
 
@@ -27,7 +28,7 @@ export default async function SearchPage({
     q
       ? supabase
           .from('profiles')
-          .select('id,username,handle,avatar_url,verified,top_streamer,streak_champion,subscribers_count')
+          .select('id,username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion,subscribers_count')
           .or(`username.ilike.%${q}%,handle.ilike.%${q}%`)
           .order('subscribers_count', { ascending: false })
           .limit(8)
@@ -71,6 +72,7 @@ export default async function SearchPage({
                       </div>
                       {c.streak_champion ? <StreakFireBadge className="h-4 w-4" /> : null}
                       {c.verified ? <VerifiedBadge className="h-4 w-4" /> : null}
+                      {c.is_admin ? <AdminBadge className="h-4 w-4" /> : null}
                       {c.top_streamer ? <TopStreamerBadge className="h-4 w-4" /> : null}
                     </div>
                     <div className="mt-0.5 truncate text-xs text-zinc-500">

@@ -55,6 +55,39 @@ function getAdminAlertEmail() {
   );
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+export async function sendAdminMessageEmail(input: {
+  to: string;
+  messageUrl: string;
+}) {
+  const messageUrl = input.messageUrl.startsWith('http')
+    ? input.messageUrl
+    : `${getBaseUrl()}${input.messageUrl}`;
+
+  await sendEmail({
+    to: input.to,
+    subject: "You've got a new message from ViewTube Admin",
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#18181b">
+        <h2 style="margin:0 0 12px">You've got a new message from ViewTube Admin</h2>
+        <p style="margin:0 0 18px">Open ViewTube to read the full admin message in your inbox.</p>
+        <a href="${escapeHtml(messageUrl)}" style="display:inline-block;border-radius:999px;background:#ef4444;color:#fff;font-weight:700;padding:12px 18px;text-decoration:none">
+          Read Full Message on ViewTube
+        </a>
+        <p style="margin-top:18px;color:#71717a;font-size:13px">For privacy, this email does not include the full message.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendAdminNewAdRequestEmail(input: {
   submissionId: string;
   advertiserName: string;

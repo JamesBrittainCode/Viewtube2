@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { AdminBadge } from '@/components/admin-badge';
 import { displayHandle } from '@/lib/handle';
 
 function playPopupSound() {
@@ -42,7 +43,7 @@ export function SitePopupModal({
   message: string;
   expiresAt: string | null;
   soundEnabled: boolean;
-  admin: { username: string; handle: string; avatar_url: string | null; verified: boolean } | null;
+  admin: { username: string; handle: string; avatar_url: string | null; verified: boolean; is_admin?: boolean } | null;
 }) {
   const [open, setOpen] = useState(true);
   const [remainingNowMs, setRemainingNowMs] = useState<number | null>(null);
@@ -122,6 +123,7 @@ export function SitePopupModal({
                     {admin?.username || 'ViewTube Admin'}
                   </p>
                   {admin?.verified ? <VerifiedBadge className="h-4 w-4" /> : null}
+                  {admin?.is_admin ? <AdminBadge className="h-4 w-4" /> : null}
                 </div>
                 <p className="truncate text-xs text-zinc-500">{displayHandle(admin?.handle, '@admin')}</p>
               </div>
