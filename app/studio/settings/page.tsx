@@ -17,6 +17,16 @@ export default function StudioSettingsPage() {
           </div>
         </a>
 
+        <a
+          href="/studio/settings/linked-accounts"
+          className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6 transition hover:-translate-y-0.5 hover:bg-zinc-900/80 hover:shadow-md"
+        >
+          <div className="text-lg font-semibold">Linked accounts</div>
+          <div className="mt-2 text-sm text-zinc-400">
+            Link parent and child accounts, manage safety settings, and block channels.
+          </div>
+        </a>
+
         <div className="rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
           <div className="text-lg font-semibold">More settings</div>
           <div className="mt-2 text-sm text-zinc-400">

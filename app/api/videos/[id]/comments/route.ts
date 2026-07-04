@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sendNotification } from '@/lib/notifications';
 import { canModerateUser } from '@/lib/admin';
 import { createClient } from '@/lib/supabase/server';
+import { checkFamilyPermission } from '@/lib/family-controls';
 import { recordViewtubeActivity } from '@/lib/streaks';
 import { checkContestActivityGate, normalizeContestText } from '@/lib/contest-abuse';
 
@@ -75,6 +76,11 @@ export async function POST(
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const familyComment = await checkFamilyPermission(user.id, 'comment');
+  if (!familyComment.allowed) {
+    return NextResponse.json({ error: familyComment.reason || 'Commenting is disabled for this account.' }, { status: 403 });
   }
 
   const { data: me } = await supabase

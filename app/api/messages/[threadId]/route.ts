@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sendNotification } from '@/lib/notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
+import { checkFamilyPermission } from '@/lib/family-controls';
 
 type RouteContext = {
   params: Promise<{ threadId: string }>;
@@ -15,6 +16,11 @@ export async function GET(_request: Request, context: RouteContext) {
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const familyMessages = await checkFamilyPermission(user.id, 'messages');
+  if (!familyMessages.allowed) {
+    return NextResponse.json({ error: familyMessages.reason || 'Messages are disabled for this account.' }, { status: 403 });
+  }
 
   const adminClient = createAdminClient();
   const { data: myParticipant, error: myParticipantError } = await adminClient
@@ -76,6 +82,11 @@ export async function POST(request: Request, context: RouteContext) {
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const familyMessages = await checkFamilyPermission(user.id, 'messages');
+  if (!familyMessages.allowed) {
+    return NextResponse.json({ error: familyMessages.reason || 'Messages are disabled for this account.' }, { status: 403 });
+  }
 
   const body = (await request.json().catch(() => ({}))) as { message?: string };
   const message = String(body.message || '').trim();
@@ -144,6 +155,11 @@ export async function PATCH(request: Request, context: RouteContext) {
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const familyMessages = await checkFamilyPermission(user.id, 'messages');
+  if (!familyMessages.allowed) {
+    return NextResponse.json({ error: familyMessages.reason || 'Messages are disabled for this account.' }, { status: 403 });
+  }
 
   const body = (await request.json().catch(() => ({}))) as { action?: string };
   if (body.action !== 'accept') {

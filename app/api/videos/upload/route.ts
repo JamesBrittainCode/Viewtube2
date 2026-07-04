@@ -5,6 +5,7 @@ import { moderateUploadedMedia } from '@/lib/media-moderation';
 import { moderateUploadText } from '@/lib/moderation';
 import { sendNotification } from '@/lib/notifications';
 import { createClient } from '@/lib/supabase/server';
+import { checkFamilyPermission } from '@/lib/family-controls';
 import { getSupportEmail } from '@/lib/support';
 import { recordViewtubeActivity } from '@/lib/streaks';
 
@@ -106,6 +107,11 @@ export async function POST(request: Request) {
       },
       { status: 403 },
     );
+  }
+
+  const familyPost = await checkFamilyPermission(user.id, 'post');
+  if (!familyPost.allowed && !isAdmin) {
+    return NextResponse.json({ error: familyPost.reason || 'Posting is disabled for this account.' }, { status: 403 });
   }
 
   if (!title) {

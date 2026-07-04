@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { createPublicClient } from '@/lib/supabase/public';
 import { ShortsFeed } from '@/components/shorts-feed';
 import { createClient } from '@/lib/supabase/server';
+import { isChannelBlockedForViewer } from '@/lib/family-controls';
 import { isAdminEmail } from '@/lib/admin';
 
 export const runtime = 'edge';
@@ -41,6 +42,7 @@ export default async function ShortPermalinkPage({ params }: { params: Promise<{
 
   if (!current || !current.is_short) notFound();
   if (current.visibility === 'private' && current.user_id !== user?.id) notFound();
+  if (await isChannelBlockedForViewer(user?.id, current.user_id)) notFound();
 
   const { data: more } = await supabase
     .from('videos')

@@ -15,6 +15,7 @@ import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { SetSpotlightButton } from '@/components/set-spotlight-button';
 import { isAdminEmail } from '@/lib/admin';
 import { getRecommendations, getVideoById } from '@/lib/data';
+import { isChannelBlockedForViewer } from '@/lib/family-controls';
 import { unwrapRelation } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
 import { ReportVideoButton } from '@/components/report-video-button';
@@ -100,6 +101,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
 
   if (!video) notFound();
   if (video.visibility === 'private' && video.user_id !== user?.id) notFound();
+  if (await isChannelBlockedForViewer(user?.id, video.user_id)) notFound();
   if (video.is_short) redirect(`/shorts/${id}`);
 
   const recommendations = await getRecommendations(video.id, video.tags || []);

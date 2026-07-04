@@ -12,6 +12,7 @@ import { VideoGrid } from '@/components/video-grid';
 import { ShortsShelf } from '@/components/shorts-shelf';
 import { PlaylistCard, type PlaylistCardData } from '@/components/playlist-card';
 import { formatCompactCount } from '@/lib/number';
+import { isChannelBlockedForViewer } from '@/lib/family-controls';
 import { createPublicClient } from '@/lib/supabase/public';
 import { createClient } from '@/lib/supabase/server';
 
@@ -176,6 +177,7 @@ export default async function ChannelPage({
   } = await supabase.auth.getUser();
 
   const isOwner = Boolean(user?.id && user.id === channel.id);
+  if (await isChannelBlockedForViewer(user?.id, channel.id)) notFound();
   const videoClient = isOwner ? supabase : publicClient;
   const videosQuery = videoClient
     .from('videos')

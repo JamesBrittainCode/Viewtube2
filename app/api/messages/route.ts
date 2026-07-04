@@ -3,6 +3,7 @@ import { sendNotification } from '@/lib/notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { normalizeHandle } from '@/lib/handle';
+import { checkFamilyPermission } from '@/lib/family-controls';
 
 type ProfileRow = {
   id: string;
@@ -85,6 +86,11 @@ export async function GET() {
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const familyMessages = await checkFamilyPermission(user.id, 'messages');
+  if (!familyMessages.allowed) {
+    return NextResponse.json({ error: familyMessages.reason || 'Messages are disabled for this account.' }, { status: 403 });
+  }
+
   const adminClient = createAdminClient();
   const { data: participations, error: participantError } = await adminClient
     .from('message_thread_participants')
@@ -159,6 +165,11 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const familyMessages = await checkFamilyPermission(user.id, 'messages');
+  if (!familyMessages.allowed) {
+    return NextResponse.json({ error: familyMessages.reason || 'Messages are disabled for this account.' }, { status: 403 });
+  }
 
   const body = (await request.json().catch(() => ({}))) as {
     target?: string;
