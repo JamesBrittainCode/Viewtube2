@@ -18,6 +18,7 @@ type Props = {
     video_url?: string | null;
     duration_seconds?: number | null;
     is_short?: boolean | null;
+    visibility?: 'public' | 'unlisted' | 'private' | null;
     views: number;
     created_at: string;
     profiles?:
@@ -72,6 +73,16 @@ export function VideoCard({ video, signedIn = false }: Props & { signedIn?: bool
           {isShort ? (
             <span className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-1 text-[11px] font-semibold leading-none text-white">
               Short
+            </span>
+          ) : null}
+          {video.visibility && video.visibility !== 'public' ? (
+            <span
+              className={[
+                'absolute left-2 rounded-md bg-black/75 px-2 py-1 text-[11px] font-semibold capitalize leading-none text-white',
+                isShort ? 'top-8' : 'top-2',
+              ].join(' ')}
+            >
+              {video.visibility}
             </span>
           ) : null}
           {video.duration_seconds && video.duration_seconds > 0 && (

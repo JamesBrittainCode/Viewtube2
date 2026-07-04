@@ -13,7 +13,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('videos')
-    .select('id,title,thumbnail_url,is_short,created_at,views')
+    .select('id,title,thumbnail_url,is_short,created_at,views,visibility')
     .eq('user_id', user.id)
     .eq('is_removed', false)
     .order('created_at', { ascending: false })
@@ -22,4 +22,3 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ videos: data || [] });
 }
-

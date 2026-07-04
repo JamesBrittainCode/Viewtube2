@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
-import { FileVideo, Image as ImageIcon, MessageSquareText, Tags, Type } from 'lucide-react';
+import { Eye, FileVideo, Image as ImageIcon, Lock, MessageSquareText, Tags, Type, Unlink } from 'lucide-react';
 import { startVideoUploadTask, resetVideoUploadTask } from '@/lib/upload-manager';
 import { formatUploadBytes, MAX_UPLOAD_BYTES } from '@/lib/upload-limits';
 
@@ -174,12 +174,16 @@ export function UploadForm() {
       const title = String(formData.get('title') || '').trim();
       const description = String(formData.get('description') || '').trim();
       const tags = String(formData.get('tags') || '');
+      const visibilityRaw = String(formData.get('visibility') || 'public');
+      const visibility =
+        visibilityRaw === 'unlisted' || visibilityRaw === 'private' ? visibilityRaw : 'public';
       const commentsEnabled = formData.get('comments_enabled') === 'on';
 
       await startVideoUploadTask({
         title,
         description,
         tags,
+        visibility,
         commentsEnabled,
         video,
         thumbnail,
@@ -288,6 +292,42 @@ export function UploadForm() {
           </p>
         </label>
       </div>
+
+      <section className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-950/60">
+        <h3 className="mb-3 text-sm font-semibold">Visibility</h3>
+        <div className="grid gap-2 md:grid-cols-3">
+          <label className="flex cursor-pointer gap-3 rounded-xl border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <input name="visibility" type="radio" value="public" defaultChecked className="mt-1 h-4 w-4 accent-red-600" />
+            <span>
+              <span className="flex items-center gap-2 font-semibold">
+                <Eye className="h-4 w-4 text-zinc-500" />
+                Public
+              </span>
+              <span className="mt-1 block text-xs text-zinc-500">Shows on ViewTube, search, channel pages, and recommendations.</span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer gap-3 rounded-xl border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <input name="visibility" type="radio" value="unlisted" className="mt-1 h-4 w-4 accent-red-600" />
+            <span>
+              <span className="flex items-center gap-2 font-semibold">
+                <Unlink className="h-4 w-4 text-zinc-500" />
+                Unlisted
+              </span>
+              <span className="mt-1 block text-xs text-zinc-500">Anyone with the link can watch, but it won’t appear publicly.</span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer gap-3 rounded-xl border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <input name="visibility" type="radio" value="private" className="mt-1 h-4 w-4 accent-red-600" />
+            <span>
+              <span className="flex items-center gap-2 font-semibold">
+                <Lock className="h-4 w-4 text-zinc-500" />
+                Private
+              </span>
+              <span className="mt-1 block text-xs text-zinc-500">Only you can watch it while signed in.</span>
+            </span>
+          </label>
+        </div>
+      </section>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">

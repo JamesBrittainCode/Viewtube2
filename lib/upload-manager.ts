@@ -71,6 +71,7 @@ export async function startVideoUploadTask(input: {
   title: string;
   description: string;
   tags: string;
+  visibility: 'public' | 'unlisted' | 'private';
   commentsEnabled: boolean;
   video: File;
   thumbnail: File;
@@ -156,6 +157,7 @@ export async function startVideoUploadTask(input: {
         title: input.title,
         description: input.description,
         tags: input.tags,
+        visibility: input.visibility,
         comments_enabled: input.commentsEnabled,
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl,

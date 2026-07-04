@@ -50,6 +50,7 @@ create table if not exists public.videos (
   removed_reason text,
   removed_at timestamptz,
   removed_by uuid references public.profiles(id) on delete set null,
+  visibility text not null default 'public' check (visibility in ('public', 'unlisted', 'private')),
   thumbnail_url text,
   video_url text not null,
   duration_seconds integer,
@@ -71,6 +72,9 @@ alter table public.videos
 add column if not exists removed_by uuid references public.profiles(id) on delete set null;
 alter table public.videos
 add column if not exists duration_seconds integer;
+alter table public.videos
+add column if not exists visibility text not null default 'public'
+check (visibility in ('public', 'unlisted', 'private'));
 
 create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
@@ -523,6 +527,7 @@ create index if not exists idx_profiles_can_moderate on public.profiles using bt
 create index if not exists idx_videos_user_id on public.videos using btree(user_id);
 create index if not exists idx_videos_created_at on public.videos using btree(created_at desc);
 create index if not exists idx_videos_removed on public.videos using btree(is_removed, created_at desc);
+create index if not exists idx_videos_visibility_removed_created on public.videos using btree(visibility, is_removed, created_at desc);
 create index if not exists idx_videos_views on public.videos using btree(views desc);
 create index if not exists idx_videos_tags on public.videos using gin(tags);
 create index if not exists idx_videos_search_vector on public.videos using gin(search_vector);
@@ -933,13 +938,20 @@ as $$
       'username', p.username,
       'handle', p.handle,
       'avatar_url', p.avatar_url,
-      'verified', p.verified
+      'verified', p.verified,
+      'is_admin', p.is_admin,
+      'top_streamer', p.top_streamer,
+      'streak_champion', p.streak_champion
     ) as profiles
   from public.videos v
   join public.profiles p on p.id = v.user_id
-  where v.search_vector @@ websearch_to_tsquery('english', search_query)
-     or v.title ilike ('%' || search_query || '%')
-     or v.description ilike ('%' || search_query || '%')
+  where v.visibility = 'public'
+    and v.is_removed = false
+    and (
+      v.search_vector @@ websearch_to_tsquery('english', search_query)
+      or v.title ilike ('%' || search_query || '%')
+      or v.description ilike ('%' || search_query || '%')
+    )
   order by ts_rank(v.search_vector, websearch_to_tsquery('english', search_query)) desc, v.created_at desc;
 $$;
 
@@ -1062,10 +1074,13 @@ end;
 $$;
 
 -- videos
-create policy "Videos are viewable by everyone"
+create policy "Videos are viewable by visibility"
 on public.videos for select
 to anon, authenticated
-using (true);
+using (
+  visibility in ('public', 'unlisted')
+  or user_id = auth.uid()
+);
 
 create policy "Authenticated users can create videos"
 on public.videos for insert

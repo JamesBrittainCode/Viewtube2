@@ -56,18 +56,53 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function WatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const video = await getVideoById(id);
-
-  if (!video) notFound();
-  if (video.is_short) redirect(`/shorts/${id}`);
-
-  const recommendations = await getRecommendations(video.id, video.tags || []);
-
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const isAdmin = isAdminEmail(user?.email);
+
+  const { data: video } = await supabase
+    .from('videos')
+    .select(
+      `
+      id,
+      user_id,
+      title,
+      description,
+      visibility,
+      comments_enabled,
+      thumbnail_url,
+      video_url,
+      duration_seconds,
+      is_short,
+      video_width,
+      video_height,
+      tags,
+      views,
+      created_at,
+      profiles:profiles!videos_user_id_fkey (
+        id,
+        username,
+        handle,
+        avatar_url,
+        verified,
+        is_admin,
+        top_streamer,
+        streak_champion,
+        subscribers_count
+      )
+    `,
+    )
+    .eq('id', id)
+    .eq('is_removed', false)
+    .maybeSingle();
+
+  if (!video) notFound();
+  if (video.visibility === 'private' && video.user_id !== user?.id) notFound();
+  if (video.is_short) redirect(`/shorts/${id}`);
+
+  const recommendations = await getRecommendations(video.id, video.tags || []);
 
   const [
     { count: likeCount },

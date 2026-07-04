@@ -29,6 +29,7 @@ export async function POST(request: Request) {
     .from('videos')
     .select('id,user_id,title')
     .eq('id', videoId)
+    .eq('visibility', 'public')
     .maybeSingle();
 
   if (!video) {

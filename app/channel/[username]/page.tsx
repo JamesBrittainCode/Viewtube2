@@ -170,24 +170,29 @@ export default async function ChannelPage({
     .order('started_at', { ascending: false })
     .maybeSingle();
 
-  const { data: videos } = await publicClient
-    .from('videos')
-    .select(
-      'id,title,thumbnail_url,views,created_at,is_short,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)'
-    )
-    .eq('user_id', channel.id)
-    .eq('is_removed', false)
-    .order('created_at', { ascending: false });
-
-  const normalVideos = (videos || []).filter((v) => !v.is_short);
-  const shorts = (videos || []).filter((v) => v.is_short);
-
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   const isOwner = Boolean(user?.id && user.id === channel.id);
+  const videoClient = isOwner ? supabase : publicClient;
+  const videosQuery = videoClient
+    .from('videos')
+    .select(
+      'id,title,thumbnail_url,views,created_at,is_short,visibility,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)'
+    )
+    .eq('user_id', channel.id)
+    .eq('is_removed', false)
+    .order('created_at', { ascending: false });
+
+  if (!isOwner) videosQuery.eq('visibility', 'public');
+
+  const { data: videos } = await videosQuery;
+
+  const normalVideos = (videos || []).filter((v) => !v.is_short);
+  const shorts = (videos || []).filter((v) => v.is_short);
+
   const featuredClient = isOwner ? supabase : publicClient;
 
   const { data: tabSettings, error: tabError } = await featuredClient
@@ -266,7 +271,7 @@ export default async function ChannelPage({
   const { data: featuredItems } = featuredIds.length
     ? await featuredClient
         .from('playlist_items')
-        .select('playlist_id,created_at,video:videos(thumbnail_url)')
+        .select('playlist_id,created_at,video:videos(thumbnail_url,visibility)')
         .in('playlist_id', featuredIds)
         .order('created_at', { ascending: false })
         .limit(500)
@@ -277,16 +282,19 @@ export default async function ChannelPage({
   (featuredItems || []).forEach((row) => {
     const playlistId = String((row as { playlist_id?: unknown }).playlist_id || '');
     if (!playlistId) return;
+    const videoRelation = (
+      row as unknown as {
+        video?:
+          | { thumbnail_url?: string | null; visibility?: string | null }[]
+          | { thumbnail_url?: string | null; visibility?: string | null }
+          | null;
+      }
+    ).video;
+    const video = Array.isArray(videoRelation) ? videoRelation[0] : videoRelation;
+    if (!isOwner && video?.visibility !== 'public') return;
     playlistCount.set(playlistId, (playlistCount.get(playlistId) || 0) + 1);
     if (!playlistCover.has(playlistId)) {
-      const videoRelation = (
-        row as unknown as {
-          video?: { thumbnail_url?: string | null }[] | { thumbnail_url?: string | null } | null;
-        }
-      ).video;
-      const url = Array.isArray(videoRelation)
-        ? videoRelation[0]?.thumbnail_url ?? null
-        : videoRelation?.thumbnail_url ?? null;
+      const url = video?.thumbnail_url ?? null;
       playlistCover.set(playlistId, url);
     }
   });
@@ -318,12 +326,16 @@ export default async function ChannelPage({
     .filter(Boolean)
     .map((id) => String(id));
   const { data: featuredVideos } = featuredVideoIds.length
-    ? await featuredClient
-        .from('videos')
-        .select('id,user_id,title,thumbnail_url,views,created_at,is_short')
-        .eq('user_id', channel.id)
-        .eq('is_removed', false)
-        .in('id', featuredVideoIds)
+    ? await (() => {
+        const query = featuredClient
+          .from('videos')
+          .select('id,user_id,title,thumbnail_url,views,created_at,is_short')
+          .eq('user_id', channel.id)
+          .eq('is_removed', false)
+          .in('id', featuredVideoIds);
+        if (!isOwner) query.eq('visibility', 'public');
+        return query;
+      })()
     : { data: [] as unknown[] };
 
   const featuredVideoById = new Map(
@@ -352,7 +364,7 @@ export default async function ChannelPage({
     const { data: items } = playlists.length
       ? await featuredClient
           .from('playlist_items')
-          .select('playlist_id,created_at,video:videos(thumbnail_url)')
+          .select('playlist_id,created_at,video:videos(thumbnail_url,visibility)')
           .in(
             'playlist_id',
             playlists.map((p) => p.id),
@@ -366,16 +378,19 @@ export default async function ChannelPage({
     (items || []).forEach((row) => {
       const playlistId = String((row as { playlist_id?: unknown }).playlist_id || '');
       if (!playlistId) return;
+      const videoRelation = (
+        row as unknown as {
+          video?:
+            | { thumbnail_url?: string | null; visibility?: string | null }[]
+            | { thumbnail_url?: string | null; visibility?: string | null }
+            | null;
+        }
+      ).video;
+      const video = Array.isArray(videoRelation) ? videoRelation[0] : videoRelation;
+      if (!isOwner && video?.visibility !== 'public') return;
       countBy.set(playlistId, (countBy.get(playlistId) || 0) + 1);
       if (!coverBy.has(playlistId)) {
-        const videoRelation = (
-          row as unknown as {
-            video?: { thumbnail_url?: string | null }[] | { thumbnail_url?: string | null } | null;
-          }
-        ).video;
-        const url = Array.isArray(videoRelation)
-          ? videoRelation[0]?.thumbnail_url ?? null
-          : videoRelation?.thumbnail_url ?? null;
+        const url = video?.thumbnail_url ?? null;
         coverBy.set(playlistId, url);
       }
     });

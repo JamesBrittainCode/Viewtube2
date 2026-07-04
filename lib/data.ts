@@ -7,6 +7,7 @@ const baseVideoSelect = `
   user_id,
   title,
   description,
+  visibility,
   comments_enabled,
   thumbnail_url,
   video_url,
@@ -40,6 +41,7 @@ export const getHomeVideos = unstable_cache(
       .from('videos')
       .select(baseVideoSelect, { count: 'exact' })
       .eq('is_removed', false)
+      .eq('visibility', 'public')
       .eq('is_short', false)
       .order('created_at', { ascending: false })
       .range(from, to);
@@ -110,8 +112,9 @@ export async function getPersonalizedHomeVideos(page: number, userId: string) {
       .from('videos')
       .select('id,tags')
       .in('id', activityVideoIds)
-      .eq('is_removed', false)
-      .limit(200);
+        .eq('is_removed', false)
+        .eq('visibility', 'public')
+        .limit(200);
 
     const rankedIds = [...likedVideoIds, ...commentedVideoIds];
     const recencyRank = new Map<string, number>();
@@ -141,6 +144,7 @@ export async function getPersonalizedHomeVideos(page: number, userId: string) {
           .select(baseVideoSelect)
           .in('user_id', Array.from(subscribedCreatorIds))
           .eq('is_removed', false)
+          .eq('visibility', 'public')
           .eq('is_short', false)
           .order('created_at', { ascending: false })
           .limit(250)
@@ -151,6 +155,7 @@ export async function getPersonalizedHomeVideos(page: number, userId: string) {
           .select(baseVideoSelect)
           .overlaps('tags', topTags)
           .eq('is_removed', false)
+          .eq('visibility', 'public')
           .eq('is_short', false)
           .order('views', { ascending: false })
           .limit(300)
@@ -159,6 +164,7 @@ export async function getPersonalizedHomeVideos(page: number, userId: string) {
       .from('videos')
       .select(baseVideoSelect)
       .eq('is_removed', false)
+      .eq('visibility', 'public')
       .eq('is_short', false)
       .order('views', { ascending: false })
       .limit(200),
@@ -217,6 +223,7 @@ export async function getRecommendations(videoId: string, tags: string[]) {
     .select(baseVideoSelect)
     .neq('id', videoId)
     .eq('is_removed', false)
+    .eq('visibility', 'public')
     .overlaps('tags', tags)
     .order('views', { ascending: false })
     .limit(10);
@@ -233,6 +240,7 @@ export async function getTrendingVideos() {
     .from('videos')
     .select(baseVideoSelect)
     .eq('is_removed', false)
+    .eq('visibility', 'public')
     .eq('is_short', false)
     .gte('created_at', since)
     .order('views', { ascending: false })
@@ -250,6 +258,7 @@ export async function getMoviesVideosByCreator(userId: string) {
     .select(baseVideoSelect)
     .eq('user_id', userId)
     .eq('is_removed', false)
+    .eq('visibility', 'public')
     .order('created_at', { ascending: false })
     .limit(72);
 
@@ -267,6 +276,7 @@ export const getShortsVideos = unstable_cache(
       .from('videos')
       .select(baseVideoSelect, { count: 'exact' })
       .eq('is_removed', false)
+      .eq('visibility', 'public')
       .eq('is_short', true)
       .order('created_at', { ascending: false })
       .range(from, to);

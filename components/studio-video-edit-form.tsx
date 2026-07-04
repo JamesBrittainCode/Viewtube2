@@ -10,6 +10,7 @@ type Props = {
   videoId: string;
   initialTitle: string;
   initialDescription: string;
+  initialVisibility: 'public' | 'unlisted' | 'private';
   initialCommentsEnabled: boolean;
   initialThumbnailUrl: string | null;
 };
@@ -28,12 +29,14 @@ export function StudioVideoEditForm({
   videoId,
   initialTitle,
   initialDescription,
+  initialVisibility,
   initialCommentsEnabled,
   initialThumbnailUrl,
 }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
+  const [visibility, setVisibility] = useState<'public' | 'unlisted' | 'private'>(initialVisibility);
   const [commentsEnabled, setCommentsEnabled] = useState(initialCommentsEnabled);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(initialThumbnailUrl);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
@@ -102,6 +105,7 @@ export function StudioVideoEditForm({
         body: JSON.stringify({
           title,
           description,
+          visibility,
           comments_enabled: commentsEnabled,
           thumbnail_url: nextThumbnailUrl,
         }),
@@ -210,6 +214,19 @@ export function StudioVideoEditForm({
           rows={7}
           className="w-full rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-sm outline-none focus:border-zinc-500"
         />
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm text-zinc-400">Visibility</label>
+        <select
+          value={visibility}
+          onChange={(event) => setVisibility(event.target.value as typeof visibility)}
+          className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-sm outline-none focus:border-zinc-500"
+        >
+          <option value="public">Public — shows across ViewTube</option>
+          <option value="unlisted">Unlisted — anyone with the link can watch</option>
+          <option value="private">Private — only you can watch</option>
+        </select>
       </div>
 
       <label className="flex items-center gap-2 text-sm">

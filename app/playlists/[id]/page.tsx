@@ -36,7 +36,7 @@ export default async function PlaylistPage({ params }: { params: Promise<{ id: s
         id,
         created_at,
         video:videos(
-          id,title,thumbnail_url,duration_seconds,is_short,views,created_at,
+          id,title,thumbnail_url,duration_seconds,is_short,views,created_at,visibility,
           profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)
         )
       `,
@@ -46,7 +46,7 @@ export default async function PlaylistPage({ params }: { params: Promise<{ id: s
 
   const videos = (items || [])
     .map((row) => (row as unknown as { video?: Record<string, unknown> | null }).video)
-    .filter(Boolean);
+    .filter((video) => Boolean(video) && (isOwner || video?.visibility === 'public'));
 
   return (
     <section>

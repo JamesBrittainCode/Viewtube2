@@ -14,7 +14,7 @@ export default async function LibraryPage() {
   const { data: videos } = await supabase
     .from('videos')
     .select(
-      'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)'
+      'id,title,thumbnail_url,views,created_at,visibility,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)'
     )
     .eq('user_id', user.id)
     .eq('is_removed', false)

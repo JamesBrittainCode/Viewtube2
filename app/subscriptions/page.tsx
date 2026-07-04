@@ -26,6 +26,7 @@ export default async function SubscriptionsPage() {
           'id,title,thumbnail_url,views,created_at,profiles:profiles!videos_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)'
         )
         .in('user_id', creatorIds)
+        .eq('visibility', 'public')
         .eq('is_removed', false)
         .order('created_at', { ascending: false })
     : { data: [] };

@@ -18,8 +18,9 @@ export default async function ShortPermalinkPage({ params }: { params: Promise<{
     : { data: null };
   const canModerate = isAdmin || Boolean(moderationRes?.data?.can_moderate);
   const supabase = createPublicClient();
+  const currentClient = user ? supabaseAuthed : supabase;
 
-  const { data: current } = await supabase
+  const { data: current } = await currentClient
     .from('videos')
     .select(
       `
@@ -27,6 +28,7 @@ export default async function ShortPermalinkPage({ params }: { params: Promise<{
         user_id,
         title,
         video_url,
+        visibility,
         comments_enabled,
         is_short,
         created_at,
@@ -38,6 +40,7 @@ export default async function ShortPermalinkPage({ params }: { params: Promise<{
     .maybeSingle();
 
   if (!current || !current.is_short) notFound();
+  if (current.visibility === 'private' && current.user_id !== user?.id) notFound();
 
   const { data: more } = await supabase
     .from('videos')
@@ -55,6 +58,7 @@ export default async function ShortPermalinkPage({ params }: { params: Promise<{
     )
     .eq('is_removed', false)
     .eq('is_short', true)
+    .eq('visibility', 'public')
     .order('created_at', { ascending: false })
     .limit(30);
 

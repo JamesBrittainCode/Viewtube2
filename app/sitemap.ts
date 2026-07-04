@@ -14,6 +14,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     supabase
       .from('videos')
       .select('id,created_at')
+      .eq('visibility', 'public')
       .eq('is_removed', false)
       .order('created_at', { ascending: false })
       .limit(MAX_URLS),

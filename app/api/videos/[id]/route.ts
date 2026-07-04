@@ -25,6 +25,7 @@ export async function PATCH(
   const body = (await request.json()) as {
     title?: string;
     description?: string;
+    visibility?: string;
     comments_enabled?: boolean;
     thumbnail_url?: string;
   };
@@ -33,6 +34,10 @@ export async function PATCH(
   const description = String(body.description || '').trim();
   const commentsEnabled =
     typeof body.comments_enabled === 'boolean' ? body.comments_enabled : undefined;
+  const visibility =
+    body.visibility === 'public' || body.visibility === 'unlisted' || body.visibility === 'private'
+      ? body.visibility
+      : undefined;
   const thumbnailUrlRaw = body.thumbnail_url;
 
   if (!title) {
@@ -56,6 +61,7 @@ export async function PATCH(
   const updates: {
     title: string;
     description: string;
+    visibility?: 'public' | 'unlisted' | 'private';
     comments_enabled?: boolean;
     thumbnail_url?: string;
   } = {
@@ -65,6 +71,9 @@ export async function PATCH(
 
   if (commentsEnabled !== undefined) {
     updates.comments_enabled = commentsEnabled;
+  }
+  if (visibility !== undefined) {
+    updates.visibility = visibility;
   }
 
   if (typeof thumbnailUrlRaw === 'string' && thumbnailUrlRaw.trim()) {

@@ -24,6 +24,7 @@ export type Video = {
   user_id: string;
   title: string;
   description: string;
+  visibility?: 'public' | 'unlisted' | 'private';
   comments_enabled?: boolean;
   thumbnail_url: string | null;
   video_url: string;
