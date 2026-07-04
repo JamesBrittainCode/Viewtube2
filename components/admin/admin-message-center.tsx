@@ -8,6 +8,7 @@ export function AdminMessageCenter() {
   const [target, setTarget] = useState('');
   const [title, setTitle] = useState('Message from ViewTube Admin');
   const [message, setMessage] = useState('');
+  const [forceEmail, setForceEmail] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +19,7 @@ export function AdminMessageCenter() {
     const res = await fetch('/api/admin/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode, target, title, message }),
+      body: JSON.stringify({ mode, target, title, message, forceEmail }),
     });
     const data = (await res.json().catch(() => ({}))) as {
       recipients?: number;
@@ -32,7 +33,8 @@ export function AdminMessageCenter() {
     }
     setMessage('');
     setTarget('');
-    setStatus(`Sent to ${data.recipients || 0} user${data.recipients === 1 ? '' : 's'}. ${data.emailsSent || 0} inactive user email${data.emailsSent === 1 ? '' : 's'} sent.`);
+    setForceEmail(false);
+    setStatus(`Sent to ${data.recipients || 0} user${data.recipients === 1 ? '' : 's'}. ${data.emailsSent || 0} email${data.emailsSent === 1 ? '' : 's'} sent.`);
   }
 
   return (
@@ -44,7 +46,7 @@ export function AdminMessageCenter() {
             <h2 className="text-2xl font-black">Admin messages</h2>
           </div>
           <p className="mt-1 text-sm text-zinc-400">
-            Send inbox notifications to one ViewTuber or everyone. Users inactive for 7+ days get a private email prompt.
+            Send inbox notifications to one ViewTuber or everyone. Users inactive for 7+ days get a private email prompt, or you can email active users too.
           </p>
         </div>
       </div>
@@ -91,6 +93,20 @@ export function AdminMessageCenter() {
           rows={5}
           className="rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none focus:border-sky-400"
         />
+        <label className="flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
+          <input
+            type="checkbox"
+            checked={forceEmail}
+            onChange={(event) => setForceEmail(event.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-sky-500"
+          />
+          <span>
+            <span className="block font-bold text-white">Also send email now</span>
+            <span className="mt-1 block text-xs text-zinc-500">
+              Sends the “new message from ViewTube Admin” email even if the user has been active recently.
+            </span>
+          </span>
+        </label>
         <button
           disabled={loading}
           className="inline-flex items-center justify-center gap-2 rounded-full bg-sky-500 px-5 py-3 font-black text-white hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"

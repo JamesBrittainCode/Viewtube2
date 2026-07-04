@@ -83,11 +83,13 @@ export async function POST(request: Request) {
     target?: string;
     title?: string;
     message?: string;
+    forceEmail?: boolean;
   };
 
   const mode = body.mode === 'all' ? 'all' : 'user';
   const message = String(body.message || '').trim();
   const title = String(body.title || 'Message from ViewTube Admin').trim().slice(0, 120);
+  const forceEmail = body.forceEmail === true;
   if (!message) return NextResponse.json({ error: 'Write a message first.' }, { status: 400 });
   if (message.length > 5000) return NextResponse.json({ error: 'Messages can be up to 5,000 characters.' }, { status: 400 });
   if (mode === 'user' && !String(body.target || '').trim()) {
@@ -154,7 +156,7 @@ export async function POST(request: Request) {
     });
 
     const authUser = authById.get(recipient.id);
-    if (authUser?.email && shouldEmail(authUser.last_sign_in_at)) {
+    if (authUser?.email && (forceEmail || shouldEmail(authUser.last_sign_in_at))) {
       try {
         await sendAdminMessageEmail({
           to: authUser.email,
