@@ -1,131 +1,280 @@
+import type { ReactNode } from 'react';
+
+export const metadata = {
+  title: 'Privacy Policy',
+  description: 'Read how ViewTube collects, uses, stores, shares, and protects account, content, and activity data.',
+  alternates: {
+    canonical: '/privacy',
+  },
+};
+
 export default function PrivacyPolicyPage() {
   const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@viewtube.tv';
+
   return (
-    <main className="mx-auto max-w-4xl space-y-6 px-4 py-10">
+    <main className="mx-auto max-w-4xl space-y-8 px-4 py-10">
       <header>
         <h1 className="text-3xl font-bold">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-zinc-500">Last updated: March 3, 2026</p>
+        <p className="mt-2 text-sm text-zinc-500">Last updated: July 5, 2026</p>
       </header>
 
-      <section className="space-y-4 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+      <PolicySection title="Overview">
         <p>
-          This Privacy Policy describes how ViewTube collects, uses, stores, and shares information
-          when you use the ViewTube website, creator tools, and related services.
+          This Privacy Policy explains how ViewTube collects, uses, stores, shares, and protects
+          information when you use the ViewTube website, accounts, video tools, live features,
+          playables, messaging, Studio, advertising tools, parental controls, and related services.
         </p>
         <p>
           ViewTube is an independent platform and is not affiliated with, endorsed by, sponsored by,
-          or officially connected to Google LLC or YouTube. Any references to third-party platforms
-          are for descriptive purposes only.
+          or officially connected to Google LLC or YouTube. References to third-party platforms are
+          for descriptive purposes only.
         </p>
-      </section>
+      </PolicySection>
 
-      <section className="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">1. Information We Collect</h2>
+      <PolicySection title="1. Information We Collect">
         <p>
-          We collect information you provide directly, including account credentials, email address,
-          username, channel handle, profile details, uploaded videos, thumbnails, comments, and
-          support messages.
+          We collect information you provide directly, including your email address, username,
+          channel handle, profile details, avatars, banners, channel customization settings, support
+          requests, feedback messages, advertising submissions, playlist data, and account settings.
         </p>
         <p>
-          We also collect platform activity data, such as views, likes, subscriptions, moderation
-          outcomes, notifications, and interaction timestamps. Technical information such as IP
-          address, browser details, and device metadata may be logged for security, abuse prevention,
-          and reliability operations.
+          We collect content and activity you create or interact with, including uploaded videos,
+          shorts, thumbnails, titles, descriptions, tags, visibility settings, comments, replies,
+          likes, dislikes, subscriptions, playlists, watch-later saves, reports, live stream data,
+          chat messages, notifications, direct messages, message requests, and admin messages.
         </p>
-      </section>
+        <p>
+          We collect platform activity and technical data, including views, interaction timestamps,
+          streak activity, points activity, playable scores, playable progress, ad reward activity,
+          referral activity, moderation outcomes, upload metadata, approximate device/browser
+          information, IP-related security logs, and error/debug information needed to operate and
+          protect the platform.
+        </p>
+      </PolicySection>
 
-      <section className="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">2. How We Use Information</h2>
+      <PolicySection title="2. Videos, Visibility, and Public Content">
         <p>
-          We use collected data to provide and maintain the service, authenticate users, host and
-          deliver content, personalize feeds, detect spam or policy violations, and enforce account
-          safety controls including suspension workflows.
+          Content you publish publicly may be visible to users and visitors, including channel
+          profile information, public videos, public shorts, public playlists, comments, live chat
+          messages, and public engagement counts.
         </p>
         <p>
-          We may also use information for product improvements, analytics, debugging, legal
-          compliance, and internal business operations.
+          ViewTube supports public, unlisted, and private videos. Public videos may appear across
+          ViewTube, including search, channel pages, feeds, recommendations, movies sections, and
+          sitemap-style discovery. Unlisted videos are intended to be accessible to people with the
+          link but not listed in public discovery surfaces. Private videos are intended to be
+          available only to the owning account while signed in.
         </p>
-      </section>
+        <p>
+          No visibility setting is a substitute for careful sharing. If you share an unlisted link,
+          anyone with access to that link may be able to view it unless access controls change.
+        </p>
+      </PolicySection>
 
-      <section className="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">3. Public vs Private Information</h2>
+      <PolicySection title="3. Parent and Child Linked Accounts">
         <p>
-          Public channel information and published videos may be visible to other users and
-          visitors. Private account data such as authentication details and non-public contact
-          information are treated as restricted and are not intentionally exposed publicly.
+          ViewTube allows a child account and parent account to link using a QR code or a
+          short-lived one-time key. Link keys are generated by the child account, expire after a
+          limited time, and are used to confirm that the parent and child accounts should be
+          connected.
         </p>
-      </section>
-
-      <section className="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">4. Sharing and Processors</h2>
         <p>
-          We use third-party infrastructure vendors to operate ViewTube (for example hosting,
-          authentication, storage, and email services). These providers process data on our behalf
-          under contractual or operational controls required to run the platform.
+          When accounts are linked, we store the relationship between the parent account and child
+          account, parent-control settings, and channel blocks configured by the parent. These
+          settings may include whether the child account can post content, comment, access messages,
+          or view channels blocked by the parent.
+        </p>
+        <p>
+          A linked parent may see limited child-account information needed to manage those settings,
+          such as the child account name, handle, avatar, linked status, enabled controls, and
+          blocked-channel list. A linked child may see limited information about linked parent
+          accounts and current restrictions.
+        </p>
+      </PolicySection>
+
+      <PolicySection title="4. Messaging, Notifications, and Email">
+        <p>
+          ViewTube provides message threads, direct message requests, messages to admin, admin
+          broadcasts, and in-app notifications. We store message content, sender and recipient
+          identifiers, thread participation status, read timestamps, and related notification
+          metadata so messaging can work.
+        </p>
+        <p>
+          Admin messages may also trigger an email telling you that you have a new message from
+          ViewTube Admin. For privacy, those emails are intended to direct you back to ViewTube and
+          not include the full admin message body. Admins may choose to send this email even if the
+          recipient has been active recently.
+        </p>
+        <p>
+          If a linked parent disables messages for a child account, ViewTube may restrict the child
+          account from opening message pages, creating new message threads, accepting message
+          requests, or replying to existing message threads.
+        </p>
+      </PolicySection>
+
+      <PolicySection title="5. How We Use Information">
+        <p>
+          We use information to provide, secure, and improve ViewTube; authenticate accounts; host,
+          process, and deliver videos; manage channel pages; operate Studio; enable comments,
+          messaging, live streaming, playables, playlists, recommendations, streaks, and other
+          platform features.
+        </p>
+        <p>
+          We use information to enforce safety controls, including spam prevention, content
+          moderation, copyright-related upload checks, parental controls, channel blocking,
+          suspension workflows, contest or reward integrity, and administrative review.
+        </p>
+        <p>
+          We may also use information for analytics, debugging, reliability, fraud prevention, legal
+          compliance, support, communication, product development, and internal business operations.
+        </p>
+      </PolicySection>
+
+      <PolicySection title="6. Advertising, Rewards, and Sponsored Content">
+        <p>
+          ViewTube may display sponsored placements, custom banner ads, ad previews, ad campaign
+          submissions, and reward-related ad experiences. We may collect ad interaction information
+          such as impressions, clicks, completion status, campaign metadata, advertiser-submitted
+          assets, and reward redemption records.
+        </p>
+        <p>
+          When third-party ad providers are used, those providers may process technical information
+          such as device, browser, network, and ad-delivery data according to their own policies.
+          When ViewTube-hosted custom ads are used, we use the submitted banner, link, campaign
+          details, and interaction records to display and measure the ad.
+        </p>
+      </PolicySection>
+
+      <PolicySection title="7. Playables, Streaks, Points, and Rewards">
+        <p>
+          ViewTube playables may store game launches, presence, scores, high scores, level/progress
+          data, and reward eligibility. Streaks and points features may store daily activity,
+          qualifying actions, referral credits, ad reward redemptions, contest-related points, and
+          leaderboard data.
+        </p>
+        <p>
+          We use this information to show your progress, enforce reward limits, prevent abuse, and
+          operate platform features such as leaderboards, counters, and in-app celebrations.
+        </p>
+      </PolicySection>
+
+      <PolicySection title="8. Moderation, Safety, and Legal Protection">
+        <p>
+          ViewTube uses automated and manual safety processes. We may review uploads, thumbnails,
+          text, comments, live chat, reports, messages to admin, support requests, ad submissions,
+          and other platform activity to detect spam, abuse, illegal content, policy violations,
+          copyright concerns, security threats, or platform manipulation.
+        </p>
+        <p>
+          Moderation records may include reports, reviewed content, reviewer actions, account
+          restrictions, comment pauses, strikes, suspensions, takedowns, blocked channels, and
+          appeal/support communications. We retain these records as needed for trust and safety,
+          repeat-abuse prevention, dispute handling, and legal compliance.
+        </p>
+      </PolicySection>
+
+      <PolicySection title="9. Sharing and Service Providers">
+        <p>
+          We use third-party infrastructure and service providers to operate ViewTube, including
+          hosting, authentication, database, file storage, email delivery, analytics, payments or ad
+          review workflows, media processing, and security services. These providers process
+          information on our behalf or as necessary to provide their services.
+        </p>
+        <p>
+          We may disclose information when required by law, to protect ViewTube or others, to
+          investigate abuse or security issues, to enforce our Terms, or in connection with a
+          business transfer such as a merger, acquisition, financing, or asset sale.
         </p>
         <p>
           We do not sell personal information for direct monetary compensation.
         </p>
-      </section>
+      </PolicySection>
 
-      <section className="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">5. Content Moderation and Safety</h2>
+      <PolicySection title="10. Data Retention">
         <p>
-          ViewTube uses automated and manual moderation measures. Content that appears to violate
-          policy may be removed, and accounts may receive strikes or suspension actions. Moderation
-          records may be retained for trust and safety enforcement and legal requirements.
+          We retain information for as long as reasonably necessary to provide ViewTube, maintain
+          account records, operate features, comply with legal obligations, resolve disputes,
+          enforce rules, prevent abuse, and protect platform integrity.
         </p>
-      </section>
-
-      <section className="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">6. Data Retention</h2>
         <p>
-          We retain data for as long as reasonably necessary to provide services, enforce platform
-          rules, resolve disputes, comply with legal obligations, and protect platform integrity.
-          Retention periods may vary by data type and legal context.
+          Some information may be deleted or hidden from public view before it is removed from
+          backups, logs, moderation records, or legal-preservation systems. Retention periods vary
+          depending on the data type, account status, safety needs, and legal context.
         </p>
-      </section>
+      </PolicySection>
 
-      <section className="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">7. Security</h2>
+      <PolicySection title="11. Security">
         <p>
-          We apply reasonable administrative, technical, and organizational safeguards designed to
-          protect data. No security method is perfect, and we cannot guarantee absolute security.
+          We use reasonable administrative, technical, and organizational safeguards designed to
+          protect information. However, no online service, storage system, or transmission method is
+          perfectly secure, and we cannot guarantee absolute security.
         </p>
-      </section>
+      </PolicySection>
 
-      <section className="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">8. Your Rights and Choices</h2>
+      <PolicySection title="12. Your Choices and Rights">
         <p>
-          Depending on your location, you may have rights to access, correct, or delete certain
-          personal information, or to request restrictions on processing. You may also manage some
-          account information directly through your profile settings.
+          You can manage some information directly in ViewTube, including profile details, channel
+          settings, video visibility, playlist settings, message participation, and certain Studio
+          preferences. Parents and children may manage linked-account settings from the linked
+          accounts area.
         </p>
-      </section>
+        <p>
+          Depending on your location, you may have rights to access, correct, delete, export, or
+          restrict certain personal information, or object to certain processing. To make a privacy
+          request, contact us using the email below.
+        </p>
+      </PolicySection>
 
-      <section className="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">9. Children</h2>
+      <PolicySection title="13. Children and Teens">
         <p>
           ViewTube is not intended for children under the age required by applicable law in your
           jurisdiction. If we learn that prohibited child data has been collected, we may remove it
           and take account action.
         </p>
-      </section>
-
-      <section className="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">10. Policy Updates</h2>
         <p>
-          We may update this policy to reflect legal, technical, or product changes. Continued use
-          of ViewTube after updates may constitute acceptance of the revised policy.
+          Linked parent/child account tools are intended to help families manage safety settings for
+          accounts that are allowed to use ViewTube. These tools do not replace a parent or
+          guardian’s responsibility to supervise online activity.
         </p>
-      </section>
+      </PolicySection>
 
-      <section className="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">11. Contact</h2>
+      <PolicySection title="14. International Users">
+        <p>
+          ViewTube may be operated from the United States and may use service providers in different
+          locations. By using ViewTube, you understand that information may be processed in countries
+          with data protection laws that differ from those in your location.
+        </p>
+      </PolicySection>
+
+      <PolicySection title="15. Policy Updates">
+        <p>
+          We may update this Privacy Policy to reflect legal, technical, operational, or product
+          changes. If we make material changes, we may provide notice through ViewTube or another
+          reasonable method. Continued use of ViewTube after updates means you accept the revised
+          policy to the extent permitted by law.
+        </p>
+      </PolicySection>
+
+      <PolicySection title="16. Contact">
         <p>
           For privacy requests or questions, contact {supportEmail}.
         </p>
-      </section>
+      </PolicySection>
     </main>
+  );
+}
+
+function PolicySection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+      <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{title}</h2>
+      {children}
+    </section>
   );
 }

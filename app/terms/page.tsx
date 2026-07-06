@@ -1,3 +1,11 @@
+export const metadata = {
+  title: 'Terms and Conditions',
+  description: 'Review the rules and terms that apply when using ViewTube accounts, uploads, channels, ads, and creator tools.',
+  alternates: {
+    canonical: '/terms',
+  },
+};
+
 export default function TermsPage() {
   const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@viewtube.tv';
   return (

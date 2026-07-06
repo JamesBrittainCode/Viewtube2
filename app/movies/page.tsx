@@ -5,7 +5,15 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Movies' };
+export const metadata = {
+  title: 'Movies',
+  description: 'Watch trailers and film uploads from the official ViewTube business channel.',
+  alternates: { canonical: '/movies' },
+  openGraph: {
+    title: 'ViewTube Movies',
+    description: 'Watch trailers and film uploads from the official ViewTube business channel.',
+  },
+};
 
 const MOVIES_ACCOUNT_EMAIL = 'business@heyrivo.com';
 

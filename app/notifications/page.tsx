@@ -5,6 +5,16 @@ import { formatDistanceToNow } from 'date-fns';
 import { unwrapRelation } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
 
+export const metadata = {
+  title: 'Notifications',
+  description: 'View your ViewTube notifications.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
+
 export default async function NotificationsPage() {
   const supabase = await createClient();
   const {

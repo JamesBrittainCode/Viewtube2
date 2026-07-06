@@ -2,7 +2,11 @@ import { getTrendingVideos } from '@/lib/data';
 import { VideoGrid } from '@/components/video-grid';
 
 export const runtime = 'edge';
-export const metadata = { title: 'Trending' };
+export const metadata = {
+  title: 'Trending Videos',
+  description: 'Discover trending videos on ViewTube.',
+  alternates: { canonical: '/trending' },
+};
 
 export default async function TrendingPage() {
   const videos = await getTrendingVideos();

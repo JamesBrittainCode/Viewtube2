@@ -6,6 +6,14 @@ import { displayHandle } from '@/lib/handle';
 
 export const runtime = 'edge';
 
+export const metadata = {
+  title: 'Live Streams',
+  description: 'Watch live creators and real-time broadcasts on ViewTube.',
+  alternates: {
+    canonical: '/live',
+  },
+};
+
 export default async function LiveDirectoryPage() {
   const supabase = await createClient();
   const { data } = await supabase

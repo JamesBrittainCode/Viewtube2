@@ -4,7 +4,13 @@ import { createClient } from '@/lib/supabase/server';
 import { SupportForm } from '@/components/support-form';
 
 export const metadata = {
-  title: 'Support | ViewTube',
+  title: 'Support',
+  description: 'Contact ViewTube support and send a message to the admin team.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
 };
 
 export default async function SupportPage() {
@@ -38,4 +44,3 @@ export default async function SupportPage() {
     </div>
   );
 }
-

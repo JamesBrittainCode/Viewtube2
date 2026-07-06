@@ -11,6 +11,16 @@ import { displayHandle } from '@/lib/handle';
 
 export const runtime = 'edge';
 
+export const metadata = {
+  title: 'ViewTube Streak',
+  description: 'Track your ViewTube streak, points, and leaderboard progress.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
+
 type Row = {
   user_id: string;
   current_streak: number;

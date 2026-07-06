@@ -10,6 +10,14 @@ import { TopStreamerBadge } from '@/components/top-streamer-badge';
 import { displayHandle } from '@/lib/handle';
 
 export const runtime = 'edge';
+export const metadata = {
+  title: 'Search',
+  description: 'Search ViewTube videos, shorts, trailers, and creator channels.',
+  robots: {
+    index: false,
+    follow: true,
+  },
+};
 
 export default async function SearchPage({
   searchParams,

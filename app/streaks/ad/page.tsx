@@ -5,6 +5,16 @@ import { AdRewardWatch } from '@/components/ad-reward-watch';
 
 export const runtime = 'edge';
 
+export const metadata = {
+  title: 'Watch ad for points',
+  description: 'Earn ViewTube points by watching an eligible ad.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
+
 export default async function StreakAdRewardPage() {
   const supabase = await createClient();
   const {

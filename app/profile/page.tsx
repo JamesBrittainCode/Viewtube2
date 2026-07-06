@@ -5,6 +5,16 @@ import { BannerUpload } from '@/components/banner-upload';
 import { ProfileEditor } from '@/components/profile-editor';
 import { createClient } from '@/lib/supabase/server';
 
+export const metadata = {
+  title: 'Profile settings',
+  description: 'Manage your ViewTube profile settings.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
+
 export default async function ProfilePage() {
   const supabase = await createClient();
   const {

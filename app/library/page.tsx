@@ -3,6 +3,16 @@ import { redirect } from 'next/navigation';
 import { VideoGrid } from '@/components/video-grid';
 import { createClient } from '@/lib/supabase/server';
 
+export const metadata = {
+  title: 'Library',
+  description: 'Manage your ViewTube videos, playlists, and saved content.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
+
 export default async function LibraryPage() {
   const supabase = await createClient();
   const {

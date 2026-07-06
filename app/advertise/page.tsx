@@ -6,6 +6,11 @@ import { createClient } from '@/lib/supabase/server';
 export const metadata = {
   title: 'Advertise on ViewTube',
   description: 'Launch a professionally reviewed ad campaign on ViewTube.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
 };
 
 export default async function AdvertisePage() {

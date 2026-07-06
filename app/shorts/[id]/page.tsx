@@ -1,11 +1,55 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createPublicClient } from '@/lib/supabase/public';
 import { ShortsFeed } from '@/components/shorts-feed';
 import { createClient } from '@/lib/supabase/server';
 import { isChannelBlockedForViewer } from '@/lib/family-controls';
 import { isAdminEmail } from '@/lib/admin';
+import { absoluteUrl, truncateDescription } from '@/lib/seo';
 
 export const runtime = 'edge';
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = createPublicClient();
+  const { data: short } = await supabase
+    .from('videos')
+    .select('id,title,description,thumbnail_url,is_short,visibility,is_removed')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!short || !short.is_short || short.visibility !== 'public' || short.is_removed) {
+    return {
+      title: 'Short not found',
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const title = short.title || 'ViewTube Short';
+  const description = truncateDescription(short.description, 'Watch this short on ViewTube.');
+  const image = absoluteUrl(short.thumbnail_url || '/thumbnail-placeholder.svg');
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `/shorts/${short.id}`,
+    },
+    openGraph: {
+      title,
+      description,
+      url: absoluteUrl(`/shorts/${short.id}`),
+      images: [image],
+      type: 'video.other',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [image],
+    },
+  };
+}
 
 export default async function ShortPermalinkPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

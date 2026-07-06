@@ -4,6 +4,16 @@ import { VideoGrid } from '@/components/video-grid';
 
 export const runtime = 'edge';
 
+export const metadata = {
+  title: 'Watch later',
+  description: 'Your private ViewTube Watch later playlist.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
+
 export default async function WatchLaterPage() {
   const supabase = await createClient();
   const {

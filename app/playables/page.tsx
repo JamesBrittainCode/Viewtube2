@@ -3,6 +3,14 @@ import { PlayablesArcade } from '@/components/playables/playables-arcade';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
+export const metadata = {
+  title: 'Playables',
+  description: 'Play small games on ViewTube and keep track of your scores.',
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 const builtInGames = [
   {

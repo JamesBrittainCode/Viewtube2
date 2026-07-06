@@ -5,6 +5,14 @@ import { isAdminEmail } from '@/lib/admin';
 
 export const runtime = 'edge';
 
+export const metadata = {
+  title: 'Shorts',
+  description: 'Watch short-form videos from creators on ViewTube.',
+  alternates: {
+    canonical: '/shorts',
+  },
+};
+
 export default async function ShortsPage() {
   const { videos } = await getShortsVideos(1);
   const supabase = await createClient();

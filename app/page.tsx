@@ -1,8 +1,14 @@
 import { getHomeVideos, getPersonalizedHomeVideos, getShortsVideos } from '@/lib/data';
 import { HomeFeed } from '@/components/home-feed';
 import { createClient } from '@/lib/supabase/server';
+import { siteDescription } from '@/lib/seo';
 
 export const runtime = 'edge';
+export const metadata = {
+  title: 'Watch Videos, Shorts, Live Streams, and Trailers',
+  description: siteDescription,
+  alternates: { canonical: '/' },
+};
 
 export default async function Home({
   searchParams,

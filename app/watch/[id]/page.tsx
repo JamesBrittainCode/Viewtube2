@@ -22,6 +22,7 @@ import { ReportVideoButton } from '@/components/report-video-button';
 import { AdminVideoTakedownButton } from '@/components/admin-video-takedown-button';
 import { SaveToPlaylistsButton } from '@/components/save-to-playlists-button';
 import { WatchCompanionAd } from '@/components/ads/watch-companion-ad';
+import { absoluteUrl, getSiteUrl, truncateDescription } from '@/lib/seo';
 
 export const runtime = 'edge';
 
@@ -30,9 +31,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const video = await getVideoById(id);
   if (!video) return { title: 'Video not found' };
 
-  const description = (video.description || '').trim().slice(0, 160) || 'Watch this video on ViewTube.';
-  const image = video.thumbnail_url || '/thumbnail-placeholder.svg';
+  const description = truncateDescription(video.description, 'Watch this video on ViewTube.');
+  const image = absoluteUrl(video.thumbnail_url || '/thumbnail-placeholder.svg');
   const title = video.title || 'ViewTube';
+  const url = absoluteUrl(`/watch/${video.id}`);
 
   return {
     title,
@@ -43,6 +45,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     openGraph: {
       title,
       description,
+      url,
       images: [image],
       type: 'video.other',
     },
@@ -154,7 +157,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
   const channelName = channelProfile?.username || 'unknown';
   const channelHref = channelProfile?.handle ? `/channel/${channelProfile.handle}` : '/';
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const siteUrl = getSiteUrl();
 
   return (
     <div
@@ -169,9 +172,10 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
               '@context': 'https://schema.org',
               '@type': 'VideoObject',
               name: video.title,
-              description: (video.description || '').trim() || 'Watch this video on ViewTube.',
-              thumbnailUrl: [video.thumbnail_url || `${siteUrl}/thumbnail-placeholder.svg`],
+              description: truncateDescription(video.description, 'Watch this video on ViewTube.'),
+              thumbnailUrl: [absoluteUrl(video.thumbnail_url || '/thumbnail-placeholder.svg')],
               uploadDate: video.created_at,
+              url: `${siteUrl}/watch/${video.id}`,
               contentUrl: video.video_url,
               author: {
                 '@type': 'Person',

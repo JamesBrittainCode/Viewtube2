@@ -3,6 +3,16 @@ import { redirect } from 'next/navigation';
 import { AdvertiserPortal } from '@/components/advertiser-portal';
 import { createClient } from '@/lib/supabase/server';
 
+export const metadata = {
+  title: 'Advertiser Portal',
+  description: 'Manage your ViewTube ad campaign submissions.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
+
 export default async function AdvertiserPortalPage({
   searchParams,
 }: {

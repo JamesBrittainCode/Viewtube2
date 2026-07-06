@@ -5,6 +5,16 @@ import { PlaylistCard, type PlaylistCardData } from '@/components/playlist-card'
 
 export const runtime = 'edge';
 
+export const metadata = {
+  title: 'Your Playlists',
+  description: 'Manage your ViewTube playlists and Watch later videos.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
+
 type PlaylistRow = {
   id: string;
   title: string;

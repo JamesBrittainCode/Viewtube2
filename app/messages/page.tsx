@@ -3,6 +3,16 @@ import { MessagesInbox } from '@/components/messages/messages-inbox';
 import { checkFamilyPermission } from '@/lib/family-controls';
 import { createClient } from '@/lib/supabase/server';
 
+export const metadata = {
+  title: 'Messages',
+  description: 'Read and send ViewTube messages.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
+
 export default async function MessagesPage() {
   const supabase = await createClient();
   const {

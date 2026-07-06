@@ -4,6 +4,16 @@ import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'edge';
 
+export const metadata = {
+  title: 'Playable Game',
+  description: 'Play a ViewTube playable game.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
+
 const builtInGames = {
   tetris: {
     title: 'Tetris',

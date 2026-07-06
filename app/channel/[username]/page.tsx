@@ -13,6 +13,7 @@ import { ShortsShelf } from '@/components/shorts-shelf';
 import { PlaylistCard, type PlaylistCardData } from '@/components/playlist-card';
 import { formatCompactCount } from '@/lib/number';
 import { isChannelBlockedForViewer } from '@/lib/family-controls';
+import { absoluteUrl, truncateDescription } from '@/lib/seo';
 import { createPublicClient } from '@/lib/supabase/public';
 import { createClient } from '@/lib/supabase/server';
 
@@ -31,10 +32,9 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   if (!channel) return { title: 'Channel not found' };
 
   const title = `${channel.username} (${channel.handle})`;
-  const description =
-    (channel.bio || '').trim() ||
-    `Watch videos from ${channel.username} on ViewTube.`;
-  const image = channel.avatar_url || '/avatar-placeholder.svg';
+  const description = truncateDescription(channel.bio, `Watch videos from ${channel.username} on ViewTube.`);
+  const image = absoluteUrl(channel.avatar_url || '/avatar-placeholder.svg');
+  const url = absoluteUrl(`/channel/${channel.handle}`);
 
   return {
     title,
@@ -45,6 +45,7 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
     openGraph: {
       title,
       description,
+      url,
       images: [image],
       type: 'profile',
     },

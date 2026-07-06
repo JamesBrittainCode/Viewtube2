@@ -1,8 +1,50 @@
+import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import { VideoGrid } from '@/components/video-grid';
+import { absoluteUrl, truncateDescription } from '@/lib/seo';
 
 export const runtime = 'edge';
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = createPublicClient();
+  const { data: playlist } = await supabase
+    .from('playlists')
+    .select('id,title,description,is_public,is_watch_later')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!playlist || !playlist.is_public || playlist.is_watch_later) {
+    return {
+      title: 'Playlist not found',
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const title = `${playlist.title} playlist`;
+  const description = truncateDescription(playlist.description, `Watch the ${playlist.title} playlist on ViewTube.`);
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `/playlists/${playlist.id}`,
+    },
+    openGraph: {
+      title,
+      description,
+      url: absoluteUrl(`/playlists/${playlist.id}`),
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
+    },
+  };
+}
 
 export default async function PlaylistPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

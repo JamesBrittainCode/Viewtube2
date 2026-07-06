@@ -7,31 +7,66 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { ViewTubeIntro } from '@/components/viewtube-intro';
 import { JsonLd } from '@/components/json-ld';
 import { Analytics } from '@vercel/analytics/next';
+import { absoluteUrl, getSiteUrl, siteDescription, siteName } from '@/lib/seo';
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  metadataBase: new URL(getSiteUrl()),
+  applicationName: siteName,
+  generator: 'Next.js',
   title: {
-    default: 'ViewTube',
-    template: '%s - ViewTube',
+    default: 'ViewTube - Watch Videos, Shorts, Live Streams, and Trailers',
+    template: `%s - ${siteName}`,
   },
-  description: 'Watch, upload, and share videos on ViewTube.',
+  description: siteDescription,
+  keywords: [
+    'ViewTube',
+    'videos',
+    'shorts',
+    'live streams',
+    'trailers',
+    'movies',
+    'creator channels',
+    'playlists',
+  ],
+  authors: [{ name: 'ViewTube' }],
+  creator: 'ViewTube',
+  publisher: 'ViewTube',
+  category: 'video',
+  alternates: {
+    canonical: '/',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   openGraph: {
     type: 'website',
-    siteName: 'ViewTube',
+    siteName,
+    url: '/',
     title: 'ViewTube',
-    description: 'Watch, upload, and share videos on ViewTube.',
-    images: ['/thumbnail-placeholder.svg'],
+    description: siteDescription,
+    images: [{ url: '/thumbnail-placeholder.svg', alt: 'ViewTube' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'ViewTube',
-    description: 'Watch, upload, and share videos on ViewTube.',
+    description: siteDescription,
     images: ['/thumbnail-placeholder.svg'],
+  },
+  icons: {
+    icon: '/icon.svg',
   },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const siteUrl = getSiteUrl();
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
@@ -41,8 +76,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             data={{
               '@context': 'https://schema.org',
               '@type': 'WebSite',
-              name: 'ViewTube',
+              name: siteName,
               url: siteUrl,
+              description: siteDescription,
+              publisher: {
+                '@type': 'Organization',
+                name: siteName,
+                url: siteUrl,
+                logo: absoluteUrl('/icon.svg'),
+              },
               potentialAction: {
                 '@type': 'SearchAction',
                 target: `${siteUrl}/search?q={search_term_string}`,
