@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { isAdminEmail } from '@/lib/admin';
+import { moderateVideoMetadata } from '@/lib/moderation';
 
 export const runtime = 'edge';
 
@@ -21,6 +23,7 @@ export async function PATCH(
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const isAdmin = isAdminEmail(user.email);
 
   const body = (await request.json()) as {
     title?: string;
@@ -56,6 +59,20 @@ export async function PATCH(
 
   if (video.user_id !== user.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const moderation = isAdmin
+    ? { flagged: false as const }
+    : moderateVideoMetadata({ title, description });
+  if (moderation.flagged) {
+    return NextResponse.json(
+      {
+        error: `Video details blocked by moderation: ${moderation.reason}`,
+        code: 'video_metadata_blocked',
+        category: moderation.category,
+      },
+      { status: 400 },
+    );
   }
 
   const updates: {

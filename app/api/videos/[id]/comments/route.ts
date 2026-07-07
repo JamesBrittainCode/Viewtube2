@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { checkFamilyPermission } from '@/lib/family-controls';
 import { recordViewtubeActivity } from '@/lib/streaks';
 import { checkContestActivityGate, normalizeContestText } from '@/lib/contest-abuse';
+import { moderateCommentText } from '@/lib/moderation';
 
 export const runtime = 'edge';
 
@@ -108,6 +109,23 @@ export async function POST(
 
   if (!content) {
     return NextResponse.json({ error: 'Comment is required' }, { status: 400 });
+  }
+  if (content.length > 2000) {
+    return NextResponse.json({ error: 'Comments can be up to 2,000 characters.' }, { status: 400 });
+  }
+
+  const moderation = moderateCommentText(content);
+  const canBypassTextModeration =
+    Boolean(me?.can_moderate) || (moderation.flagged ? await canModerateUser(supabase, { id: user.id, email: user.email }) : false);
+  if (moderation.flagged && !canBypassTextModeration) {
+    return NextResponse.json(
+      {
+        error: `Comment blocked by moderation: ${moderation.reason}`,
+        code: 'comment_blocked',
+        category: moderation.category,
+      },
+      { status: 400 },
+    );
   }
 
   // Balanced anti-spam: catches bursts and repeated text, while leaving normal conversation alone.

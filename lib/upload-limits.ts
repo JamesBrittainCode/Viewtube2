@@ -1,4 +1,4 @@
-export const MAX_UPLOAD_BYTES = 1024 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024 * 1024;
 
 export function formatUploadBytes(bytes: number) {
   if (bytes >= 1024 * 1024 * 1024) {
