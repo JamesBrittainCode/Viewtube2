@@ -21,6 +21,7 @@ type Props = {
     visibility?: 'public' | 'unlisted' | 'private' | null;
     views: number;
     created_at: string;
+    feed_reason?: string | null;
     profiles?:
       | {
           id?: string;
@@ -103,6 +104,11 @@ export function VideoCard({ video, signedIn = false }: Props & { signedIn?: bool
         />
 
         <div className="min-w-0 flex-1">
+          {video.feed_reason ? (
+            <div className="mb-1 inline-flex rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-semibold text-red-500 dark:bg-red-500/15 dark:text-red-300">
+              {video.feed_reason}
+            </div>
+          ) : null}
           <Link href={videoHref} className="line-clamp-2 text-sm font-semibold">
             {video.title}
           </Link>

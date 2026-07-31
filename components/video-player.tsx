@@ -154,27 +154,11 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
   }, [id, videoUrl]);
 
   useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      const target = event.target as HTMLElement | null;
-      const targetTag = target?.tagName?.toLowerCase();
-      if (targetTag === 'input' || targetTag === 'textarea' || target?.isContentEditable) return;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-
-      if (event.key.toLowerCase() === 't') {
-        event.preventDefault();
-        setIsTheater((value) => !value);
-        setControlsVisible(true);
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  useEffect(() => {
+    document.documentElement.dataset.vtTheater = isTheater ? 'true' : 'false';
     window.dispatchEvent(new CustomEvent('vt-theater-mode-change', { detail: { active: isTheater } }));
     return () => {
       if (isTheater) {
+        document.documentElement.dataset.vtTheater = 'false';
         window.dispatchEvent(new CustomEvent('vt-theater-mode-change', { detail: { active: false } }));
       }
     };
@@ -384,6 +368,62 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
     }
   }
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const targetTag = target?.tagName?.toLowerCase();
+      if (targetTag === 'input' || targetTag === 'textarea' || target?.isContentEditable) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      const key = event.key.toLowerCase();
+      if (key === 't') {
+        event.preventDefault();
+        setIsTheater((value) => !value);
+        setControlsVisible(true);
+        return;
+      }
+      if (key === ' ' || key === 'k') {
+        event.preventDefault();
+        void onPlayPause();
+        setControlsVisible(true);
+        return;
+      }
+      if (key === 'm') {
+        event.preventDefault();
+        setIsMuted((value) => !value);
+        setControlsVisible(true);
+        return;
+      }
+      if (key === 'f') {
+        event.preventDefault();
+        void toggleFullscreen();
+        setControlsVisible(true);
+        return;
+      }
+      if (key === 'c') {
+        event.preventDefault();
+        setCaptionsEnabled((value) => !value);
+        setControlsVisible(true);
+        return;
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        onSeek(currentTime + 5);
+        setControlsVisible(true);
+        return;
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        onSeek(currentTime - 5);
+        setControlsVisible(true);
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTime, duration, mode, isPlaying, mainPlaybackStarted, adChecked, adCountdown]);
+
   return (
     <div
       className={
@@ -512,6 +552,17 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
           </div>
         )}
 
+        {!isPlaying && !isVideoLoading ? (
+          <button
+            type="button"
+            onClick={() => void onPlayPause()}
+            className="absolute left-1/2 top-1/2 z-20 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/65 text-white shadow-2xl ring-1 ring-white/20 transition hover:scale-105 hover:bg-black/80"
+            aria-label="Play video"
+          >
+            <Play className="ml-1 h-8 w-8 fill-current" />
+          </button>
+        ) : null}
+
         {mode === 'ad' && (
           <div className="absolute left-3 top-3 rounded bg-black/70 px-2 py-1 text-xs font-semibold text-yellow-300">
             Ad
@@ -579,7 +630,7 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
           }`}
         />
 
-        <div className="flex items-center justify-between text-xs text-zinc-300">
+        <div className="flex items-center justify-between gap-3 text-xs text-zinc-300">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -635,9 +686,16 @@ export function VideoPlayer({ id, videoUrl, captionSource, collapseSidebarOnPlay
               </svg>
             </button>
           </div>
-          <p>
+          <p className="shrink-0">
             {formatTime(currentTime)} / {formatTime(duration)}
           </p>
+        </div>
+        <div className="hidden items-center justify-between border-t border-white/10 pt-1 text-[10px] font-medium text-zinc-500 sm:flex">
+          <span>K/Space play</span>
+          <span>←/→ seek 5s</span>
+          <span>M mute</span>
+          <span>T theater</span>
+          <span>F fullscreen</span>
         </div>
       </div>
       </div>

@@ -64,6 +64,25 @@ export function HomeFeed({
 
   return (
     <section>
+      {signedIn ? (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white/80 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/80">
+          <div>
+            <p className="text-sm font-semibold text-zinc-900 dark:text-white">For You is learning what you like</p>
+            <p className="text-xs text-zinc-500">
+              Watch, like, comment, and subscribe to tune your home feed in real time.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs font-semibold">
+            <span className="rounded-full bg-red-500/10 px-3 py-1 text-red-500 dark:bg-red-500/15 dark:text-red-300">Subscriptions</span>
+            <span className="rounded-full bg-zinc-100 px-3 py-1 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">Watch signals</span>
+            <span className="rounded-full bg-zinc-100 px-3 py-1 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">Trending</span>
+          </div>
+        </div>
+      ) : (
+        <div className="mb-5 rounded-2xl border border-zinc-200 bg-white/80 p-4 text-sm text-zinc-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/80 dark:text-zinc-300">
+          Sign in to unlock a personalized For You feed based on what you watch and creators you follow.
+        </div>
+      )}
       <HomeAdSlot fallbackAd={homeBannerAd} videos={videos.slice(0, 8)} signedIn={signedIn} />
 
       <ShortsShelf shorts={initialShorts as never[]} />

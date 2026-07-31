@@ -63,12 +63,14 @@ function scoreVideoForUser(
     subscribedCreatorIds: Set<string>;
     tagWeights: Map<string, number>;
     interactedVideoIds: Set<string>;
+    watchedVideoIds: Set<string>;
   },
 ) {
   let score = 0;
 
-  if (context.subscribedCreatorIds.has(video.user_id)) score += 80;
-  if (context.interactedVideoIds.has(video.id)) score -= 15;
+  if (context.subscribedCreatorIds.has(video.user_id)) score += 95;
+  if (context.watchedVideoIds.has(video.id)) score -= 35;
+  if (context.interactedVideoIds.has(video.id)) score -= 18;
 
   for (const tag of video.tags || []) {
     score += (context.tagWeights.get(tag) || 0) * 6;
@@ -78,10 +80,26 @@ function scoreVideoForUser(
     0,
     (Date.now() - new Date(video.created_at).getTime()) / (1000 * 60 * 60 * 24),
   );
-  score += Math.max(0, 20 - ageDays * 0.8);
-  score += Math.log10((video.views || 0) + 1) * 4;
+  score += Math.max(0, 28 - ageDays * 1.1);
+  score += Math.log10((video.views || 0) + 1) * 5;
 
   return score;
+}
+
+function personalizeVideoReason(
+  video: { user_id: string; tags?: string[] | null; views?: number },
+  context: {
+    subscribedCreatorIds: Set<string>;
+    tagWeights: Map<string, number>;
+  },
+) {
+  if (context.subscribedCreatorIds.has(video.user_id)) return 'From your subscriptions';
+  const matchedTag = (video.tags || [])
+    .map((tag) => ({ tag, weight: context.tagWeights.get(tag) || 0 }))
+    .sort((a, b) => b.weight - a.weight)[0];
+  if (matchedTag?.weight) return `Because you watch ${matchedTag.tag}`;
+  if ((video.views || 0) >= 100) return 'Trending on ViewTube';
+  return 'Fresh pick for you';
 }
 
 export async function getPersonalizedHomeVideos(page: number, userId: string) {
@@ -89,22 +107,31 @@ export async function getPersonalizedHomeVideos(page: number, userId: string) {
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const [subsRes, likesRes, commentsRes] = await Promise.all([
+  const [subsRes, likesRes, commentsRes, watchSignalsRes] = await Promise.all([
     supabase.from('subscriptions').select('creator_id').eq('subscriber_id', userId).limit(250),
     supabase.from('likes').select('video_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(120),
     supabase.from('comments').select('video_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(120),
+    supabase
+      .from('viewtube_activity_awards')
+      .select('target_id,created_at')
+      .eq('user_id', userId)
+      .eq('activity_type', 'watch_signal')
+      .order('created_at', { ascending: false })
+      .limit(180),
   ]);
 
   const subscriptions = subsRes.data || [];
   const likes = likesRes.data || [];
   const comments = commentsRes.data || [];
+  const watchSignals = watchSignalsRes.data || [];
 
   const subscribedCreatorIds = new Set(subscriptions.map((row) => row.creator_id));
   const likedVideoIds = likes.map((row) => row.video_id);
   const commentedVideoIds = comments.map((row) => row.video_id);
+  const watchedVideoIds = watchSignals.map((row) => row.target_id);
   const interactedVideoIds = new Set([...likedVideoIds, ...commentedVideoIds]);
 
-  const activityVideoIds = Array.from(interactedVideoIds).slice(0, 200);
+  const activityVideoIds = Array.from(new Set([...likedVideoIds, ...commentedVideoIds, ...watchedVideoIds])).slice(0, 240);
   let tagWeights = new Map<string, number>();
 
   if (activityVideoIds.length) {
@@ -116,7 +143,7 @@ export async function getPersonalizedHomeVideos(page: number, userId: string) {
         .eq('visibility', 'public')
         .limit(200);
 
-    const rankedIds = [...likedVideoIds, ...commentedVideoIds];
+    const rankedIds = [...likedVideoIds, ...commentedVideoIds, ...watchedVideoIds];
     const recencyRank = new Map<string, number>();
     rankedIds.forEach((id, index) => {
       if (!recencyRank.has(id)) recencyRank.set(id, index);
@@ -125,7 +152,8 @@ export async function getPersonalizedHomeVideos(page: number, userId: string) {
     tagWeights = new Map<string, number>();
     for (const item of activityVideos || []) {
       const rank = recencyRank.get(item.id) ?? 999;
-      const rankWeight = Math.max(1, 12 - Math.floor(rank / 10));
+      const interactionBoost = interactedVideoIds.has(item.id) ? 4 : 0;
+      const rankWeight = Math.max(1, 12 - Math.floor(rank / 10)) + interactionBoost;
       for (const tag of item.tags || []) {
         tagWeights.set(tag, (tagWeights.get(tag) || 0) + rankWeight);
       }
@@ -188,13 +216,17 @@ export async function getPersonalizedHomeVideos(page: number, userId: string) {
   }
 
   const ranked = Array.from(deduped.values()).sort((a, b) => {
-    const scoreA = scoreVideoForUser(a, { subscribedCreatorIds, tagWeights, interactedVideoIds });
-    const scoreB = scoreVideoForUser(b, { subscribedCreatorIds, tagWeights, interactedVideoIds });
+    const watchedSet = new Set(watchedVideoIds);
+    const scoreA = scoreVideoForUser(a, { subscribedCreatorIds, tagWeights, interactedVideoIds, watchedVideoIds: watchedSet });
+    const scoreB = scoreVideoForUser(b, { subscribedCreatorIds, tagWeights, interactedVideoIds, watchedVideoIds: watchedSet });
     return scoreB - scoreA;
   });
 
   return {
-    videos: ranked.slice(from, to + 1),
+    videos: ranked.slice(from, to + 1).map((video) => ({
+      ...video,
+      feed_reason: personalizeVideoReason(video, { subscribedCreatorIds, tagWeights }),
+    })),
     hasMore: ranked.length > page * PAGE_SIZE,
   };
 }
@@ -216,17 +248,17 @@ export async function getVideoById(id: string) {
 export async function getRecommendations(videoId: string, tags: string[]) {
   const supabase = createPublicClient();
 
-  if (!tags.length) return [];
+  const query = supabase
+      .from('videos')
+      .select(baseVideoSelect)
+      .neq('id', videoId)
+      .eq('is_removed', false)
+      .eq('visibility', 'public')
+      .eq('is_short', false);
 
-  const { data, error } = await supabase
-    .from('videos')
-    .select(baseVideoSelect)
-    .neq('id', videoId)
-    .eq('is_removed', false)
-    .eq('visibility', 'public')
-    .overlaps('tags', tags)
-    .order('views', { ascending: false })
-    .limit(10);
+  const { data, error } = tags.length
+    ? await query.overlaps('tags', tags).order('views', { ascending: false }).limit(12)
+    : await query.order('views', { ascending: false }).limit(12);
 
   if (error) throw error;
   return data ?? [];

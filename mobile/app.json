@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "ViewTube",
+    "slug": "viewtube",
+    "scheme": "viewtube",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "tv.viewtube.app",
+      "infoPlist": {
+        "NSUserNotificationUsageDescription": "ViewTube sends notifications for subscribers, comments, messages, and admin updates."
+      }
+    },
+    "plugins": [
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "replace-with-your-eas-project-id"
+      }
+    }
+  }
+}

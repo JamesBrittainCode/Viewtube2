@@ -4,10 +4,15 @@
 
 html[data-vt-theater='true'] [data-watch-grid='true'] {
   display: block;
+  width: 100%;
 }
 
 html[data-vt-theater='true'] [data-watch-recommendations='true'] {
   display: none;
+}
+
+html[data-vt-theater='true'] main {
+  max-width: none;
 }
 
 @keyframes playablesLoad {

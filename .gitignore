@@ -10,3 +10,8 @@ pnpm-debug.log*
 .vercel
 public/ffmpeg
 tsconfig.tsbuildinfo
+mobile/node_modules
+mobile/.expo
+mobile/dist
+mobile/ios
+mobile/android

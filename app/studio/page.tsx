@@ -3,9 +3,9 @@ import { redirect } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { createClient } from '@/lib/supabase/server';
 import { formatCompactCount } from '@/lib/number';
-import { displayHandle } from '@/lib/handle';
 import { buildMonthlySeries } from '@/lib/studio-analytics';
 import { StudioChart } from '@/components/studio-chart';
+import { StudioLiveDashboard } from '@/components/studio-live-dashboard';
 
 export default async function StudioPage() {
   const supabase = await createClient();
@@ -17,7 +17,7 @@ export default async function StudioPage() {
 
   const [profileRes, videosRes, latestVideoRes, topVideosRes] = await Promise.all([
     supabase.from('profiles').select('username,handle,subscribers_count').eq('id', user.id).single(),
-    supabase.from('videos').select('id,views,created_at,title,thumbnail_url').eq('user_id', user.id),
+    supabase.from('videos').select('id,views,created_at,title,thumbnail_url,is_short,visibility').eq('user_id', user.id).eq('is_removed', false),
     supabase
       .from('videos')
       .select('id,title,thumbnail_url,views,created_at')
@@ -27,7 +27,7 @@ export default async function StudioPage() {
       .maybeSingle(),
     supabase
       .from('videos')
-      .select('id,title,views')
+      .select('id,title,views,thumbnail_url')
       .eq('user_id', user.id)
       .order('views', { ascending: false })
       .limit(5),
@@ -35,10 +35,60 @@ export default async function StudioPage() {
 
   const profile = profileRes.data;
   const videos = videosRes.data || [];
+  const videoIds = videos.map((video) => video.id);
+  const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const [{ count: commentCount }, { count: likeCount }, { count: recentCommentCount }, recentCommentsRes] =
+    videoIds.length
+      ? await Promise.all([
+          supabase.from('comments').select('id', { count: 'exact', head: true }).in('video_id', videoIds),
+          supabase.from('likes').select('id', { count: 'exact', head: true }).in('video_id', videoIds),
+          supabase
+            .from('comments')
+            .select('id', { count: 'exact', head: true })
+            .in('video_id', videoIds)
+            .gte('created_at', since48h),
+          supabase
+            .from('comments')
+            .select('id,content,created_at,video_id,profiles:user_id(username,handle,avatar_url)')
+            .in('video_id', videoIds)
+            .order('created_at', { ascending: false })
+            .limit(6),
+        ])
+      : [
+          { count: 0 },
+          { count: 0 },
+          { count: 0 },
+          { data: [] },
+        ];
   const totalViews = videos.reduce((sum, video) => sum + (video.views || 0), 0);
+  const recentViews = videos
+    .filter((video) => new Date(video.created_at).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000)
+    .reduce((sum, video) => sum + Number(video.views || 0), 0);
   const chartSeries = buildMonthlySeries(
     videos.map((video) => ({ created_at: video.created_at, views: video.views || 0 })),
   );
+  const liveDashboardData = {
+    profile: profile || null,
+    metrics: {
+      subscribers: Number(profile?.subscribers_count || 0),
+      videos: videos.length,
+      shorts: videos.filter((video) => video.is_short).length,
+      publicVideos: videos.filter((video) => video.visibility === 'public').length,
+      totalViews,
+      recentViews,
+      comments: Number(commentCount || 0),
+      recentComments: Number(recentCommentCount || 0),
+      likes: Number(likeCount || 0),
+    },
+    topVideos: (topVideosRes.data || []).map((video) => ({
+      id: video.id,
+      title: video.title,
+      thumbnail_url: video.thumbnail_url,
+      views: video.views || 0,
+    })),
+    recentComments: recentCommentsRes.data || [],
+    updatedAt: new Date().toISOString(),
+  };
 
   const studioNews = [
     'Creator Spotlight supports weekly scheduling from watch pages.',
@@ -50,25 +100,7 @@ export default async function StudioPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <h1 className="text-4xl font-bold tracking-tight">Channel dashboard</h1>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-zinc-700 bg-zinc-900 p-5">
-          <p className="text-xs text-zinc-500">Subscribers</p>
-          <p className="mt-2 text-3xl font-bold">{formatCompactCount(profile?.subscribers_count || 0)}</p>
-        </div>
-        <div className="rounded-2xl border border-zinc-700 bg-zinc-900 p-5">
-          <p className="text-xs text-zinc-500">Videos</p>
-          <p className="mt-2 text-3xl font-bold">{videos.length.toLocaleString()}</p>
-        </div>
-        <div className="rounded-2xl border border-zinc-700 bg-zinc-900 p-5">
-          <p className="text-xs text-zinc-500">Total Views</p>
-          <p className="mt-2 text-3xl font-bold">{formatCompactCount(totalViews)}</p>
-        </div>
-        <div className="rounded-2xl border border-zinc-700 bg-zinc-900 p-5">
-          <p className="text-xs text-zinc-500">Channel</p>
-          <p className="mt-2 text-xl font-semibold">{profile?.username || 'Creator'}</p>
-          <p className="text-sm text-zinc-500">{displayHandle(profile?.handle)}</p>
-        </div>
-      </section>
+      <StudioLiveDashboard initialData={liveDashboardData} userId={user.id} />
 
       <section className="grid gap-4 xl:grid-cols-3">
         <div className="xl:col-span-2">

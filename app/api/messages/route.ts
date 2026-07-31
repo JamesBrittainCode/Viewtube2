@@ -233,6 +233,8 @@ export async function POST(request: Request) {
     message: recipientStatus === 'pending' ? `New message request from ${senderName}` : `New message from ${senderName}`,
     actorId: user.id,
     targetUrl: `/messages/${thread.id}`,
+    pushTitle: recipientStatus === 'pending' ? `Message request from ${senderName}` : `New message from ${senderName}`,
+    pushBody: message,
   });
 
   return NextResponse.json({ threadId: thread.id, message: inserted });

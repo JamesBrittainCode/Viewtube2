@@ -212,12 +212,20 @@ export async function POST(
   });
 
   if (video.user_id !== user.id) {
+    const { data: actorProfile } = await supabase
+      .from('profiles')
+      .select('username,handle')
+      .eq('id', user.id)
+      .maybeSingle();
+    const actorName = actorProfile?.handle ? `@${actorProfile.handle}` : actorProfile?.username || 'someone';
     await sendNotification(supabase, {
       userId: video.user_id,
       type: 'new_comment',
       message: 'Someone commented on your video',
       actorId: user.id,
       targetUrl: `/watch/${id}#comments`,
+      pushTitle: `New Comment from ${actorName}`,
+      pushBody: content,
     });
   }
 

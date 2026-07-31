@@ -67,6 +67,8 @@ export async function POST(
       message: 'You have a new subscriber',
       actorId: user.id,
       targetUrl: actorProfile?.handle ? `/channel/${actorProfile.handle}` : null,
+      pushTitle: 'You got a new subscriber',
+      pushBody: actorProfile?.handle ? `@${actorProfile.handle} subscribed to you.` : 'Someone subscribed to you.',
     });
   }
 

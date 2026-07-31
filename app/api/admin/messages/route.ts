@@ -153,6 +153,8 @@ export async function POST(request: Request) {
       message: 'New message from ViewTube Admin',
       actorId: user.id,
       targetUrl: `/messages/${thread.id}`,
+      pushTitle: 'New message from ViewTube Admin',
+      pushBody: 'Open ViewTube to read the full message.',
     });
 
     const authUser = authById.get(recipient.id);

@@ -140,6 +140,8 @@ export async function POST(request: Request, context: RouteContext) {
         message: `New message from ${senderName}`,
         actorId: user.id,
         targetUrl: `/messages/${threadId}`,
+        pushTitle: `New message from ${senderName}`,
+        pushBody: message,
       }),
     ),
   );
