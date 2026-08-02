@@ -24,7 +24,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const { data, error } = await supabase
     .from('live_streams')
     .select(
-      'id,user_id,title,description,thumbnail_url,source,ingest_stream_name,is_live,is_paused,paused_reason,paused_at,paused_by,viewer_count,started_at,ended_at,profiles:profiles!live_streams_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)',
+      'id,user_id,co_host_id,title,description,thumbnail_url,source,ingest_stream_name,is_live,is_paused,paused_reason,paused_at,paused_by,viewer_count,started_at,ended_at,profiles:profiles!live_streams_user_id_fkey(username,handle,avatar_url,verified,is_admin,top_streamer,streak_champion)',
     )
     .eq('id', id)
     .maybeSingle();
@@ -55,7 +55,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   const { data: stream, error: streamError } = await supabase
     .from('live_streams')
-    .select('id,user_id,is_live,started_at')
+    .select('id,user_id,co_host_id,is_live,started_at')
     .eq('id', id)
     .maybeSingle();
   if (streamError || !stream) {
@@ -64,7 +64,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   if (action === 'join') {
     if (!stream.is_live) return NextResponse.json({ error: 'Stream is offline' }, { status: 400 });
-    if (user.id !== stream.user_id) {
+    if (user.id !== stream.user_id && user.id !== stream.co_host_id) {
       await supabase.from('live_stream_viewers').upsert({ stream_id: id, user_id: user.id }, { onConflict: 'stream_id,user_id' });
       const count = await syncViewerCount(supabase, id);
       return NextResponse.json({ ok: true, viewer_count: count });

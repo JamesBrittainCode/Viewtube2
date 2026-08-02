@@ -80,6 +80,31 @@ function formatChatTime(iso: string) {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+function RemoteVideoTile({
+  stream,
+  label,
+}: {
+  stream: MediaStream;
+  label: string;
+}) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.srcObject = stream;
+    }
+  }, [stream]);
+
+  return (
+    <div className="relative min-h-0 overflow-hidden bg-zinc-950">
+      <video ref={ref} autoPlay playsInline controls={false} className="h-full w-full object-cover" />
+      <span className="absolute bottom-3 left-3 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white">
+        {label}
+      </span>
+    </div>
+  );
+}
+
 export function LiveStreamRoom({
   streamId,
   ownerId,
@@ -95,6 +120,8 @@ export function LiveStreamRoom({
   initialMessages,
   userId,
   isOwner,
+  coHostId = null,
+  isCoHost = false,
   initialChatEnabled,
   initialChatSubscribersOnly,
   initialChatSlowModeSeconds,
@@ -113,6 +140,8 @@ export function LiveStreamRoom({
   initialMessages: ChatMessage[];
   userId: string;
   isOwner: boolean;
+  coHostId?: string | null;
+  isCoHost?: boolean;
   initialChatEnabled: boolean;
   initialChatSubscribersOnly: boolean;
   initialChatSlowModeSeconds: number;
@@ -120,7 +149,6 @@ export function LiveStreamRoom({
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -134,13 +162,14 @@ export function LiveStreamRoom({
   const emojiPopoverRef = useRef<HTMLDivElement | null>(null);
 
   const isObs = initialSource === 'obs';
+  const isBroadcaster = isOwner || isCoHost;
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [chatInput, setChatInput] = useState('');
   const [viewerCount, setViewerCount] = useState(initialViewerCount);
   const [liveEnded, setLiveEnded] = useState(false);
-  const [starting, setStarting] = useState(isOwner && !isObs);
+  const [starting, setStarting] = useState(isBroadcaster && !isObs);
   const [ending, setEnding] = useState(false);
   const [paused, setPaused] = useState(initialPaused);
   const [pauseReason, setPauseReason] = useState<string | null>(initialPauseReason);
@@ -159,6 +188,7 @@ export function LiveStreamRoom({
   const [newMessageIds, setNewMessageIds] = useState<Set<string>>(new Set());
   const [removingMessageIds, setRemovingMessageIds] = useState<Set<string>>(new Set());
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
 
   const EMOJIS = useMemo(
     () => [
@@ -284,6 +314,15 @@ export function LiveStreamRoom({
     if (insertError) throw insertError;
   }
 
+  function setRemoteStreamFor(partnerId: string, stream: MediaStream) {
+    setRemoteStreams((prev) => {
+      if (prev.get(partnerId) === stream) return prev;
+      const next = new Map(prev);
+      next.set(partnerId, stream);
+      return next;
+    });
+  }
+
   async function getCameraVideoTrack(facingMode: 'user' | 'environment') {
     const camStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode },
@@ -350,17 +389,17 @@ export function LiveStreamRoom({
       void sendSignal(partnerId, 'ice_candidate', { candidate: event.candidate.toJSON() }).catch(() => {});
     };
 
-    if (isOwner && localStreamRef.current) {
+    pc.ontrack = (event) => {
+      const [remoteStream] = event.streams;
+      if (remoteStream) {
+        setRemoteStreamFor(partnerId, remoteStream);
+      }
+    };
+
+    if (isBroadcaster && localStreamRef.current) {
       for (const track of localStreamRef.current.getTracks()) {
         pc.addTrack(track, localStreamRef.current);
       }
-    } else {
-      pc.ontrack = (event) => {
-        const [remoteStream] = event.streams;
-        if (remoteVideoRef.current && remoteStream) {
-          remoteVideoRef.current.srcObject = remoteStream;
-        }
-      };
     }
 
     peersRef.current.set(partnerId, pc);
@@ -372,7 +411,7 @@ export function LiveStreamRoom({
       setStarting(false);
       return;
     }
-    if (!isOwner) return;
+    if (!isBroadcaster) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: cameraFacing },
@@ -412,7 +451,7 @@ export function LiveStreamRoom({
     if (row.recipient_id && row.recipient_id !== userId) return;
 
     try {
-      if (row.kind === 'viewer_join' && isOwner) {
+      if (row.kind === 'viewer_join' && isBroadcaster) {
         const viewerId = row.sender_id;
         const pc = getOrCreatePeerConnection(viewerId);
         const offer = await pc.createOffer();
@@ -421,20 +460,30 @@ export function LiveStreamRoom({
         return;
       }
 
-      if (row.kind === 'offer' && !isOwner) {
-        const pc = getOrCreatePeerConnection(ownerId);
+      if (row.kind === 'cohost_join' && isOwner) {
+        const partnerId = row.sender_id;
+        const pc = getOrCreatePeerConnection(partnerId);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await sendSignal(partnerId, 'offer', { sdp: offer.sdp, type: offer.type });
+        return;
+      }
+
+      if (row.kind === 'offer') {
+        const partnerId = row.sender_id;
+        const pc = getOrCreatePeerConnection(partnerId);
         const offer = row.payload as { sdp?: string; type?: RTCSdpType };
         if (!offer.sdp || !offer.type) return;
         await pc.setRemoteDescription(new RTCSessionDescription({ type: offer.type, sdp: offer.sdp }));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        await sendSignal(ownerId, 'answer', { sdp: answer.sdp, type: answer.type });
+        await sendSignal(partnerId, 'answer', { sdp: answer.sdp, type: answer.type });
         return;
       }
 
-      if (row.kind === 'answer' && isOwner) {
-        const viewerId = row.sender_id;
-        const pc = getOrCreatePeerConnection(viewerId);
+      if (row.kind === 'answer') {
+        const partnerId = row.sender_id;
+        const pc = getOrCreatePeerConnection(partnerId);
         const answer = row.payload as { sdp?: string; type?: RTCSdpType };
         if (!answer.sdp || !answer.type) return;
         await pc.setRemoteDescription(new RTCSessionDescription({ type: answer.type, sdp: answer.sdp }));
@@ -442,7 +491,7 @@ export function LiveStreamRoom({
       }
 
       if (row.kind === 'ice_candidate') {
-        const partnerId = isOwner ? row.sender_id : ownerId;
+        const partnerId = row.sender_id;
         const pc = getOrCreatePeerConnection(partnerId);
         const candidate = (row.payload as { candidate?: RTCIceCandidateInit }).candidate;
         if (candidate) {
@@ -566,7 +615,7 @@ export function LiveStreamRoom({
       }
     }
 
-    if (isOwner) void startBroadcastIfOwner();
+    if (isBroadcaster) void startBroadcastIfOwner();
 
     const channel = supabase
       .channel(`live-room-${streamId}-${userId}`)
@@ -630,14 +679,24 @@ export function LiveStreamRoom({
       .subscribe(async (status) => {
         if (status !== 'SUBSCRIBED') return;
 
-        if (isOwner) return;
+        if (isBroadcaster) {
+          await fetch(`/api/live/streams/${streamId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'join' }),
+          });
+          if (isCoHost) {
+            await sendSignal(ownerId, 'cohost_join', { stream_id: streamId });
+          }
+          return;
+        }
 
         await fetch(`/api/live/streams/${streamId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'join' }),
         });
-        await sendSignal(ownerId, 'viewer_join', { stream_id: streamId });
+        await sendSignal(null, 'viewer_join', { stream_id: streamId });
       });
 
     channelRef.current = channel;
@@ -655,7 +714,7 @@ export function LiveStreamRoom({
     return () => {
       clearInterval(timer);
       clearInterval(snapshotTimer);
-      if (!isOwner) {
+      if (!isBroadcaster) {
         void fetch(`/api/live/streams/${streamId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -679,7 +738,7 @@ export function LiveStreamRoom({
         void supabase.removeChannel(channelRef.current);
       }
     };
-  }, [initialMessages, isOwner, ownerId, streamId, supabase, userId]);
+  }, [initialMessages, isBroadcaster, isCoHost, isOwner, ownerId, streamId, supabase, userId]);
 
   useEffect(() => {
     if (!stickToBottom) return;
@@ -844,7 +903,7 @@ export function LiveStreamRoom({
   }
 
   async function flipCamera() {
-    if (!isOwner || liveEnded) return;
+    if (!isBroadcaster || liveEnded) return;
     if (sharingScreen) {
       setError('Stop screen sharing before flipping the camera.');
       return;
@@ -861,7 +920,7 @@ export function LiveStreamRoom({
   }
 
   async function startScreenShare() {
-    if (!isOwner || liveEnded) return;
+    if (!isBroadcaster || liveEnded) return;
     if (typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
       setError('Screen sharing is not supported on this device/browser.');
       return;
@@ -891,7 +950,7 @@ export function LiveStreamRoom({
   }
 
   async function stopScreenShare() {
-    if (!isOwner) return;
+    if (!isBroadcaster) return;
     if (!sharingScreen) return;
     setError(null);
     setSharingScreen(false);
@@ -928,6 +987,8 @@ export function LiveStreamRoom({
     }
   }
 
+  const remoteVideoEntries = Array.from(remoteStreams.entries()).filter(([partnerId]) => partnerId !== userId);
+
   return (
     <section className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="space-y-4">
@@ -941,10 +1002,38 @@ export function LiveStreamRoom({
                   Live playback is not configured yet.
                 </div>
               )
-            ) : isOwner ? (
-              <video ref={localVideoRef} autoPlay muted playsInline className="aspect-video w-full object-cover" />
+            ) : isBroadcaster ? (
+              <div className={`grid aspect-video w-full bg-black ${remoteVideoEntries.length ? 'sm:grid-cols-2' : ''}`}>
+                <div className="relative min-h-0 overflow-hidden bg-zinc-950">
+                  <video ref={localVideoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
+                  <span className="absolute bottom-3 left-3 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white">
+                    You
+                  </span>
+                </div>
+                {remoteVideoEntries.map(([partnerId, stream]) => (
+                  <RemoteVideoTile
+                    key={partnerId}
+                    stream={stream}
+                    label={partnerId === ownerId ? 'Host' : partnerId === coHostId ? 'Co-host' : 'Guest'}
+                  />
+                ))}
+              </div>
             ) : (
-              <video ref={remoteVideoRef} autoPlay playsInline controls={false} className="aspect-video w-full object-cover" />
+              <div className={`grid aspect-video w-full bg-black ${remoteVideoEntries.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+                {remoteVideoEntries.length ? (
+                  remoteVideoEntries.map(([partnerId, stream]) => (
+                    <RemoteVideoTile
+                      key={partnerId}
+                      stream={stream}
+                      label={partnerId === ownerId ? 'Host' : partnerId === coHostId ? 'Co-host' : 'Live'}
+                    />
+                  ))
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-sm text-zinc-300">
+                    Connecting to the live stream…
+                  </div>
+                )}
+              </div>
             )}
 
             {paused && !liveEnded ? (
@@ -1003,7 +1092,7 @@ export function LiveStreamRoom({
           {starting ? <p className="mt-2 text-sm text-zinc-500">Starting camera and microphone…</p> : null}
           {liveEnded ? <p className="mt-2 text-sm text-red-500">This stream has ended.</p> : null}
 
-          {isOwner && !liveEnded ? (
+          {isBroadcaster && !liveEnded ? (
             <div className="mt-4 flex flex-wrap gap-2">
               {!isObs ? (
                 <>
@@ -1045,14 +1134,16 @@ export function LiveStreamRoom({
               ) : (
                 <p className="text-sm text-zinc-500">Streaming via OBS.</p>
               )}
-              <button
-                type="button"
-                onClick={() => void endStream()}
-                className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
-              >
-                <Square className="h-4 w-4" />
-                {ending ? 'Ending…' : 'End Stream'}
-              </button>
+              {isOwner ? (
+                <button
+                  type="button"
+                  onClick={() => void endStream()}
+                  className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
+                >
+                  <Square className="h-4 w-4" />
+                  {ending ? 'Ending…' : 'End Stream'}
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>

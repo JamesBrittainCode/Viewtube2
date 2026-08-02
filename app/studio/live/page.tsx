@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { StudioLiveManager } from '@/components/studio-live-manager';
+import { LiveCollabManager } from '@/components/live-collab-manager';
 import { LivePolicyGate } from '@/components/live-policy-gate';
 
 export default async function StudioLivePage() {
@@ -36,6 +37,7 @@ export default async function StudioLivePage() {
     <LivePolicyGate role="creator">
       <div className="mx-auto max-w-4xl">
         <StudioLiveManager activeStream={activeStream || null} />
+        <LiveCollabManager currentUserId={user.id} />
       </div>
     </LivePolicyGate>
   );

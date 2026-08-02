@@ -41,7 +41,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = (await request.json().catch(() => ({}))) as { title?: string; description?: string };
+  const body = (await request.json().catch(() => ({}))) as {
+    title?: string;
+    description?: string;
+    collabInviteId?: string;
+  };
   const title = String(body.title || 'Live Stream').trim().slice(0, 120) || 'Live Stream';
   const description = String(body.description || '').trim().slice(0, 1000);
 
@@ -53,6 +57,63 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (existing) {
     return NextResponse.json({ stream: existing });
+  }
+
+  const collabInviteId = String(body.collabInviteId || '').trim();
+  if (collabInviteId) {
+    const { data: invite, error: inviteError } = await supabase
+      .from('live_collab_invites')
+      .select('id,inviter_id,invitee_id,stream_id,title,description,scheduled_for,status')
+      .eq('id', collabInviteId)
+      .maybeSingle();
+    if (inviteError || !invite) {
+      return NextResponse.json({ error: 'Co-live invite not found.' }, { status: 404 });
+    }
+    if (invite.inviter_id !== user.id) {
+      return NextResponse.json({ error: 'Only the inviting creator can start this co-live.' }, { status: 403 });
+    }
+    if (invite.status !== 'accepted') {
+      return NextResponse.json({ error: 'The other creator must accept before you can start.' }, { status: 400 });
+    }
+
+    if (invite.stream_id) {
+      const { data: stream, error: streamError } = await supabase
+        .from('live_streams')
+        .update({
+          is_live: true,
+          started_at: new Date().toISOString(),
+          ended_at: null,
+          title: invite.title,
+          description: invite.description,
+          viewer_count: 0,
+        })
+        .eq('id', invite.stream_id)
+        .eq('user_id', user.id)
+        .select('id,user_id,title,description,thumbnail_url,is_live,viewer_count,started_at')
+        .single();
+      if (streamError) return NextResponse.json({ error: streamError.message }, { status: 400 });
+      const streak = await recordViewtubeActivity(supabase, 'go_live', { targetId: stream.id, pointsOk: false });
+      return NextResponse.json({ stream, streak });
+    }
+
+    const { data: stream, error: streamError } = await supabase
+      .from('live_streams')
+      .insert({
+        user_id: user.id,
+        co_host_id: invite.invitee_id,
+        co_live_invite_id: invite.id,
+        title: invite.title,
+        description: invite.description,
+        scheduled_for: invite.scheduled_for,
+        is_live: true,
+        viewer_count: 0,
+      })
+      .select('id,user_id,title,description,thumbnail_url,is_live,viewer_count,started_at')
+      .single();
+    if (streamError) return NextResponse.json({ error: streamError.message }, { status: 400 });
+    await supabase.from('live_collab_invites').update({ stream_id: stream.id }).eq('id', invite.id);
+    const streak = await recordViewtubeActivity(supabase, 'go_live', { targetId: stream.id, pointsOk: false });
+    return NextResponse.json({ stream, streak });
   }
 
   const { data, error } = await supabase

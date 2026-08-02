@@ -88,6 +88,43 @@ export async function sendAdminMessageEmail(input: {
   });
 }
 
+export async function sendCoLiveInviteEmail(input: {
+  to: string;
+  inviterName: string;
+  title: string;
+  scheduledFor: string;
+  inviteUrl: string;
+}) {
+  const inviteUrl = input.inviteUrl.startsWith('http')
+    ? input.inviteUrl
+    : `${getBaseUrl()}${input.inviteUrl}`;
+  const scheduled = new Date(input.scheduledFor);
+  const scheduledText = Number.isNaN(scheduled.getTime())
+    ? input.scheduledFor
+    : scheduled.toLocaleString('en-US', {
+        dateStyle: 'full',
+        timeStyle: 'short',
+        timeZone: 'America/Los_Angeles',
+      });
+
+  await sendEmail({
+    to: input.to,
+    subject: `${input.inviterName} invited you to go live together on ViewTube`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#18181b">
+        <h2 style="margin:0 0 12px">You're invited to go live together</h2>
+        <p style="margin:0 0 10px"><strong>${escapeHtml(input.inviterName)}</strong> invited you to co-host a ViewTube live stream.</p>
+        <p style="margin:0 0 10px"><strong>Stream:</strong> ${escapeHtml(input.title)}</p>
+        <p style="margin:0 0 18px"><strong>Scheduled:</strong> ${escapeHtml(scheduledText)} PST</p>
+        <a href="${escapeHtml(inviteUrl)}" style="display:inline-block;border-radius:999px;background:#ef4444;color:#fff;font-weight:700;padding:12px 18px;text-decoration:none">
+          Review Invite in ViewTube Studio
+        </a>
+        <p style="margin-top:18px;color:#71717a;font-size:13px">Both creators must approve and remain eligible to go live before the stream can start.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendAdminNewAdRequestEmail(input: {
   submissionId: string;
   advertiserName: string;

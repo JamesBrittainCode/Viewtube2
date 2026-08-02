@@ -485,6 +485,10 @@ create table if not exists public.live_streams (
   thumbnail_url text,
   -- For OBS/RTMP ingest, this is the RTMP "stream name" used to derive HLS playback.
   ingest_stream_name text,
+  scheduled_for timestamptz,
+  co_host_id uuid references public.profiles(id) on delete set null,
+  co_live_invite_id uuid,
+  watch_party_video_id uuid references public.videos(id) on delete set null,
   chat_enabled boolean not null default true,
   chat_subscribers_only boolean not null default false,
   chat_slow_mode_seconds integer not null default 0,
@@ -501,6 +505,42 @@ alter table public.live_streams
 add column if not exists paused_at timestamptz;
 alter table public.live_streams
 add column if not exists paused_by uuid references public.profiles(id) on delete set null;
+alter table public.live_streams
+add column if not exists scheduled_for timestamptz;
+alter table public.live_streams
+add column if not exists co_host_id uuid references public.profiles(id) on delete set null;
+alter table public.live_streams
+add column if not exists co_live_invite_id uuid;
+alter table public.live_streams
+add column if not exists watch_party_video_id uuid references public.videos(id) on delete set null;
+
+create table if not exists public.live_collab_invites (
+  id uuid primary key default gen_random_uuid(),
+  inviter_id uuid not null references public.profiles(id) on delete cascade,
+  invitee_id uuid not null references public.profiles(id) on delete cascade,
+  stream_id uuid references public.live_streams(id) on delete set null,
+  title text not null,
+  description text not null default '',
+  scheduled_for timestamptz not null,
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'declined', 'cancelled')),
+  message text not null default '',
+  created_at timestamptz not null default now(),
+  responded_at timestamptz,
+  check (inviter_id <> invitee_id)
+);
+
+create table if not exists public.live_watch_parties (
+  id uuid primary key default gen_random_uuid(),
+  creator_id uuid not null references public.profiles(id) on delete cascade,
+  video_id uuid not null references public.videos(id) on delete cascade,
+  stream_id uuid references public.live_streams(id) on delete set null,
+  title text not null,
+  description text not null default '',
+  scheduled_for timestamptz not null,
+  status text not null default 'scheduled' check (status in ('scheduled', 'live', 'ended', 'cancelled')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
 -- OBS/RTMP stream keys (stored hashed; never store plaintext).
 create table if not exists public.live_stream_keys (
@@ -597,6 +637,13 @@ create index if not exists idx_earn_applications_status_created on public.earn_a
 create index if not exists idx_live_streams_live_started on public.live_streams using btree(is_live, started_at desc);
 create index if not exists idx_live_streams_user_live on public.live_streams using btree(user_id, is_live);
 create index if not exists idx_live_streams_source_live on public.live_streams using btree(source, is_live, started_at desc);
+create index if not exists idx_live_streams_co_host_live on public.live_streams using btree(co_host_id, is_live);
+create index if not exists idx_live_streams_scheduled on public.live_streams using btree(scheduled_for);
+create index if not exists idx_live_collab_invites_inviter on public.live_collab_invites using btree(inviter_id, status, scheduled_for);
+create index if not exists idx_live_collab_invites_invitee on public.live_collab_invites using btree(invitee_id, status, scheduled_for);
+create index if not exists idx_live_collab_invites_stream on public.live_collab_invites using btree(stream_id);
+create index if not exists idx_live_watch_parties_creator on public.live_watch_parties using btree(creator_id, status, scheduled_for);
+create index if not exists idx_live_watch_parties_video on public.live_watch_parties using btree(video_id, status, scheduled_for);
 create index if not exists idx_live_stream_viewers_stream on public.live_stream_viewers using btree(stream_id);
 create index if not exists idx_live_signals_stream_created on public.live_signals using btree(stream_id, created_at asc);
 create index if not exists idx_live_signals_recipient on public.live_signals using btree(recipient_id, created_at asc);
@@ -1011,6 +1058,8 @@ alter table public.site_alerts enable row level security;
 alter table public.studio_feedback enable row level security;
 alter table public.earn_applications enable row level security;
 alter table public.live_streams enable row level security;
+alter table public.live_collab_invites enable row level security;
+alter table public.live_watch_parties enable row level security;
 alter table public.live_stream_viewers enable row level security;
 alter table public.live_signals enable row level security;
 alter table public.live_chat_messages enable row level security;
@@ -1772,6 +1821,50 @@ with check (
   and paused_reason is not distinct from (select s.paused_reason from public.live_streams s where s.id = id)
   and paused_at is not distinct from (select s.paused_at from public.live_streams s where s.id = id)
   and paused_by is not distinct from (select s.paused_by from public.live_streams s where s.id = id)
+);
+
+drop policy if exists "Live collab invites are visible to both creators" on public.live_collab_invites;
+create policy "Live collab invites are visible to both creators"
+on public.live_collab_invites for select
+to authenticated
+using (inviter_id = (select auth.uid()) or invitee_id = (select auth.uid()));
+
+drop policy if exists "Eligible creators can invite cohosts" on public.live_collab_invites;
+create policy "Eligible creators can invite cohosts"
+on public.live_collab_invites for insert
+to authenticated
+with check (
+  inviter_id = (select auth.uid())
+  and exists (select 1 from public.profiles p where p.id = inviter_id and p.can_stream_live = true)
+  and exists (select 1 from public.profiles p where p.id = invitee_id and p.can_stream_live = true)
+);
+
+drop policy if exists "Invite participants can update live collab invites" on public.live_collab_invites;
+create policy "Invite participants can update live collab invites"
+on public.live_collab_invites for update
+to authenticated
+using (inviter_id = (select auth.uid()) or invitee_id = (select auth.uid()))
+with check (inviter_id = (select auth.uid()) or invitee_id = (select auth.uid()));
+
+drop policy if exists "Watch parties are visible to everyone" on public.live_watch_parties;
+create policy "Watch parties are visible to everyone"
+on public.live_watch_parties for select
+to anon, authenticated
+using (status in ('scheduled', 'live', 'ended'));
+
+drop policy if exists "Eligible creators can manage watch parties" on public.live_watch_parties;
+create policy "Eligible creators can manage watch parties"
+on public.live_watch_parties for all
+to authenticated
+using (creator_id = (select auth.uid()))
+with check (
+  creator_id = (select auth.uid())
+  and exists (
+    select 1
+    from public.profiles p
+    where p.id = (select auth.uid())
+      and p.can_stream_live = true
+  )
 );
 
 -- Stream keys: only the owner can manage/view their own key metadata (masked in UI).

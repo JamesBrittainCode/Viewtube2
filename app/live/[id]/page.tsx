@@ -23,8 +23,8 @@ export default async function LiveStreamWatchPage({
 
   const [{ data: stream }, { data: messages }, { data: profile }] = await Promise.all([
     supabase
-      .from('live_streams')
-      .select('id,user_id,title,description,thumbnail_url,source,ingest_stream_name,is_live,is_paused,paused_reason,paused_at,paused_by,viewer_count,started_at,chat_enabled,chat_subscribers_only,chat_slow_mode_seconds')
+	      .from('live_streams')
+	      .select('id,user_id,co_host_id,title,description,thumbnail_url,source,ingest_stream_name,is_live,is_paused,paused_reason,paused_at,paused_by,viewer_count,started_at,chat_enabled,chat_subscribers_only,chat_slow_mode_seconds')
       .eq('id', id)
       .maybeSingle(),
     supabase
@@ -38,9 +38,12 @@ export default async function LiveStreamWatchPage({
     supabase.from('profiles').select('id').eq('id', user.id).maybeSingle(),
   ]);
 
-  if (!stream || (!stream.is_live && stream.user_id !== user.id)) {
-    notFound();
-  }
+	const coHostId = (stream as unknown as { co_host_id?: string | null } | null)?.co_host_id ?? null;
+	const isCoHost = coHostId === user.id;
+
+	if (!stream || (!stream.is_live && stream.user_id !== user.id && !isCoHost)) {
+	  notFound();
+	}
   if (!profile) redirect('/sign-in');
 
   const hlsBase = (process.env.NEXT_PUBLIC_HLS_BASE_URL || '').replace(/\/+$/, '');
@@ -58,7 +61,7 @@ export default async function LiveStreamWatchPage({
       : null;
 
   return (
-    <LivePolicyGate role={user.id === stream.user_id ? 'creator' : 'viewer'}>
+	    <LivePolicyGate role={user.id === stream.user_id || isCoHost ? 'creator' : 'viewer'}>
       <div className="space-y-4">
         {isAdmin ? <AdminLiveControls streamId={stream.id} /> : null}
         <LiveStreamRoom
@@ -74,9 +77,11 @@ export default async function LiveStreamWatchPage({
           initialViewerCount={stream.viewer_count || 0}
           initialStartedAt={stream.started_at}
           initialMessages={(messages || []) as never[]}
-          userId={user.id}
-          isOwner={user.id === stream.user_id}
-          initialChatEnabled={stream.chat_enabled !== false}
+	          userId={user.id}
+	          isOwner={user.id === stream.user_id}
+	          coHostId={coHostId}
+	          isCoHost={isCoHost}
+	          initialChatEnabled={stream.chat_enabled !== false}
           initialChatSubscribersOnly={Boolean(stream.chat_subscribers_only)}
           initialChatSlowModeSeconds={Number(stream.chat_slow_mode_seconds || 0)}
         />
