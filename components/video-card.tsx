@@ -54,6 +54,7 @@ export function VideoCard({ video, signedIn = false }: Props & { signedIn?: bool
   const channelHref = profile?.handle ? `/channel/${profile.handle}` : '/';
   const isShort = Boolean(video.is_short);
   const videoHref = isShort ? `/shorts/${video.id}` : `/watch/${video.id}`;
+  const showFeedReason = video.feed_reason?.trim().toLowerCase() === 'from your watch later';
 
   return (
     <article className="group transition duration-200" data-video-card={video.id}>
@@ -104,7 +105,7 @@ export function VideoCard({ video, signedIn = false }: Props & { signedIn?: bool
         />
 
         <div className="min-w-0 flex-1">
-          {video.feed_reason ? (
+          {showFeedReason ? (
             <div className="mb-1 inline-flex rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-semibold text-red-500 dark:bg-red-500/15 dark:text-red-300">
               {video.feed_reason}
             </div>
